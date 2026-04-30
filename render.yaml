@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: zarzis-irrigation
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn modbus_proxy:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: USR_G781_IP
+        value: "0.0.0.0"
+      - key: USR_G781_PORT
+        value: "502"
