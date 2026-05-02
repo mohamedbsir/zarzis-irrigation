@@ -1,339 +1,471 @@
 #!/usr/bin/env python3
 """
-=================================================
-PROXY MODBUS CLOUD — ZARZIS IRRIGATION SOLAIRE
-=================================================
-Serveur cloud pour USR-G781 4G
-→ Deploy sur Render.com (gratuit)
-→ USR-G781 se connecte en mode TCP Client
-→ Notre dashboard s'y connecte depuis la France
+ZARZIS IRRIGATION — API CLOUD V4
+Objectif : dashboard = démarrer / arrêter / planifier / visualiser.
+Les sécurités restent dans les coffrets d'origine.
 
-Prérequis : pip install flask flask-cors pymodbus gunicorn
-Lancement local  : python3 modbus_proxy.py
-Lancement cloud  : gunicorn modbus_proxy:app
-=================================================
+Compatible Render Web Service.
+Modes:
+- direct_tcp : l'API se connecte à une passerelle Modbus TCP joignable.
+- http_bridge : le terrain pousse l'état vers /api/g781/push et récupère les commandes.
 """
 
 import os
-import threading
 import time
 import logging
+import threading
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymodbus.client import ModbusTcpClient
-from pymodbus.exceptions import ModbusException
 
-# ============ CONFIGURATION ============
-# En mode cloud : USR-G781 se connecte en TCP Client
-# Le serveur écoute les connexions entrantes du G781
-USR_G781_IP   = os.environ.get("USR_G781_IP", "0.0.0.0")
-USR_G781_PORT = int(os.environ.get("USR_G781_PORT", 502))
-SERVER_PORT   = int(os.environ.get("PORT", 8080))
-UPDATE_SEC    = 5
+APP_VERSION = "zarzis-cloud-v4.0"
+PORT = int(os.environ.get("PORT", "8080"))
 
-# Adresses Modbus
-ADDR_INVT    = 1
-ADDR_SALMSON = 2
-ADDR_WILO    = 3
+# Si API_TOKEN est vide, l'API reste ouverte.
+# Pour sécuriser plus tard : définir API_TOKEN dans Render et le renseigner dans le dashboard.
+API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 
-# Registres INVT GD100-PV
-INVT_REGS = {
-    "freq_hz"   : 0x1000,
-    "current_a" : 0x1001,
-    "voltage_v" : 0x1002,
-    "dc_bus_v"  : 0x1003,
-    "power_kw"  : 0x1004,
-    "fault_code": 0x8000,
+G781_MODE = os.environ.get("G781_MODE", "direct_tcp").strip()  # direct_tcp | http_bridge
+G781_HOST = os.environ.get("G781_HOST", "").strip()
+G781_PORT = int(os.environ.get("G781_PORT", "502"))
+MODBUS_TIMEOUT = float(os.environ.get("MODBUS_TIMEOUT", "5"))
+POLL_SECONDS = int(os.environ.get("POLL_SECONDS", "5"))
+
+ADDR_INVT = int(os.environ.get("ADDR_INVT", "1"))
+ADDR_SALMSON = int(os.environ.get("ADDR_SALMSON", "2"))
+ADDR_WILO = int(os.environ.get("ADDR_WILO", "3"))
+ADDR_COFFRET4 = int(os.environ.get("ADDR_COFFRET4", "4"))
+
+DEVICES: Dict[str, Dict[str, Any]] = {
+    "invt": {
+        "label": "Variateur INVT solaire",
+        "slave": ADDR_INVT,
+        "start_reg": int(os.environ.get("INVT_START_REG", str(0x2000))),
+        "start_value": int(os.environ.get("INVT_START_VALUE", "1")),
+        "stop_value": int(os.environ.get("INVT_STOP_VALUE", "5")),
+        "read_regs": {
+            "freq_hz": (0x1000, 0.01),
+            "current_a": (0x1001, 0.1),
+            "voltage_v": (0x1002, 1),
+            "dc_bus_v": (0x1003, 1),
+            "power_kw": (0x1004, 0.1),
+            "fault_code": (0x8000, 1),
+        },
+    },
+    "salmson": {
+        "label": "Coffret Salmson forage",
+        "slave": ADDR_SALMSON,
+        "start_reg": int(os.environ.get("SALMSON_START_REG", str(0x0100))),
+        "start_value": int(os.environ.get("SALMSON_START_VALUE", "1")),
+        "stop_value": int(os.environ.get("SALMSON_STOP_VALUE", "0")),
+        "read_regs": {
+            "state": (0x0001, 1),
+            "current_a": (0x0010, 0.1),
+            "fault_code": (0x0020, 1),
+            "float_low": (0x0030, 1),
+            "float_high": (0x0031, 1),
+        },
+    },
+    "wilo": {
+        "label": "Coffret Wilo surpresseur",
+        "slave": ADDR_WILO,
+        "start_reg": int(os.environ.get("WILO_START_REG", str(0x0100))),
+        "start_value": int(os.environ.get("WILO_START_VALUE", "1")),
+        "stop_value": int(os.environ.get("WILO_STOP_VALUE", "0")),
+        "read_regs": {
+            "pressure": (0x0001, 0.01),
+            "flow": (0x0002, 0.01),
+            "pump1": (0x0010, 1),
+            "pump2": (0x0011, 1),
+            "fault_code": (0x0020, 1),
+        },
+    },
+    "coffret4": {
+        "label": "Coffret 4 / niveau",
+        "slave": ADDR_COFFRET4,
+        "start_reg": int(os.environ.get("COFFRET4_START_REG", str(0x0100))),
+        "start_value": int(os.environ.get("COFFRET4_START_VALUE", "1")),
+        "stop_value": int(os.environ.get("COFFRET4_STOP_VALUE", "0")),
+        "read_regs": {
+            "state": (0x0001, 1),
+            "level_percent": (0x0002, 1),
+            "fault_code": (0x0020, 1),
+        },
+    },
 }
-INVT_CMD = 0x2000  # 1=marche, 5=arrêt
 
-# Registres Salmson
-SALMSON_REGS = {
-    "pump_state": 0x0001,
-    "current_a" : 0x0010,
-    "error_code": 0x0020,
-    "float_low" : 0x0030,
-    "float_high": 0x0031,
+ALIASES = {
+    "forage": "salmson",
+    "salmson": "salmson",
+    "wilo": "wilo",
+    "surpresseur": "wilo",
+    "invt": "invt",
+    "coffret4": "coffret4",
+    "niveau": "coffret4",
 }
-SALMSON_CMD = 0x0100
 
-# Registres Wilo
-WILO_REGS = {
-    "pressure"  : 0x0001,
-    "flow"      : 0x0002,
-    "pump1"     : 0x0010,
-    "pump2"     : 0x0011,
-    "error_code": 0x0020,
-}
-WILO_CMD = 0x0100
-
-# ============ APP FLASK ============
 app = Flask(__name__)
 CORS(app, origins="*")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger("zarzis")
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
-)
-log = logging.getLogger(__name__)
+lock = threading.Lock()
+client: Optional[ModbusTcpClient] = None
 
-# Cache données
-cache = {
-    "invt"       : {"status": "DÉCONNECTÉ"},
-    "salmson"    : {"status": "DÉCONNECTÉ"},
-    "wilo"       : {"status": "DÉCONNECTÉ"},
-    "connected"  : False,
-    "last_update": 0,
-    "g781_ip"    : "En attente...",
+state: Dict[str, Any] = {
+    "version": APP_VERSION,
+    "mode": G781_MODE,
+    "connected": False,
+    "g781_ip": G781_HOST or "En attente...",
+    "g781_port": G781_PORT,
+    "last_update": None,
+    "last_push": None,
+    "invt": {"status": "DÉCONNECTÉ"},
+    "salmson": {"status": "DÉCONNECTÉ"},
+    "wilo": {"status": "DÉCONNECTÉ"},
+    "coffret4": {"status": "DÉCONNECTÉ"},
+    "events": [],
+    "pending_commands": [],
+    "planning": [],
+    "rainbird": {"connected": False, "ip": None, "active_zones": []},
 }
 
-client = None
-lock = threading.Lock()
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
-# ============ MODBUS ============
-def connect(ip, port):
+def add_event(level: str, msg: str, **extra) -> None:
+    item = {"ts": now_iso(), "level": level, "msg": msg}
+    item.update(extra)
+    with lock:
+        state["events"].insert(0, item)
+        state["events"] = state["events"][:200]
+    log.info("%s — %s", level, msg)
+
+def authorized() -> bool:
+    if not API_TOKEN:
+        return True
+    token = request.headers.get("X-API-Token") or request.args.get("token") or ""
+    return token == API_TOKEN
+
+def auth_error():
+    if not authorized():
+        return jsonify({"success": False, "error": "Token API invalide"}), 401
+    return None
+
+def normalize_device(name: str) -> Optional[str]:
+    return ALIASES.get((name or "").lower().strip())
+
+def is_client_open() -> bool:
     global client
     try:
-        if client and client.is_socket_open():
-            client.close()
-        client = ModbusTcpClient(ip, port=port, timeout=5)
+        return bool(client and client.is_socket_open())
+    except Exception:
+        return False
+
+def connect_modbus(host: str, port: int = 502) -> bool:
+    global client
+    try:
+        if client:
+            try:
+                client.close()
+            except Exception:
+                pass
+        client = ModbusTcpClient(host=host, port=port, timeout=MODBUS_TIMEOUT)
         ok = client.connect()
-        if ok:
-            log.info(f"✅ Connecté au USR-G781 ({ip}:{port})")
-            cache["connected"] = True
-            cache["g781_ip"] = ip
-            return True
-        log.warning(f"⚠️ Connexion échouée ({ip}:{port})")
-        cache["connected"] = False
-        return False
-    except Exception as e:
-        log.error(f"❌ Erreur connexion: {e}")
-        cache["connected"] = False
+        with lock:
+            state["connected"] = bool(ok)
+            state["g781_ip"] = host if ok else (host or "En attente...")
+            state["g781_port"] = port
+        add_event("ok" if ok else "warn", f"Connexion Modbus {host}:{port} = {ok}")
+        return bool(ok)
+    except Exception as exc:
+        with lock:
+            state["connected"] = False
+        add_event("err", f"Erreur connexion Modbus: {exc}")
         return False
 
-def read_reg(addr, reg, count=1):
-    try:
-        r = client.read_holding_registers(reg, count, slave=addr)
-        if r and not r.isError():
-            return r.registers
+def read_holding(slave: int, reg: int, count: int = 1) -> Optional[list]:
+    if not is_client_open():
         return None
-    except:
+    try:
+        try:
+            res = client.read_holding_registers(reg, count=count, slave=slave)
+        except TypeError:
+            res = client.read_holding_registers(reg, count=count, unit=slave)
+        if res is None or getattr(res, "isError", lambda: True)():
+            return None
+        return list(res.registers)
+    except Exception as exc:
+        add_event("err", f"Lecture Modbus impossible slave={slave} reg={reg}: {exc}")
         return None
 
-def write_reg(addr, reg, val):
+def write_single(slave: int, reg: int, value: int) -> bool:
+    if not is_client_open():
+        return False
     try:
-        r = client.write_register(reg, val, slave=addr)
-        return not r.isError()
-    except Exception as e:
-        log.error(f"Erreur écriture: {e}")
+        try:
+            res = client.write_register(reg, int(value), slave=slave)
+        except TypeError:
+            res = client.write_register(reg, int(value), unit=slave)
+        return bool(res is not None and not getattr(res, "isError", lambda: True)())
+    except Exception as exc:
+        add_event("err", f"Écriture Modbus impossible slave={slave} reg={reg}: {exc}")
         return False
 
-def get_invt():
-    d = {}
-    for name, addr in INVT_REGS.items():
-        v = read_reg(ADDR_INVT, addr)
-        if v:
-            raw = v[0]
-            if name == "freq_hz":    d[name] = round(raw/100, 2)
-            elif name == "current_a": d[name] = round(raw/10, 1)
-            elif name == "power_kw":  d[name] = round(raw/10, 2)
-            else: d[name] = raw
-    d["running"]    = d.get("freq_hz", 0) > 0.5
-    fc = d.get("fault_code", 0)
-    d["error_text"] = decode_invt(fc) if fc else None
-    d["status"]     = "ERREUR" if fc else ("EN MARCHE" if d["running"] else "ARRÊTÉ")
-    return d
+def decode_fault(device: str, code: int) -> Optional[str]:
+    if not code:
+        return None
+    return f"Défaut {device.upper()} code {code}"
 
-def get_salmson():
-    d = {}
-    for name, addr in SALMSON_REGS.items():
-        v = read_reg(ADDR_SALMSON, addr)
-        if v:
-            raw = v[0]
-            d[name] = round(raw/10, 1) if name == "current_a" else raw
-    d["running"]    = d.get("pump_state", 0) == 1
-    ec = d.get("error_code", 0)
-    d["error_text"] = decode_salmson(ec) if ec else None
-    d["status"]     = "ERREUR" if ec else ("EN MARCHE" if d["running"] else "ARRÊTÉE")
-    return d
+def poll_device(device: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
+    data = {
+        "label": cfg["label"],
+        "slave": cfg["slave"],
+        "status": "CONNECTÉ" if state["connected"] else "DÉCONNECTÉ",
+    }
+    for key, (reg, factor) in cfg["read_regs"].items():
+        regs = read_holding(cfg["slave"], int(reg), 1)
+        if regs is None:
+            continue
+        raw = regs[0]
+        data[key] = raw * factor
+    if "fault_code" in data:
+        data["error_text"] = decode_fault(device, int(data["fault_code"]))
+    if device in ("salmson", "wilo", "coffret4"):
+        data["running"] = bool(data.get("state") or data.get("pump1") or data.get("pump2"))
+    return data
 
-def get_wilo():
-    d = {}
-    for name, addr in WILO_REGS.items():
-        v = read_reg(ADDR_WILO, addr)
-        if v:
-            raw = v[0]
-            if name in ("pressure","flow"): d[name] = round(raw/100, 2)
-            else: d[name] = raw
-    d["running"]    = d.get("pump1",0)==1 or d.get("pump2",0)==1
-    ec = d.get("error_code", 0)
-    d["error_text"] = f"Erreur Wilo {ec}" if ec else None
-    d["status"]     = "ERREUR" if ec else ("EN MARCHE" if d["running"] else "ARRÊTÉ")
-    return d
+def poll_all_once() -> None:
+    if G781_MODE != "direct_tcp":
+        return
+    if not is_client_open():
+        if G781_HOST:
+            connect_modbus(G781_HOST, G781_PORT)
+        return
+    snapshot = {}
+    for dev, cfg in DEVICES.items():
+        snapshot[dev] = poll_device(dev, cfg)
+    with lock:
+        for k, v in snapshot.items():
+            state[k].update(v)
+        state["connected"] = is_client_open()
+        state["last_update"] = now_iso()
 
-# ============ DÉCODEURS ERREURS ============
-def decode_invt(code):
-    return {
-        22: "A-LS — Tension DC insuffisante",
-        7 : "UV — Sous-tension bus DC",
-        1 : "OC1 — Surintensité",
-        9 : "OL2 — Surcharge moteur",
-    }.get(code, f"Erreur INVT {code}")
-
-def decode_salmson(code):
-    return {
-        40: "E040 — Manque eau / Marche à sec",
-        80: "E080 — Surcharge moteur",
-        82: "E082 — Protection thermique",
-        90: "E090 — Défaut thermique",
-    }.get(code, f"Erreur Salmson {code}")
-
-# ============ BOUCLE ARRIÈRE-PLAN ============
-def update_loop():
-    global client
-    ip   = os.environ.get("USR_G781_IP", "")
-    port = int(os.environ.get("USR_G781_PORT", 502))
-
+def poll_loop() -> None:
     while True:
         try:
-            if not ip or ip == "0.0.0.0":
-                # Attente connexion entrante du G781
-                time.sleep(5)
-                continue
+            poll_all_once()
+        except Exception as exc:
+            add_event("err", f"Erreur boucle polling: {exc}")
+        time.sleep(max(2, POLL_SECONDS))
 
-            if not cache["connected"] or not client or not client.is_socket_open():
-                connect(ip, port)
-                time.sleep(5)
-                continue
-
-            with lock:
-                cache["invt"]    = get_invt()
-                cache["salmson"] = get_salmson()
-                cache["wilo"]    = get_wilo()
-                cache["last_update"] = time.time()
-
-            time.sleep(UPDATE_SEC)
-
-        except Exception as e:
-            log.error(f"Erreur boucle: {e}")
-            cache["connected"] = False
-            time.sleep(10)
-
-# ============ API ============
-@app.route('/api/status')
-def status():
+def queue_command(device: str, action: str) -> None:
     with lock:
-        return jsonify({
-            "connected"  : cache["connected"],
-            "last_update": cache["last_update"],
-            "g781_ip"    : cache["g781_ip"],
-            "invt"       : cache["invt"],
-            "salmson"    : cache["salmson"],
-            "wilo"       : cache["wilo"],
+        state["pending_commands"].append({
+            "id": int(time.time() * 1000),
+            "ts": now_iso(),
+            "device": device,
+            "action": action,
         })
+        state["pending_commands"] = state["pending_commands"][-100:]
 
-@app.route('/api/connect', methods=['POST'])
-def api_connect():
-    """Mettre à jour l'IP du USR-G781 depuis le dashboard"""
-    body = request.json or {}
-    ip   = body.get("ip", "")
-    port = int(body.get("port", 502))
-    if not ip:
-        return jsonify({"success": False, "error": "IP manquante"}), 400
-
-    os.environ["USR_G781_IP"]   = ip
-    os.environ["USR_G781_PORT"] = str(port)
-
-    ok = connect(ip, port)
-    return jsonify({"success": ok, "ip": ip, "port": port})
-
-@app.route('/api/control', methods=['POST'])
-def control():
-    body   = request.json or {}
-    pump   = body.get("pump")
-    action = body.get("action")
-
-    if not cache["connected"]:
-        return jsonify({"success": False, "error": "USR-G781 non connecté"}), 503
-
-    try:
-        with lock:
-            if pump == "forage":
-                write_reg(ADDR_INVT,    INVT_CMD,    1 if action=="on" else 5)
-                write_reg(ADDR_SALMSON, SALMSON_CMD, 1 if action=="on" else 0)
-
-            elif pump == "wilo":
-                write_reg(ADDR_WILO, WILO_CMD, 1 if action=="on" else 0)
-
-            elif pump == "all":
-                if action == "on":
-                    write_reg(ADDR_INVT,    INVT_CMD,    1)
-                    write_reg(ADDR_SALMSON, SALMSON_CMD, 1)
-                    write_reg(ADDR_WILO,    WILO_CMD,    1)
-                else:
-                    write_reg(ADDR_INVT,    INVT_CMD,    5)
-                    write_reg(ADDR_SALMSON, SALMSON_CMD, 0)
-                    write_reg(ADDR_WILO,    WILO_CMD,    0)
-
-        log.info(f"✓ Commande: {pump} → {action}")
-        return jsonify({"success": True, "pump": pump, "action": action})
-
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/param/read', methods=['POST'])
-def param_read():
-    """Lit un registre Modbus"""
-    body = request.json or {}
-    addr = int(body.get('addr', 1))
-    reg  = int(body.get('reg', 0))
-    try:
-        with lock:
-            vals = read_reg(addr, reg)
-        if vals:
-            return jsonify({"success": True, "value": vals[0], "reg": hex(reg)})
-        return jsonify({"success": False, "error": "Registre illisible"}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/param/write', methods=['POST'])
-def param_write():
-    """Écrit une valeur dans un registre Modbus"""
-    body  = request.json or {}
-    addr  = int(body.get('addr', 1))
-    reg   = int(body.get('reg', 0))
-    value = int(body.get('value', 0))
-    try:
-        with lock:
-            ok = write_reg(addr, reg, value)
-        if ok:
-            log.info(f"✏️ Écriture addr={addr} reg={hex(reg)} val={value}")
-            return jsonify({"success": True, "reg": hex(reg), "value": value})
-        return jsonify({"success": False, "error": "Écriture échouée"}), 400
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/ping')
-def ping():
+@app.route("/")
+def index():
     return jsonify({
-        "status"   : "ok",
-        "connected": cache["connected"],
-        "g781_ip"  : cache["g781_ip"],
+        "name": "Zarzis Irrigation API",
+        "version": APP_VERSION,
+        "status": "ok",
+        "connected": state["connected"],
+        "dashboard": "Utiliser index.html / GitHub Pages",
     })
 
-@app.route('/')
-def index():
-    return """
-    <h2>🌱 Zarzis Irrigation — Serveur Cloud</h2>
-    <p>API disponible sur <code>/api/status</code></p>
-    <p>Connecté: {}</p>
-    """.format("✅ OUI" if cache["connected"] else "⏳ En attente USR-G781")
+@app.route("/api/ping")
+def api_ping():
+    return jsonify({
+        "status": "ok",
+        "version": APP_VERSION,
+        "mode": G781_MODE,
+        "connected": state["connected"],
+        "g781_ip": state["g781_ip"],
+        "last_update": state["last_update"],
+    })
 
-# ============ DÉMARRAGE ============
-if __name__ == '__main__':
-    log.info("=" * 50)
-    log.info("  ZARZIS CLOUD SERVER — MODBUS PROXY")
-    log.info("=" * 50)
-    t = threading.Thread(target=update_loop, daemon=True)
-    t.start()
-    app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)
+@app.route("/api/status")
+def api_status():
+    with lock:
+        return jsonify(dict(state))
+
+@app.route("/api/devices")
+def api_devices():
+    return jsonify({
+        "success": True,
+        "devices": {
+            k: {"label": v["label"], "slave": v["slave"]}
+            for k, v in DEVICES.items()
+        }
+    })
+
+@app.route("/api/connect", methods=["POST"])
+def api_connect():
+    err = auth_error()
+    if err: return err
+    body = request.get_json(silent=True) or {}
+    host = body.get("ip") or body.get("host") or G781_HOST
+    port = int(body.get("port") or G781_PORT)
+    if not host:
+        return jsonify({"success": False, "error": "IP/host G781 manquant"})
+    ok = connect_modbus(host, port)
+    return jsonify({"success": ok, "connected": ok, "host": host, "port": port})
+
+@app.route("/api/control", methods=["POST"])
+def api_control():
+    err = auth_error()
+    if err: return err
+    body = request.get_json(silent=True) or {}
+    action = (body.get("action") or "").lower().strip()
+    requested = body.get("device") or body.get("pump")
+    if requested == "all":
+        targets = ["salmson", "wilo", "invt", "coffret4"]
+    else:
+        dev = normalize_device(requested)
+        if not dev:
+            return jsonify({"success": False, "error": f"Appareil inconnu: {requested}"})
+        targets = [dev]
+    if action not in ("on", "off", "start", "stop"):
+        return jsonify({"success": False, "error": "Action invalide. Utiliser on/off."})
+    action_norm = "on" if action in ("on", "start") else "off"
+
+    results = {}
+    if G781_MODE == "http_bridge":
+        for dev in targets:
+            queue_command(dev, action_norm)
+            results[dev] = "queued"
+        add_event("cmd", f"Commande mise en file: {targets} {action_norm}")
+        return jsonify({"success": True, "mode": "http_bridge", "results": results})
+
+    if not is_client_open():
+        return jsonify({"success": False, "error": "Modbus non connecté"})
+
+    for dev in targets:
+        cfg = DEVICES[dev]
+        value = cfg["start_value"] if action_norm == "on" else cfg["stop_value"]
+        ok = write_single(cfg["slave"], cfg["start_reg"], value)
+        results[dev] = ok
+        add_event("cmd" if ok else "err", f"Commande {dev} {action_norm} = {ok}")
+    return jsonify({"success": all(results.values()), "results": results})
+
+@app.route("/api/param/read", methods=["POST"])
+def api_param_read():
+    err = auth_error()
+    if err: return err
+    body = request.get_json(silent=True) or {}
+    dev = normalize_device(body.get("device"))
+    slave = int(body.get("addr") or (DEVICES.get(dev, {}).get("slave") if dev else 1))
+    reg = int(body.get("reg", 0))
+    regs = read_holding(slave, reg, 1)
+    if regs is None:
+        return jsonify({"success": False, "error": "Lecture impossible ou Modbus non connecté"})
+    return jsonify({"success": True, "device": dev, "addr": slave, "reg": reg, "value": regs[0]})
+
+@app.route("/api/param/write", methods=["POST"])
+def api_param_write():
+    err = auth_error()
+    if err: return err
+    body = request.get_json(silent=True) or {}
+    dev = normalize_device(body.get("device"))
+    slave = int(body.get("addr") or (DEVICES.get(dev, {}).get("slave") if dev else 1))
+    reg = int(body.get("reg", 0))
+    value = int(body.get("value", 0))
+    ok = write_single(slave, reg, value)
+    add_event("cmd" if ok else "err", f"Param write slave={slave} reg={reg} value={value} ok={ok}")
+    return jsonify({"success": ok, "device": dev, "addr": slave, "reg": reg, "value": value})
+
+@app.route("/api/planning", methods=["GET", "POST"])
+def api_planning():
+    err = auth_error() if request.method == "POST" else None
+    if err: return err
+    if request.method == "GET":
+        return jsonify({"success": True, "planning": state["planning"]})
+    body = request.get_json(silent=True) or {}
+    planning = body.get("planning", [])
+    if not isinstance(planning, list):
+        return jsonify({"success": False, "error": "planning doit être une liste"})
+    with lock:
+        state["planning"] = planning
+    add_event("ok", f"Planning mis à jour ({len(planning)} lignes)")
+    return jsonify({"success": True, "planning": planning})
+
+@app.route("/api/events")
+def api_events():
+    with lock:
+        return jsonify({"success": True, "events": state["events"]})
+
+# Mode HTTPD Client / bridge : le terrain pousse son état et vient chercher les commandes.
+@app.route("/api/g781/push", methods=["POST"])
+def api_g781_push():
+    err = auth_error()
+    if err: return err
+    body = request.get_json(silent=True) or {}
+    with lock:
+        for dev in ("invt", "salmson", "wilo", "coffret4"):
+            if isinstance(body.get(dev), dict):
+                state[dev].update(body[dev])
+        state["connected"] = True
+        state["last_push"] = now_iso()
+        state["last_update"] = state["last_push"]
+        state["g781_ip"] = request.remote_addr or state["g781_ip"]
+    return jsonify({"success": True, "status": "received"})
+
+@app.route("/api/g781/commands", methods=["GET", "POST"])
+def api_g781_commands():
+    err = auth_error()
+    if err: return err
+    with lock:
+        cmds = list(state["pending_commands"])
+        if request.method == "POST" or request.args.get("clear") == "1":
+            state["pending_commands"] = []
+    return jsonify({"success": True, "commands": cmds})
+
+# Endpoints Rain Bird conservés pour ne pas casser le dashboard actuel.
+@app.route("/api/rainbird/setip", methods=["POST"])
+def api_rainbird_setip():
+    body = request.get_json(silent=True) or {}
+    with lock:
+        state["rainbird"]["ip"] = body.get("ip")
+        state["rainbird"]["connected"] = bool(body.get("ip"))
+    return jsonify({"success": True, "connected": state["rainbird"]["connected"], "ip": state["rainbird"]["ip"]})
+
+@app.route("/api/rainbird/status")
+def api_rainbird_status():
+    return jsonify(state["rainbird"])
+
+@app.route("/api/rainbird/start", methods=["POST"])
+def api_rainbird_start():
+    body = request.get_json(silent=True) or {}
+    zone = body.get("zone")
+    with lock:
+        if zone and zone not in state["rainbird"]["active_zones"]:
+            state["rainbird"]["active_zones"].append(zone)
+    return jsonify({"success": True, "zone": zone})
+
+@app.route("/api/rainbird/stop", methods=["POST"])
+def api_rainbird_stop():
+    body = request.get_json(silent=True) or {}
+    zone = body.get("zone")
+    with lock:
+        if zone:
+            state["rainbird"]["active_zones"] = [z for z in state["rainbird"]["active_zones"] if z != zone]
+        else:
+            state["rainbird"]["active_zones"] = []
+    return jsonify({"success": True})
+
+if __name__ == "__main__":
+    add_event("ok", f"Démarrage {APP_VERSION}")
+    threading.Thread(target=poll_loop, daemon=True).start()
+    app.run(host="0.0.0.0", port=PORT, debug=False)
+else:
+    add_event("ok", f"Démarrage {APP_VERSION} via gunicorn")
+    threading.Thread(target=poll_loop, daemon=True).start()

@@ -1,11 +1,22 @@
 services:
   - type: web
-    name: zarzis-irrigation
+    name: zarzis-irrigation-1
     env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn modbus_proxy:app --bind 0.0.0.0:$PORT
+    startCommand: gunicorn modbus_proxy_cloud:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     envVars:
-      - key: USR_G781_IP
-        value: "0.0.0.0"
-      - key: USR_G781_PORT
+      - key: G781_MODE
+        value: direct_tcp
+      - key: G781_HOST
+        value: ""
+      - key: G781_PORT
         value: "502"
+      - key: MODBUS_BAUDRATE
+        value: "9600"
+      - key: MODBUS_SERIAL
+        value: "8N1"
+      - key: POLL_SECONDS
+        value: "5"
+      - key: API_TOKEN
+        value: ""
