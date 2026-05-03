@@ -16,7 +16,5 @@ services:
         value: "9600"
       - key: MODBUS_SERIAL
         value: "8N1"
-      - key: POLL_SECONDS
-        value: "5"
       - key: API_TOKEN
-        value: ""
+        generateValue: true

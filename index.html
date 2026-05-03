@@ -450,6 +450,7 @@ main {
 .alert-panel { padding: 10px 14px; border-radius: 8px; margin: 8px 0; font-family: var(--mono); font-size: 11px; }
 .alert-ok { background: var(--green-dark); border: 1px solid rgba(0,232,122,0.3); color: var(--green); }
 .alert-warn { background: rgba(245,200,66,0.06); border: 1px solid rgba(245,200,66,0.3); color: var(--yellow); }
+.alert-info { background: rgba(66,180,245,0.06); border: 1px solid rgba(66,180,245,0.3); color: var(--blue); }
 .alert-err { background: rgba(255,77,77,0.06); border: 1px solid rgba(255,77,77,0.3); color: var(--red); }
 
 /* ============ CONFIRM OVERLAY ============ */
@@ -693,6 +694,22 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 .pro-hero{border-radius:28px;background:linear-gradient(135deg,rgba(37,99,235,.12),rgba(124,58,237,.10)),var(--surface)}.pro-title{font-family:var(--font);font-size:30px;text-transform:none;color:var(--text);letter-spacing:-.02em}.pro-kicker{color:var(--blue)}.pro-lead{font-size:14px;line-height:1.6}
 @media(max-width:760px){header{padding:12px 14px}.logo-text p{display:none}.logo-text h1{font-size:18px}.header-actions{gap:6px}.icon-btn{width:38px;height:38px}.nav-tabs{top:63px;padding:10px 12px}.nav-tab{padding:9px 12px;font-size:11px}main{grid-template-columns:1fr;padding:12px;gap:12px}.card{border-radius:20px;padding:16px}.metric-value{font-size:28px}.stats-row{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}.ctrl-btns{flex-direction:column}.big-btn{font-size:14px;padding:12px}}
 
+
+
+/* ============ EXPLOITATION CONFIG MODIFIABLE ============ */
+.exploit-config-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px}
+.exploit-box{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:14px}
+.exploit-box-title{font-family:var(--display);font-size:14px;font-weight:800;color:var(--text);margin-bottom:10px;letter-spacing:.02em}
+.exploit-field{display:flex;flex-direction:column;gap:5px;margin-bottom:9px}
+.exploit-field label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--text-dim)}
+.exploit-field input,.exploit-field select,.exploit-field textarea{background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:8px 10px;font-family:var(--font);font-size:13px;outline:none}
+.exploit-field input:focus,.exploit-field select:focus,.exploit-field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.exploit-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px}
+.exploit-result{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:13px;text-align:center}
+.exploit-result .val{font-family:var(--mono);font-size:22px;color:var(--green);line-height:1.1}.exploit-result .lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;margin-top:4px}
+.exploit-zone-table{width:100%;border-collapse:separate;border-spacing:0 7px;font-size:12px}.exploit-zone-table th{font-family:var(--mono);font-size:9px;color:var(--text-dim);text-transform:uppercase;text-align:left;padding:0 6px}.exploit-zone-table td{background:var(--surface2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:7px 6px}.exploit-zone-table td:first-child{border-left:1px solid var(--border);border-radius:10px 0 0 10px}.exploit-zone-table td:last-child{border-right:1px solid var(--border);border-radius:0 10px 10px 0}.exploit-zone-table input,.exploit-zone-table select{width:100%;min-width:70px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px;font-size:12px}.exploit-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.exploit-note{font-size:11px;color:var(--text-dim);line-height:1.55;margin-top:10px}
+@media(max-width:700px){.exploit-zone-wrap{overflow-x:auto}.exploit-zone-table{min-width:760px}.exploit-result .val{font-size:18px}}
+
 </style>
 
 <!-- V5 : logique visuelle SUNNODE intégrée au dashboard Zarzis terrain -->
@@ -725,7 +742,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="logo-icon">🌱</div>
     <div class="logo-text">
       <h1>Zarzis</h1>
-      <p>SUPERVISION PRO · 4.6 HA · 156 OLIVIERS · RÉSERVOIR 10 000 L</p>
+      <p id="header-exploitation-summary">SUPERVISION PRO · 4.6 HA · 156 OLIVIERS · RÉSERVOIR 10 000 L</p>
     </div>
   </div>
   <div class="header-actions">
@@ -756,13 +773,13 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
   <div class="pro-hero">
     <div class="pro-title-block">
-      <div class="pro-kicker">Système Zarzis · irrigation solaire</div>
-      <div class="pro-title">Tableau de bord exploitation</div>
-      <div class="pro-sub">Vue terrain claire : variateur INVT, coffret Salmson forage, coffret Wilo surpresseur, capteurs pression/débit, sécurité manque d’eau, réservoir 10 000 L et programmation journalière.</div>
+      <div class="pro-kicker" id="hero-exploitation-kicker">Système Zarzis · irrigation solaire</div>
+      <div class="pro-title" id="hero-exploitation-title">Tableau de bord exploitation</div>
+      <div class="pro-sub" id="hero-exploitation-subtitle">Vue terrain synchronisée avec les données d’exploitation.</div>
     </div>
     <div class="pro-status-card"><div class="top">Mode</div><div class="big" id="hero-mode">Lecture</div><div class="small">Maintenance obligatoire pour commander</div></div>
     <div class="pro-status-card"><div class="top">Alarmes</div><div class="big" id="hero-alarms">0</div><div class="small">Blocage automatique si critique</div></div>
-    <div class="pro-status-card"><div class="top">Application</div><div class="big">PWA</div><div class="small">Mobile / tablette / PC</div></div>
+    <div class="pro-status-card"><div class="top">Application</div><div class="big" id="hero-app-type">PWA</div><div class="small" id="hero-app-small">Mobile / tablette / PC</div></div>
   </div>
 
   <!-- Stats rapides -->
@@ -790,7 +807,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="stat-card">
         <div class="stat-icon">🌊</div>
         <div class="stat-val" id="stat-reservoir">--%</div>
-        <div class="stat-lbl">Réservoir</div>
+        <div class="stat-lbl" id="stat-reservoir-label">Réservoir</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">🌿</div>
@@ -846,7 +863,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
     <div class="float-row">
       <span id="f-haut-icon">🔵</span>
-      <span class="float-lbl">Réservoir 10 000 L — niveau analogique</span>
+      <span class="float-lbl" id="dash-res-float-label">Réservoir principal 10 000 L — niveau analogique</span>
       <span class="badge badge-off" id="f-haut-badge">---</span>
     </div>
     <div class="err-panel" id="s-err"><div class="err-code" id="s-err-code"></div><div class="err-desc" id="s-err-desc"></div></div>
@@ -876,7 +893,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
   <!-- Réservoir -->
   <div class="card">
     <div class="card-header">
-      <div><div class="card-title">🌊 Réservoir</div><div class="card-subtitle">10 000 Litres · capteur niveau à ajouter</div></div>
+      <div><div class="card-title" id="dash-res-title">🌊 Réservoir principal</div><div class="card-subtitle" id="dash-res-subtitle">10 000 L · capteur niveau à ajouter</div></div>
       <span class="badge badge-info" id="res-badge">SUIVI</span>
     </div>
     <div class="reservoir-visual">
@@ -1006,6 +1023,187 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
   </div>
 
+
+
+  <!-- FICHE EXPLOITATION MODIFIABLE -->
+  <div class="card card-full" id="exploitation-config-card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🫒 Fiche exploitation modifiable</div>
+        <div class="card-subtitle">Oliviers, espacements, goutteurs, débit et calculs automatiques</div>
+      </div>
+      <span class="badge badge-info" id="exploit-save-badge">LOCAL</span>
+    </div>
+
+    <div class="exploit-config-grid">
+      <div class="exploit-box">
+        <div class="exploit-box-title">📌 Identité exploitation</div>
+        <div class="exploit-field"><label>Nom de l'exploitation</label><input id="ex-name" value="Obegla Zarzis"></div>
+        <div class="exploit-field"><label>Surface totale en hectares</label><input id="ex-surface" type="number" step="0.01" min="0" value="4.6"></div>
+        <div class="exploit-field"><label>Type de culture principale</label><input id="ex-culture" value="Oliviers"></div>
+        <div class="exploit-field"><label>Note terrain</label><textarea id="ex-note" rows="3">Irrigation solaire — goutte-à-goutte — supervision à distance.</textarea></div>
+      </div>
+
+      <div class="exploit-box">
+        <div class="exploit-box-title">🌳 Oliviers existants / futurs</div>
+        <div class="exploit-field"><label>Oliviers grands existants</label><input id="ex-big-trees" type="number" min="0" value="90"></div>
+        <div class="exploit-field"><label>Oliviers petits existants</label><input id="ex-small-trees" type="number" min="0" value="66"></div>
+        <div class="exploit-field"><label>Futurs oliviers prévus</label><input id="ex-future-trees" type="number" min="0" value="0"></div>
+        <div class="exploit-field"><label>Objectif total oliviers</label><input id="ex-target-trees" type="number" min="0" value="156"></div>
+      </div>
+
+      <div class="exploit-box">
+        <div class="exploit-box-title">📏 Espacements plantation</div>
+        <div class="exploit-field"><label>Grands oliviers — entre lignes (m)</label><input id="ex-big-row" type="number" step="0.1" min="0" value="7"></div>
+        <div class="exploit-field"><label>Grands oliviers — sur la ligne (m)</label><input id="ex-big-plant" type="number" step="0.1" min="0" value="7"></div>
+        <div class="exploit-field"><label>Petits/futurs — entre lignes (m)</label><input id="ex-small-row" type="number" step="0.1" min="0" value="6"></div>
+        <div class="exploit-field"><label>Petits/futurs — sur la ligne (m)</label><input id="ex-small-plant" type="number" step="0.1" min="0" value="6"></div>
+      </div>
+
+      <div class="exploit-box">
+        <div class="exploit-box-title">💧 Goutte-à-goutte par arbre</div>
+        <div class="exploit-field"><label>Goutteurs par grand olivier</label><input id="ex-big-drippers" type="number" min="0" value="4"></div>
+        <div class="exploit-field"><label>Débit goutteur grand (L/h)</label><input id="ex-big-flow" type="number" step="0.1" min="0" value="16"></div>
+        <div class="exploit-field"><label>Goutteurs par petit/futur olivier</label><input id="ex-small-drippers" type="number" min="0" value="2"></div>
+        <div class="exploit-field"><label>Débit goutteur petit/futur (L/h)</label><input id="ex-small-flow" type="number" step="0.1" min="0" value="8"></div>
+      </div>
+    </div>
+
+    <div class="exploit-result-grid">
+      <div class="exploit-result"><div class="val" id="ex-total-trees">--</div><div class="lbl">Oliviers actuels</div></div>
+      <div class="exploit-result"><div class="val" id="ex-total-drippers">--</div><div class="lbl">Goutteurs total</div></div>
+      <div class="exploit-result"><div class="val" id="ex-total-flow">--</div><div class="lbl">Débit total m³/h</div></div>
+      <div class="exploit-result"><div class="val" id="ex-water-1h">--</div><div class="lbl">Eau pour 1h</div></div>
+      <div class="exploit-result"><div class="val" id="ex-density">--</div><div class="lbl">Densité / ha</div></div>
+      <div class="exploit-result"><div class="val" id="ex-capacity">--</div><div class="lbl">Capacité théorique</div></div>
+    </div>
+
+    <div class="exploit-actions">
+      <button class="btn btn-green" onclick="saveExploitationConfig()">💾 Enregistrer exploitation</button>
+      <button class="btn btn-ghost" onclick="renderExploitationConfig()">🔄 Recalculer</button>
+      <button class="btn btn-ghost" onclick="resetExploitationConfig()">↩️ Valeurs par défaut</button>
+    </div>
+    <div class="exploit-note" id="ex-summary-note"></div>
+  </div>
+
+
+  <!-- RÉSERVOIRS MODIFIABLES / SYNCHRONISÉS -->
+  <div class="card card-full" id="exploitation-reservoirs-card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🌊 Réservoirs d’eau modifiables</div>
+        <div class="card-subtitle">Capacité, niveau, seuils, capteur et calculs reliés au Dashboard</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="addReservoir()">➕ Ajouter réservoir</button>
+        <button class="btn btn-green" onclick="saveReservoirs()">💾 Sauvegarder</button>
+      </div>
+    </div>
+
+    <div class="alert-panel alert-ok" style="margin-bottom:12px">
+      ✅ Tout ce que tu modifies ici met à jour automatiquement le Dashboard, le module Exploitation et les Paramètres. Tu peux ajouter un deuxième réservoir plus tard sans casser les calculs.
+    </div>
+
+    <div class="exploit-zone-wrap">
+      <table class="exploit-zone-table">
+        <thead>
+          <tr>
+            <th>Nom</th><th>Capacité L</th><th>Niveau %</th><th>Type capteur</th><th>Seuil bas %</th><th>Très bas %</th><th>Rôle</th><th>Volume</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="reservoirs-body"></tbody>
+      </table>
+    </div>
+
+    <div class="exploit-result-grid" style="margin-top:14px">
+      <div class="exploit-result"><div class="val" id="res-total-capacity">--</div><div class="lbl">Capacité totale</div></div>
+      <div class="exploit-result"><div class="val" id="res-total-volume">--</div><div class="lbl">Volume actuel</div></div>
+      <div class="exploit-result"><div class="val" id="res-average-level">--</div><div class="lbl">Niveau moyen</div></div>
+      <div class="exploit-result"><div class="val" id="res-autonomy-1h">--</div><div class="lbl">Autonomie irrigation</div></div>
+    </div>
+
+    <div class="exploit-note" id="res-summary-note"></div>
+  </div>
+
+  <!-- DETAIL DES ZONES / LIGNES DE GOUTTE-A-GOUTTE -->
+  <div class="card card-full" id="exploitation-zones-card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🌿 Détail zones et lignes goutte-à-goutte</div>
+        <div class="card-subtitle">Modifiable zone par zone : nombre d'arbres, goutteurs, débit, espacement</div>
+      </div>
+      <button class="btn btn-ghost" onclick="addExploitationZone()">➕ Ajouter zone</button>
+    </div>
+    <div class="exploit-zone-wrap">
+      <table class="exploit-zone-table">
+        <thead>
+          <tr>
+            <th>Zone</th><th>Type</th><th>Arbres</th><th>Goutteurs/arbre</th><th>L/h goutteur</th><th>Ligne x arbre</th><th>Débit zone</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="ex-zones-body"></tbody>
+      </table>
+    </div>
+    <div class="exploit-actions">
+      <button class="btn btn-green" onclick="saveExploitationZones()">💾 Enregistrer zones</button>
+      <button class="btn btn-ghost" onclick="syncZonesFromExploitation()">⚙️ Générer 4 zones type</button>
+    </div>
+    <div class="exploit-note">Conseil chantier : garde les zones équilibrées en débit pour éviter les grosses différences de pression entre lignes. Les calculs sont indicatifs, à ajuster avec les vrais débits mesurés.</div>
+  </div>
+
+  <!-- DETAIL FIN DES LIGNES GOUTTE-A-GOUTTE MIXTES -->
+  <div class="card card-full" id="exploitation-drip-lines-card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🧵 Lignes goutte-à-goutte détaillées</div>
+        <div class="card-subtitle">Gère les grands oliviers et les petits oliviers intercalés sur la même ligne</div>
+      </div>
+      <button class="btn btn-ghost" onclick="addDripLine()">➕ Ajouter ligne</button>
+    </div>
+
+    <div class="alert-panel alert-info" style="margin-bottom:12px">
+      Exemple terrain : sur une même ligne, les grands oliviers peuvent avoir <strong>5 goutteurs × 16 L/h</strong>, et les petits oliviers intercalés entre les grands peuvent avoir <strong>2 goutteurs × 8 L/h</strong>. Le débit de chaque ligne et de chaque zone est calculé automatiquement.
+    </div>
+
+    <div class="exploit-zone-wrap">
+      <table class="exploit-zone-table">
+        <thead>
+          <tr>
+            <th>Zone</th>
+            <th>Ligne</th>
+            <th>Nb lignes</th>
+            <th>Grands / ligne</th>
+            <th>Petits / ligne</th>
+            <th>Goutteurs grand</th>
+            <th>L/h grand</th>
+            <th>Goutteurs petit</th>
+            <th>L/h petit</th>
+            <th>Débit ligne</th>
+            <th>Débit zone</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="drip-lines-body"></tbody>
+      </table>
+    </div>
+
+    <div class="exploit-result-grid" style="margin-top:14px">
+      <div class="exploit-result"><div class="val" id="dl-total-lines">--</div><div class="lbl">Lignes total</div></div>
+      <div class="exploit-result"><div class="val" id="dl-total-big">--</div><div class="lbl">Grands oliviers</div></div>
+      <div class="exploit-result"><div class="val" id="dl-total-small">--</div><div class="lbl">Petits oliviers</div></div>
+      <div class="exploit-result"><div class="val" id="dl-total-drippers">--</div><div class="lbl">Goutteurs total</div></div>
+      <div class="exploit-result"><div class="val" id="dl-total-flow">--</div><div class="lbl">Débit total m³/h</div></div>
+      <div class="exploit-result"><div class="val" id="dl-water-30min">--</div><div class="lbl">Eau pour 30 min</div></div>
+    </div>
+
+    <div class="exploit-actions">
+      <button class="btn btn-green" onclick="saveDripLines()">💾 Enregistrer lignes</button>
+      <button class="btn btn-ghost" onclick="generateDripLinesFromExploitation()">⚙️ Générer depuis exploitation</button>
+      <button class="btn btn-ghost" onclick="resetDripLines()">↩️ Reset lignes</button>
+    </div>
+    <div class="exploit-note" id="dl-summary-note"></div>
+  </div>
+
   <div class="card card-full">
     <div class="card-header">
       <div><div class="card-title">🏭 Architecture terrain réelle</div><div class="card-subtitle">Base de travail v4 — à adapter avec tes références exactes</div></div>
@@ -1015,7 +1213,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="equipment-card"><h3>⚡ INVT Variateur PV</h3><ul><li>Commande marche / arrêt / sens arrière ajoutée.</li><li>Lecture statistiques : Vdc, Vac, Hz, A, kW, kWh.</li><li>Paramètres modifiables uniquement en maintenance.</li><li>Défaut tension DC basse bloquant au démarrage.</li></ul></div>
       <div class="equipment-card"><h3 id="equip-forage-title">🔴 Salmson forage</h3><ul id="equip-forage-list"><li>Coffret conservé.</li><li>Sécurité manque d’eau raccordée sur bornes 21/22.</li><li>Pas de capteur niveau bas/haut dans le forage.</li><li>Commande marche/arrêt sous conditions de sécurité.</li></ul></div>
       <div class="equipment-card"><h3 id="equip-wilo-title">💧 Wilo surpresseur</h3><ul id="equip-wilo-list"><li>Capteur pression déjà présent.</li><li>Capteur débit à ajouter pour m³/h et volume cumulé.</li><li>Paramètres Wilo affichés dans le module Paramètres.</li><li>Surveillance pression mini/maxi et marche sans débit.</li></ul></div>
-      <div class="equipment-card"><h3>🌊 Réservoir 10 000 L</h3><ul><li>Capteur niveau d’eau à ajouter.</li><li>Seuils bas / très bas / plein.</li><li>Alarme niveau bas bloquante pour le surpresseur.</li><li>Suivi volume estimé en litres.</li></ul></div>
+      <div class="equipment-card"><h3 id="equip-res-title">🌊 Réservoir principal 10 000 L</h3><ul id="equip-res-list"><li>Capteur niveau d’eau à ajouter.</li><li>Seuils bas / très bas / plein.</li><li>Alarme niveau bas bloquante pour le surpresseur.</li><li>Suivi volume estimé en litres.</li></ul></div>
       <div class="equipment-card"><h3>🌿 Rain Bird</h3><ul><li>Accès natif via programmateur + module WiFi LNK/LNK2 si compatible.</li><li>Intégration directe possible surtout via passerelle type Home Assistant.</li><li>Le dashboard peut superviser et lancer des zones via API backend.</li><li>Le programme interne Rain Bird reste à confirmer selon module exact.</li></ul></div>
     </div>
   </div>
@@ -1024,7 +1222,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="card-header"><div><div class="card-title">🚨 Stratégie alertes professionnelles</div><div class="card-subtitle">Ce qui doit bloquer automatiquement les pompes</div></div></div>
     <div class="equipment-grid">
       <div class="alert-panel alert-err">⛔ Manque d’eau Salmson 21/22 : arrêt forage immédiat + interdiction redémarrage.</div>
-      <div class="alert-panel alert-err">⛔ Réservoir 10 000 L très bas : arrêt ou blocage surpresseur Wilo.</div>
+      <div class="alert-panel alert-err">⛔ <span id="alert-res-low-text">Réservoir principal très bas : arrêt ou blocage surpresseur Wilo.</span></div>
       <div class="alert-panel alert-warn">⚠️ Pression Wilo anormale : alerte pression basse/haute, recherche fuite ou vanne fermée.</div>
       <div class="alert-panel alert-warn">⚠️ Débit nul pompe en marche : suspicion marche à sec, vanne fermée ou capteur HS.</div>
       <div class="alert-panel alert-warn">⚠️ INVT tension DC basse : pas de démarrage si solaire insuffisant.</div>
@@ -1953,6 +2151,28 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="param-status" id="equipment-config-msg"></div>
   </div>
 
+
+  <!-- RÉSERVOIRS / PARAMÈTRES EXPLOITATION -->
+  <div class="card card-full">
+    <div class="card-header">
+      <div><div class="card-title">🌊 Paramètres réservoirs</div><div class="card-subtitle">Même configuration que dans Exploitation, synchronisée partout</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="switchTab('exploitation')">↗️ Ouvrir Exploitation</button>
+        <button class="btn btn-green" onclick="saveReservoirs()">💾 Sauvegarder</button>
+      </div>
+    </div>
+    <div class="alert-panel alert-info" style="margin-bottom:12px">ℹ️ La capacité totale et les seuils sont utilisés pour les cartes Dashboard, les alertes niveau bas et les calculs d’autonomie.</div>
+    <div class="exploit-zone-wrap">
+      <table class="exploit-zone-table">
+        <thead>
+          <tr><th>Nom</th><th>Capacité L</th><th>Niveau %</th><th>Type capteur</th><th>Seuil bas %</th><th>Très bas %</th><th>Rôle</th><th>Volume</th><th>Action</th></tr>
+        </thead>
+        <tbody id="reservoirs-body-param"></tbody>
+      </table>
+    </div>
+    <div class="param-status ok" id="reservoir-config-msg" style="display:block">Configuration réservoirs prête.</div>
+  </div>
+
   <!-- INVT PARAMÈTRES -->
   <div class="card card-full">
     <div class="card-header">
@@ -2694,15 +2914,11 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="conn-row">
       <div class="conn-group">
         <div class="conn-label">URL Serveur Cloud</div>
-        <input type="text" class="conn-input wide" id="cloud-url" value="https://zarzis-irrigation-1.onrender.com" placeholder="https://xxx.onrender.com">
+        <input type="text" class="conn-input wide" id="cloud-url" value="https://zarzis-irrigation.onrender.com" placeholder="https://xxx.onrender.com">
       </div>
       <div class="conn-group">
         <div class="conn-label">Intervalle (s)</div>
         <input type="number" class="conn-input narrow" id="poll-interval" value="5">
-      </div>
-      <div class="conn-group">
-        <div class="conn-label">Token API Render</div>
-        <input type="password" class="conn-input" id="api-token" placeholder="Optionnel" style="width:190px">
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
@@ -2795,20 +3011,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
 <script>
 // ============ CONFIG ============
-let apiUrl = localStorage.getItem('zarzis_api') || 'https://zarzis-irrigation-1.onrender.com';
-let apiToken = localStorage.getItem('zarzis_api_token') || '';
-
-// Ajoute automatiquement le token API à toutes les requêtes fetch si renseigné.
-// Comme ça, le dashboard reste compatible avec Render même si API_TOKEN est activé plus tard.
-const __zarzisFetch = window.fetch.bind(window);
-window.fetch = (input, init = {}) => {
-  init = init || {};
-  const headers = new Headers(init.headers || {});
-  if(apiToken) headers.set('X-API-Token', apiToken);
-  init.headers = headers;
-  return __zarzisFetch(input, init);
-};
-
+let apiUrl = localStorage.getItem('zarzis_api') || 'https://zarzis-irrigation.onrender.com';
 let connected = false;
 let simInterval = null;
 let fetchInterval = null;
@@ -2933,6 +3136,7 @@ function initApp() {
   setInterval(updateClock, 1000);
   loadCounters();
   calcFert();
+  initExploitationModule();
   simulateData();
   fetchWeather();
 }
@@ -4936,18 +5140,17 @@ function updateWilo(pressure, flow, pumpOn) {
 }
 
 function updateReservoir(level) {
-  document.getElementById('water-body').style.height = level+'%';
-  document.getElementById('water-label').textContent = level+'%';
-  document.getElementById('stat-reservoir').textContent = level+'%';
-  document.getElementById('water-vol').textContent = Math.round(10000*level/100)+' L';
-  const state = level>80?'🟢 PLEIN':level>30?'🔵 NORMAL':'🔴 BAS';
+  const rSummary = (typeof getReservoirSummary === 'function') ? getReservoirSummary() : {capacity:10000, primaryName:'Réservoir principal', lowPct:30, criticalPct:15};
+  const capacity = rSummary.capacity || 10000;
+  const displayLevel = Math.max(0, Math.min(100, Number(level)||0));
+  document.getElementById('water-body').style.height = displayLevel+'%';
+  document.getElementById('water-label').textContent = displayLevel+'%';
+  document.getElementById('stat-reservoir').textContent = displayLevel+'%';
+  document.getElementById('water-vol').textContent = Math.round(capacity*displayLevel/100).toLocaleString('fr-FR')+' L';
+  let state = displayLevel>80?'PLEIN':displayLevel>(rSummary.lowPct||30)?'NORMAL':displayLevel>(rSummary.criticalPct||15)?'BAS':'CRITIQUE';
   document.getElementById('water-state').textContent = state;
-  document.getElementById('water-state').style.color = level>80?'var(--green)':level>30?'var(--blue)':'var(--red)';
-  const fillTime = level < 100 ? `~${Math.round((10000*(100-level)/100)/1500)} min` : 'Plein';
-  document.getElementById('fill-time').textContent = fillTime;
-  document.getElementById('res-badge').textContent = level > 80 ? 'PLEIN' : level > 30 ? 'NORMAL' : 'BAS';
-  document.getElementById('res-badge').className = 'badge '+(level>80?'badge-on':level>30?'badge-info':'badge-off');
-  if(level <= 15) setAlarm('RESERVOIR', 'Niveau réservoir très bas', true); else clearAlarm('RESERVOIR');
+  document.getElementById('water-state').style.color = displayLevel>80?'var(--green)':displayLevel>(rSummary.lowPct||30)?'var(--blue)':displayLevel>(rSummary.criticalPct||15)?'var(--yellow)':'var(--red)';
+  if(typeof applyReservoirConfig === 'function') applyReservoirConfig(false);
 }
 
 
@@ -5178,9 +5381,6 @@ function updateConnStatus(text, cls) {
 function connectCloud() {
   const url = document.getElementById('cloud-url').value.trim();
   const interval = parseInt(document.getElementById('poll-interval').value)||5;
-  const tokEl = document.getElementById('api-token');
-  apiToken = tokEl ? tokEl.value.trim() : apiToken;
-  localStorage.setItem('zarzis_api_token', apiToken);
   apiUrl = url.startsWith('http') ? url : `https://${url}`;
   localStorage.setItem('zarzis_api', apiUrl);
   updateConnStatus('CONNEXION...', 'badge-warn');
@@ -5273,12 +5473,6 @@ window.addEventListener('load', () => {
     setTimeout(() => { document.body.style.overflow = 'auto'; }, 760);
   }, 1150);
 });
-
-// Pré-remplir le token API si déjà sauvegardé
-setTimeout(() => {
-  const tokEl = document.getElementById('api-token');
-  if(tokEl) tokEl.value = apiToken;
-}, 300);
 
 // ============ START ============
 updateClock();
@@ -5536,6 +5730,324 @@ setTimeout(() => {
   updateRbStats();
   if(typeof refreshFertUI === 'function') refreshFertUI();
 }, 600);
+
+// ============ EXPLOITATION MODIFIABLE ============
+const DEFAULT_EXPLOITATION = {
+  name:'Obegla Zarzis', surface:4.6, culture:'Oliviers', note:'Irrigation solaire — goutte-à-goutte — supervision à distance.',
+  bigTrees:90, smallTrees:66, futureTrees:0, targetTrees:156,
+  bigRow:7, bigPlant:7, smallRow:6, smallPlant:6,
+  bigDrippers:4, bigFlow:16, smallDrippers:2, smallFlow:8
+};
+const DEFAULT_EXPLOITATION_ZONES = [
+  {name:'Zone 1 — grands oliviers', type:'Grand', trees:30, drippers:4, flow:16, spacing:'7 x 7 m'},
+  {name:'Zone 2 — grands oliviers', type:'Grand', trees:30, drippers:4, flow:16, spacing:'7 x 7 m'},
+  {name:'Zone 3 — grands oliviers', type:'Grand', trees:30, drippers:4, flow:16, spacing:'7 x 7 m'},
+  {name:'Zone 4 — petits/futurs', type:'Petit/Futur', trees:66, drippers:2, flow:8, spacing:'6 x 6 m'}
+];
+function getExploitationConfig(){
+  try { return {...DEFAULT_EXPLOITATION, ...(JSON.parse(localStorage.getItem('zarzis_exploitation_config')||'{}'))}; }
+  catch(e){ return {...DEFAULT_EXPLOITATION}; }
+}
+function getExploitationZones(){
+  try { const z = JSON.parse(localStorage.getItem('zarzis_exploitation_zones')||'null'); return Array.isArray(z) && z.length ? z : JSON.parse(JSON.stringify(DEFAULT_EXPLOITATION_ZONES)); }
+  catch(e){ return JSON.parse(JSON.stringify(DEFAULT_EXPLOITATION_ZONES)); }
+}
+function numVal(id){ const el=document.getElementById(id); return el ? (parseFloat(String(el.value).replace(',','.'))||0) : 0; }
+function strVal(id){ const el=document.getElementById(id); return el ? el.value.trim() : ''; }
+function setVal(id,v){ const el=document.getElementById(id); if(el) el.value=v; }
+function formatM3(v){ return (v||0).toFixed(2).replace('.',','); }
+function initExploitationModule(){
+  const cfg=getExploitationConfig();
+  setVal('ex-name',cfg.name); setVal('ex-surface',cfg.surface); setVal('ex-culture',cfg.culture); setVal('ex-note',cfg.note);
+  setVal('ex-big-trees',cfg.bigTrees); setVal('ex-small-trees',cfg.smallTrees); setVal('ex-future-trees',cfg.futureTrees); setVal('ex-target-trees',cfg.targetTrees);
+  setVal('ex-big-row',cfg.bigRow); setVal('ex-big-plant',cfg.bigPlant); setVal('ex-small-row',cfg.smallRow); setVal('ex-small-plant',cfg.smallPlant);
+  setVal('ex-big-drippers',cfg.bigDrippers); setVal('ex-big-flow',cfg.bigFlow); setVal('ex-small-drippers',cfg.smallDrippers); setVal('ex-small-flow',cfg.smallFlow);
+  renderExploitationConfig(); renderExploitationZones(); if(typeof renderDripLines==='function') renderDripLines();
+  ['ex-name','ex-surface','ex-culture','ex-note','ex-big-trees','ex-small-trees','ex-future-trees','ex-target-trees','ex-big-row','ex-big-plant','ex-small-row','ex-small-plant','ex-big-drippers','ex-big-flow','ex-small-drippers','ex-small-flow'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.addEventListener('input', renderExploitationConfig);
+  });
+}
+function readExploitationForm(){
+  return {
+    name:strVal('ex-name')||DEFAULT_EXPLOITATION.name, surface:numVal('ex-surface'), culture:strVal('ex-culture')||'Oliviers', note:strVal('ex-note'),
+    bigTrees:numVal('ex-big-trees'), smallTrees:numVal('ex-small-trees'), futureTrees:numVal('ex-future-trees'), targetTrees:numVal('ex-target-trees'),
+    bigRow:numVal('ex-big-row'), bigPlant:numVal('ex-big-plant'), smallRow:numVal('ex-small-row'), smallPlant:numVal('ex-small-plant'),
+    bigDrippers:numVal('ex-big-drippers'), bigFlow:numVal('ex-big-flow'), smallDrippers:numVal('ex-small-drippers'), smallFlow:numVal('ex-small-flow')
+  };
+}
+function calcExploitation(cfg){
+  const currentTrees=cfg.bigTrees+cfg.smallTrees;
+  const totalTrees=currentTrees+cfg.futureTrees;
+  const bigDrip=cfg.bigTrees*cfg.bigDrippers;
+  const smallDrip=(cfg.smallTrees+cfg.futureTrees)*cfg.smallDrippers;
+  const totalDrippers=bigDrip+smallDrip;
+  const bigLh=bigDrip*cfg.bigFlow;
+  const smallLh=smallDrip*cfg.smallFlow;
+  const totalLh=bigLh+smallLh;
+  const density=cfg.surface>0 ? totalTrees/cfg.surface : 0;
+  const bigTheo=(cfg.bigRow*cfg.bigPlant)>0 ? 10000/(cfg.bigRow*cfg.bigPlant) : 0;
+  const smallTheo=(cfg.smallRow*cfg.smallPlant)>0 ? 10000/(cfg.smallRow*cfg.smallPlant) : 0;
+  const theoreticalCapacity=Math.round(((bigTheo+smallTheo)/2)*(cfg.surface||0));
+  const base = {currentTrees,totalTrees,totalDrippers,totalLh,bigLh,smallLh,density,theoreticalCapacity};
+  if(typeof getDripLineSummary === 'function'){
+    const dl = getDripLineSummary();
+    if(dl && dl.lines && dl.lines.length){
+      const dlTrees = dl.totalBig + dl.totalSmall;
+      return {...base,
+        currentTrees: dlTrees,
+        totalTrees: dlTrees + (cfg.futureTrees||0),
+        totalDrippers: dl.totalDrippers,
+        totalLh: dl.totalLh,
+        bigLh: dl.bigLh,
+        smallLh: dl.smallLh,
+        density: cfg.surface>0 ? dlTrees/cfg.surface : 0,
+        totalLines: dl.totalLines,
+        source: 'lignes_goutte_a_goutte'
+      };
+    }
+  }
+  return base;
+}
+
+function getExploitationLiveData(){
+  const cfg = (typeof readExploitationForm === 'function') ? readExploitationForm() : getExploitationConfig();
+  const c = (typeof calcExploitation === 'function') ? calcExploitation(cfg) : {currentTrees:(cfg.bigTrees||0)+(cfg.smallTrees||0), totalTrees:(cfg.bigTrees||0)+(cfg.smallTrees||0), totalDrippers:0, totalLh:0};
+  let rs = {capacity:10000, volume:0, avg:0, reservoirs:[{name:'Réservoir principal', capacity:10000, level:0, sensor:'Capteur niveau à ajouter'}]};
+  if(typeof getReservoirSummary === 'function') rs = getReservoirSummary();
+  const zones = (typeof getExploitationZones === 'function') ? getExploitationZones() : [];
+  return {cfg, calc:c, reservoirs:rs, zones};
+}
+
+function applyGlobalExploitationSync(){
+  try{
+    const data = getExploitationLiveData();
+    const cfg = data.cfg;
+    const c = data.calc;
+    const rs = data.reservoirs;
+    const nbReservoirs = (rs.reservoirs && rs.reservoirs.length) ? rs.reservoirs.length : 1;
+    const surfaceTxt = String(cfg.surface || 0).replace('.', ',');
+    const cultureTxt = String(cfg.culture || 'oliviers').trim() || 'oliviers';
+    const cultureUpper = cultureTxt.toUpperCase();
+    const reservoirTxt = nbReservoirs > 1 ? `${nbReservoirs} RÉSERVOIRS` : 'RÉSERVOIR';
+    const capacityTxt = Math.round(rs.capacity || 0).toLocaleString('fr-FR') + ' L';
+    const flowTxt = (c.totalLh/1000 || 0).toFixed(2).replace('.', ',') + ' m³/h';
+    const drippersTxt = Math.round(c.totalDrippers || 0).toLocaleString('fr-FR');
+    const zonesTxt = data.zones.length ? `${data.zones.length} zones` : 'zones à définir';
+    const setText=(id,txt)=>{const el=document.getElementById(id); if(el) el.textContent=txt;};
+
+    setText('header-exploitation-summary', `SUPERVISION PRO · ${surfaceTxt} HA · ${Math.round(c.currentTrees || 0)} ${cultureUpper} · ${reservoirTxt} ${capacityTxt}`);
+    setText('hero-exploitation-kicker', `${(cfg.name || 'Exploitation Zarzis').toUpperCase()} · ${(cfg.note || 'irrigation solaire').split('—')[0].trim() || 'irrigation solaire'}`);
+    setText('hero-exploitation-title', `Tableau de bord ${cfg.name || 'exploitation'}`);
+    setText('hero-exploitation-subtitle', `Vue terrain synchronisée : ${surfaceTxt} ha, ${Math.round(c.currentTrees || 0)} ${cultureTxt}, ${drippersTxt} goutteurs, débit théorique ${flowTxt}, ${reservoirTxt.toLowerCase()} ${capacityTxt}, ${zonesTxt}, ${Math.round(c.totalLines||0)||'lignes'} lignes goutte-à-goutte. Les sécurités restent dans les coffrets d’origine.`);
+    setText('hero-app-small', `PWA synchronisée · exploitation / réservoirs / planning`);
+
+    const locSurface=document.getElementById('loc-surface'); if(locSurface) locSurface.textContent=`${surfaceTxt} ha`;
+    const locTrees=document.getElementById('loc-trees'); if(locTrees) locTrees.textContent=`${Math.round(c.currentTrees || 0)} existants · ${Math.round(cfg.futureTrees || 0)} futurs`;
+    const locSite=document.getElementById('loc-site-name'); if(locSite && cfg.name) locSite.textContent=cfg.name.toUpperCase();
+    const locSystem=document.getElementById('loc-system'); if(locSystem) locSystem.textContent=`${Math.round(c.totalDrippers || 0)} goutteurs · ${flowTxt}`;
+  }catch(e){ console.warn('Global exploitation sync error', e); }
+}
+
+function applyHeaderExploitationSummary(){
+  applyGlobalExploitationSync();
+}
+
+function renderExploitationConfig(){
+  const cfg=readExploitationForm(); const c=calcExploitation(cfg);
+  const set=(id,txt)=>{const el=document.getElementById(id); if(el) el.textContent=txt;};
+  set('ex-total-trees', String(c.currentTrees));
+  set('ex-total-drippers', String(Math.round(c.totalDrippers)));
+  set('ex-total-flow', formatM3(c.totalLh/1000));
+  set('ex-water-1h', Math.round(c.totalLh).toLocaleString('fr-FR')+' L');
+  set('ex-density', c.density.toFixed(1).replace('.',','));
+  set('ex-capacity', String(c.theoreticalCapacity));
+  const note=document.getElementById('ex-summary-note');
+  if(note) note.innerHTML = `Résumé : <strong>${c.currentTrees}</strong> oliviers existants, <strong>${cfg.futureTrees}</strong> futurs, <strong>${Math.round(c.totalDrippers)}</strong> goutteurs. Débit théorique total : <strong>${formatM3(c.totalLh/1000)} m³/h</strong>. Pour 30 min : <strong>${Math.round(c.totalLh/2).toLocaleString('fr-FR')} L</strong>, pour 2h : <strong>${Math.round(c.totalLh*2).toLocaleString('fr-FR')} L</strong>.`;
+  const locTrees=document.getElementById('loc-trees'); if(locTrees) locTrees.textContent=`${cfg.bigTrees} grands · ${cfg.smallTrees} petits · ${cfg.futureTrees} futurs`;
+  const locSurface=document.getElementById('loc-surface'); if(locSurface) locSurface.textContent=`${cfg.surface} ha`;
+  applyHeaderExploitationSummary();
+  if(typeof applyReservoirConfig === 'function') applyReservoirConfig(false);
+}
+function saveExploitationConfig(){
+  localStorage.setItem('zarzis_exploitation_config', JSON.stringify(readExploitationForm()));
+  renderExploitationConfig();
+  const b=document.getElementById('exploit-save-badge'); if(b) b.textContent='SAUVÉ';
+  toast('✅ Fiche exploitation enregistrée','ok');
+}
+function resetExploitationConfig(){
+  localStorage.setItem('zarzis_exploitation_config', JSON.stringify(DEFAULT_EXPLOITATION));
+  localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(DEFAULT_EXPLOITATION_ZONES));
+  if(typeof DEFAULT_DRIP_LINES !== 'undefined') localStorage.setItem('zarzis_drip_lines', JSON.stringify(DEFAULT_DRIP_LINES));
+  initExploitationModule();
+  toast('↩️ Exploitation réinitialisée','info');
+}
+function renderExploitationZones(){
+  const body=document.getElementById('ex-zones-body'); if(!body) return;
+  const zones=getExploitationZones(); body.innerHTML='';
+  zones.forEach((z,i)=>{
+    const debit=((parseFloat(z.trees)||0)*(parseFloat(z.drippers)||0)*(parseFloat(z.flow)||0))/1000;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input value="${String(z.name||'').replace(/"/g,'&quot;')}" data-z="${i}" data-k="name"></td>
+      <td><select data-z="${i}" data-k="type"><option ${z.type==='Grand'?'selected':''}>Grand</option><option ${z.type==='Petit/Futur'?'selected':''}>Petit/Futur</option><option ${z.type==='Mixte'?'selected':''}>Mixte</option></select></td>
+      <td><input type="number" min="0" value="${z.trees||0}" data-z="${i}" data-k="trees"></td>
+      <td><input type="number" min="0" value="${z.drippers||0}" data-z="${i}" data-k="drippers"></td>
+      <td><input type="number" min="0" step="0.1" value="${z.flow||0}" data-z="${i}" data-k="flow"></td>
+      <td><input value="${String(z.spacing||'').replace(/"/g,'&quot;')}" data-z="${i}" data-k="spacing"></td>
+      <td><strong style="color:var(--green);font-family:var(--mono)">${formatM3(debit)} m³/h</strong></td>
+      <td><button class="mini-btn mini-off" onclick="removeExploitationZone(${i})">Suppr.</button></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('input,select').forEach(el=>el.addEventListener('input', saveExploitationZonesSilent));
+}
+function collectExploitationZones(){
+  const zones=getExploitationZones();
+  document.querySelectorAll('#ex-zones-body [data-z]').forEach(el=>{
+    const i=parseInt(el.dataset.z,10); const k=el.dataset.k; if(!zones[i]) return;
+    zones[i][k]=['trees','drippers','flow'].includes(k) ? (parseFloat(String(el.value).replace(',','.'))||0) : el.value;
+  });
+  return zones;
+}
+function saveExploitationZonesSilent(){ localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(collectExploitationZones())); renderExploitationZones(); if(typeof applyGlobalExploitationSync==='function') applyGlobalExploitationSync(); }
+function saveExploitationZones(){ saveExploitationZonesSilent(); toast('✅ Zones exploitation enregistrées','ok'); }
+function addExploitationZone(){ const zones=getExploitationZones(); zones.push({name:'Nouvelle zone', type:'Mixte', trees:0, drippers:2, flow:8, spacing:'6 x 6 m'}); localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); renderExploitationZones(); }
+function removeExploitationZone(i){ const zones=getExploitationZones(); zones.splice(i,1); localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); renderExploitationZones(); }
+function syncZonesFromExploitation(){
+  const cfg=readExploitationForm();
+  const zones=[
+    {name:'Zone 1 — grands oliviers', type:'Grand', trees:Math.ceil(cfg.bigTrees/3), drippers:cfg.bigDrippers, flow:cfg.bigFlow, spacing:`${cfg.bigRow} x ${cfg.bigPlant} m`},
+    {name:'Zone 2 — grands oliviers', type:'Grand', trees:Math.floor(cfg.bigTrees/3), drippers:cfg.bigDrippers, flow:cfg.bigFlow, spacing:`${cfg.bigRow} x ${cfg.bigPlant} m`},
+    {name:'Zone 3 — grands oliviers', type:'Grand', trees:cfg.bigTrees-Math.ceil(cfg.bigTrees/3)-Math.floor(cfg.bigTrees/3), drippers:cfg.bigDrippers, flow:cfg.bigFlow, spacing:`${cfg.bigRow} x ${cfg.bigPlant} m`},
+    {name:'Zone 4 — petits/futurs', type:'Petit/Futur', trees:cfg.smallTrees+cfg.futureTrees, drippers:cfg.smallDrippers, flow:cfg.smallFlow, spacing:`${cfg.smallRow} x ${cfg.smallPlant} m`}
+  ];
+  localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); renderExploitationZones(); if(typeof applyGlobalExploitationSync==='function') applyGlobalExploitationSync(); toast('⚙️ Zones générées depuis la fiche exploitation','ok');
+}
+
+
+// ============ LIGNES GOUTTE-A-GOUTTE DETAILLEES / MIXTES ============
+const DEFAULT_DRIP_LINES = [
+  {zone:'Zone 1', name:'Ligne 1', lineCount:5, bigPerLine:6, smallPerLine:10, bigDrippers:5, bigFlow:16, smallDrippers:2, smallFlow:8},
+  {zone:'Zone 2', name:'Ligne 1', lineCount:5, bigPerLine:6, smallPerLine:10, bigDrippers:5, bigFlow:16, smallDrippers:2, smallFlow:8},
+  {zone:'Zone 3', name:'Ligne 1', lineCount:5, bigPerLine:6, smallPerLine:10, bigDrippers:5, bigFlow:16, smallDrippers:2, smallFlow:8},
+  {zone:'Zone 4', name:'Ligne 1', lineCount:4, bigPerLine:0, smallPerLine:9, bigDrippers:5, bigFlow:16, smallDrippers:2, smallFlow:8}
+];
+function getDripLines(){
+  try{
+    const data = JSON.parse(localStorage.getItem('zarzis_drip_lines')||'null');
+    return Array.isArray(data) && data.length ? data : JSON.parse(JSON.stringify(DEFAULT_DRIP_LINES));
+  }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_DRIP_LINES)); }
+}
+function collectDripLines(){
+  const lines = getDripLines();
+  document.querySelectorAll('#drip-lines-body [data-dl]').forEach(el=>{
+    const i=parseInt(el.dataset.dl,10); const k=el.dataset.k; if(!lines[i]) return;
+    const numeric=['lineCount','bigPerLine','smallPerLine','bigDrippers','bigFlow','smallDrippers','smallFlow'];
+    lines[i][k]=numeric.includes(k) ? (parseFloat(String(el.value).replace(',','.'))||0) : el.value;
+  });
+  return lines;
+}
+function getDripLineSummary(lines){
+  lines = lines || getDripLines();
+  let totalLines=0,totalBig=0,totalSmall=0,totalDrippers=0,totalLh=0,bigLh=0,smallLh=0;
+  lines.forEach(l=>{
+    const lc=parseFloat(l.lineCount)||0;
+    const big=parseFloat(l.bigPerLine)||0;
+    const small=parseFloat(l.smallPerLine)||0;
+    const bd=parseFloat(l.bigDrippers)||0;
+    const bf=parseFloat(l.bigFlow)||0;
+    const sd=parseFloat(l.smallDrippers)||0;
+    const sf=parseFloat(l.smallFlow)||0;
+    const lineBigDrippers=big*bd;
+    const lineSmallDrippers=small*sd;
+    const lineBigLh=lineBigDrippers*bf;
+    const lineSmallLh=lineSmallDrippers*sf;
+    totalLines += lc;
+    totalBig += lc*big;
+    totalSmall += lc*small;
+    totalDrippers += lc*(lineBigDrippers+lineSmallDrippers);
+    bigLh += lc*lineBigLh;
+    smallLh += lc*lineSmallLh;
+    totalLh += lc*(lineBigLh+lineSmallLh);
+  });
+  return {lines,totalLines,totalBig,totalSmall,totalDrippers,totalLh,bigLh,smallLh};
+}
+function renderDripLines(){
+  const body=document.getElementById('drip-lines-body'); if(!body) return;
+  const lines=getDripLines(); body.innerHTML='';
+  lines.forEach((l,i)=>{
+    const lc=parseFloat(l.lineCount)||0;
+    const lineLh=((parseFloat(l.bigPerLine)||0)*(parseFloat(l.bigDrippers)||0)*(parseFloat(l.bigFlow)||0))+((parseFloat(l.smallPerLine)||0)*(parseFloat(l.smallDrippers)||0)*(parseFloat(l.smallFlow)||0));
+    const zoneLh=lineLh*lc;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input value="${String(l.zone||'').replace(/"/g,'&quot;')}" data-dl="${i}" data-k="zone"></td>
+      <td><input value="${String(l.name||'').replace(/"/g,'&quot;')}" data-dl="${i}" data-k="name"></td>
+      <td><input type="number" min="0" value="${l.lineCount||0}" data-dl="${i}" data-k="lineCount"></td>
+      <td><input type="number" min="0" value="${l.bigPerLine||0}" data-dl="${i}" data-k="bigPerLine"></td>
+      <td><input type="number" min="0" value="${l.smallPerLine||0}" data-dl="${i}" data-k="smallPerLine"></td>
+      <td><input type="number" min="0" value="${l.bigDrippers||0}" data-dl="${i}" data-k="bigDrippers"></td>
+      <td><input type="number" min="0" step="0.1" value="${l.bigFlow||0}" data-dl="${i}" data-k="bigFlow"></td>
+      <td><input type="number" min="0" value="${l.smallDrippers||0}" data-dl="${i}" data-k="smallDrippers"></td>
+      <td><input type="number" min="0" step="0.1" value="${l.smallFlow||0}" data-dl="${i}" data-k="smallFlow"></td>
+      <td><strong style="color:var(--blue);font-family:var(--mono)">${Math.round(lineLh).toLocaleString('fr-FR')} L/h</strong></td>
+      <td><strong style="color:var(--green);font-family:var(--mono)">${formatM3(zoneLh/1000)} m³/h</strong></td>
+      <td><button class="mini-btn mini-off" onclick="removeDripLine(${i})">Suppr.</button></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('input,select').forEach(el=>el.addEventListener('input', saveDripLinesSilent));
+  renderDripLineSummary(lines);
+}
+function renderDripLineSummary(lines){
+  const s=getDripLineSummary(lines);
+  const set=(id,txt)=>{const el=document.getElementById(id); if(el) el.textContent=txt;};
+  set('dl-total-lines', Math.round(s.totalLines).toLocaleString('fr-FR'));
+  set('dl-total-big', Math.round(s.totalBig).toLocaleString('fr-FR'));
+  set('dl-total-small', Math.round(s.totalSmall).toLocaleString('fr-FR'));
+  set('dl-total-drippers', Math.round(s.totalDrippers).toLocaleString('fr-FR'));
+  set('dl-total-flow', formatM3(s.totalLh/1000));
+  set('dl-water-30min', Math.round(s.totalLh/2).toLocaleString('fr-FR')+' L');
+  const note=document.getElementById('dl-summary-note');
+  if(note) note.innerHTML = `Résumé lignes : <strong>${Math.round(s.totalLines)}</strong> lignes, <strong>${Math.round(s.totalBig)}</strong> grands oliviers, <strong>${Math.round(s.totalSmall)}</strong> petits oliviers intercalés, <strong>${Math.round(s.totalDrippers).toLocaleString('fr-FR')}</strong> goutteurs, débit total <strong>${formatM3(s.totalLh/1000)} m³/h</strong>.`;
+}
+function saveDripLinesSilent(){
+  localStorage.setItem('zarzis_drip_lines', JSON.stringify(collectDripLines()));
+  renderDripLines();
+  if(typeof renderExploitationConfig==='function') renderExploitationConfig();
+  if(typeof applyGlobalExploitationSync==='function') applyGlobalExploitationSync();
+}
+function saveDripLines(){ saveDripLinesSilent(); toast('✅ Lignes goutte-à-goutte enregistrées','ok'); }
+function addDripLine(){
+  const lines=getDripLines();
+  lines.push({zone:'Nouvelle zone', name:'Nouvelle ligne', lineCount:1, bigPerLine:0, smallPerLine:0, bigDrippers:5, bigFlow:16, smallDrippers:2, smallFlow:8});
+  localStorage.setItem('zarzis_drip_lines', JSON.stringify(lines)); renderDripLines(); if(typeof renderExploitationConfig==='function') renderExploitationConfig();
+}
+function removeDripLine(i){
+  const lines=getDripLines(); lines.splice(i,1); localStorage.setItem('zarzis_drip_lines', JSON.stringify(lines)); renderDripLines(); if(typeof renderExploitationConfig==='function') renderExploitationConfig();
+}
+function resetDripLines(){
+  localStorage.setItem('zarzis_drip_lines', JSON.stringify(DEFAULT_DRIP_LINES)); renderDripLines(); if(typeof renderExploitationConfig==='function') renderExploitationConfig(); toast('↩️ Lignes réinitialisées','info');
+}
+function generateDripLinesFromExploitation(){
+  const cfg=readExploitationForm();
+  const totalBig=Math.max(0, Math.round(cfg.bigTrees||0));
+  const totalSmall=Math.max(0, Math.round((cfg.smallTrees||0)+(cfg.futureTrees||0)));
+  const bigZones=3;
+  const bigPerZone=Math.ceil(totalBig/bigZones);
+  const lines=[];
+  for(let z=1; z<=bigZones; z++){
+    const zoneBig = z<bigZones ? bigPerZone : Math.max(0,totalBig-bigPerZone*(bigZones-1));
+    const lineCount = Math.max(1, Math.ceil(zoneBig/6));
+    const bigPerLine = lineCount ? Math.ceil(zoneBig/lineCount) : 0;
+    const smallPerLine = Math.max(0, (bigPerLine-1)*2);
+    lines.push({zone:`Zone ${z}`, name:'Lignes mixtes grands + petits', lineCount, bigPerLine, smallPerLine, bigDrippers:cfg.bigDrippers||5, bigFlow:cfg.bigFlow||16, smallDrippers:cfg.smallDrippers||2, smallFlow:cfg.smallFlow||8});
+  }
+  if(totalSmall>0){
+    const smallLines=Math.max(1, Math.ceil(totalSmall/12));
+    lines.push({zone:'Zone petits seuls', name:'Lignes petits/futurs', lineCount:smallLines, bigPerLine:0, smallPerLine:Math.ceil(totalSmall/smallLines), bigDrippers:cfg.bigDrippers||5, bigFlow:cfg.bigFlow||16, smallDrippers:cfg.smallDrippers||2, smallFlow:cfg.smallFlow||8});
+  }
+  localStorage.setItem('zarzis_drip_lines', JSON.stringify(lines)); renderDripLines(); if(typeof renderExploitationConfig==='function') renderExploitationConfig(); toast('⚙️ Lignes générées depuis l’exploitation','ok');
+}
+
 </script>
 
 <!-- ============ MODAL CONFIG ZONES ============ -->
@@ -5946,6 +6458,153 @@ setTimeout(() => {
 
   document.addEventListener('DOMContentLoaded', function(){ applyEquipmentConfig(getEquipmentConfig()); });
   if(document.readyState !== 'loading') applyEquipmentConfig(getEquipmentConfig());
+})();
+
+
+/* ============ RÉSERVOIRS SYNCHRONISÉS DASHBOARD / EXPLOITATION / PARAMÈTRES ============ */
+(function(){
+  const DEFAULT_RESERVOIRS = [
+    { name:'Réservoir principal', capacity:10000, level:65, sensor:'Capteur niveau à ajouter', lowPct:30, criticalPct:15, role:'Alimentation irrigation' }
+  ];
+
+  function safeText(v){ return String(v ?? '').replace(/[<>]/g,''); }
+  function n(v, fallback=0){ const x=parseFloat(String(v ?? '').replace(',','.')); return Number.isFinite(x) ? x : fallback; }
+  function getFlowLh(){
+    try{
+      if(typeof readExploitationForm === 'function' && typeof calcExploitation === 'function') return calcExploitation(readExploitationForm()).totalLh || 0;
+    }catch(e){}
+    return 0;
+  }
+
+  window.getReservoirs = function(){
+    try{
+      const arr = JSON.parse(localStorage.getItem('zarzis_reservoirs_config') || 'null');
+      return Array.isArray(arr) && arr.length ? arr : JSON.parse(JSON.stringify(DEFAULT_RESERVOIRS));
+    }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_RESERVOIRS)); }
+  };
+
+  window.getReservoirSummary = function(){
+    const reservoirs = getReservoirs();
+    const capacity = reservoirs.reduce((s,r)=>s+n(r.capacity),0);
+    const volume = reservoirs.reduce((s,r)=>s+n(r.capacity)*n(r.level)/100,0);
+    const avg = capacity>0 ? volume/capacity*100 : 0;
+    const primary = reservoirs[0] || DEFAULT_RESERVOIRS[0];
+    const lowPct = Math.min(...reservoirs.map(r=>n(r.lowPct,30)));
+    const criticalPct = Math.min(...reservoirs.map(r=>n(r.criticalPct,15)));
+    return {reservoirs, capacity, volume, avg, primaryName:primary.name||'Réservoir', primaryLevel:n(primary.level,0), primaryCapacity:n(primary.capacity,10000), lowPct, criticalPct};
+  };
+
+  function reservoirRowsHtml(target){
+    return getReservoirs().map((r,i)=>{
+      const vol = Math.round(n(r.capacity)*n(r.level)/100);
+      return `<tr>
+        <td><input value="${safeText(r.name)}" data-res="${i}" data-k="name" data-target="${target}"></td>
+        <td><input type="number" min="0" step="100" value="${n(r.capacity)}" data-res="${i}" data-k="capacity" data-target="${target}"></td>
+        <td><input type="number" min="0" max="100" step="1" value="${n(r.level)}" data-res="${i}" data-k="level" data-target="${target}"></td>
+        <td><input value="${safeText(r.sensor)}" data-res="${i}" data-k="sensor" data-target="${target}"></td>
+        <td><input type="number" min="0" max="100" value="${n(r.lowPct,30)}" data-res="${i}" data-k="lowPct" data-target="${target}"></td>
+        <td><input type="number" min="0" max="100" value="${n(r.criticalPct,15)}" data-res="${i}" data-k="criticalPct" data-target="${target}"></td>
+        <td><input value="${safeText(r.role)}" data-res="${i}" data-k="role" data-target="${target}"></td>
+        <td><strong style="color:var(--blue);font-family:var(--mono)">${vol.toLocaleString('fr-FR')} L</strong></td>
+        <td><button class="mini-btn mini-off" onclick="removeReservoir(${i})">Suppr.</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function bindReservoirTable(containerId){
+    const body = document.getElementById(containerId);
+    if(!body) return;
+    body.innerHTML = reservoirRowsHtml(containerId);
+    body.querySelectorAll('input').forEach(el=>el.addEventListener('input', function(){ saveReservoirsSilent(containerId); }));
+  }
+
+  window.collectReservoirsFrom = function(containerId){
+    const current = getReservoirs();
+    const body = document.getElementById(containerId);
+    if(!body) return current;
+    body.querySelectorAll('[data-res]').forEach(el=>{
+      const i=parseInt(el.dataset.res,10); const k=el.dataset.k; if(!current[i]) return;
+      current[i][k] = ['capacity','level','lowPct','criticalPct'].includes(k) ? n(el.value) : el.value.trim();
+    });
+    return current;
+  };
+
+  window.saveReservoirsSilent = function(sourceId){
+    const source = sourceId || (document.getElementById('reservoirs-body') ? 'reservoirs-body' : 'reservoirs-body-param');
+    localStorage.setItem('zarzis_reservoirs_config', JSON.stringify(collectReservoirsFrom(source)));
+    applyReservoirConfig(false);
+  };
+
+  window.saveReservoirs = function(){
+    const source = document.activeElement?.closest?.('tbody')?.id || (document.getElementById('reservoirs-body') ? 'reservoirs-body' : 'reservoirs-body-param');
+    localStorage.setItem('zarzis_reservoirs_config', JSON.stringify(collectReservoirsFrom(source)));
+    applyReservoirConfig(true);
+    if(typeof toast === 'function') toast('🌊 Réservoirs sauvegardés et synchronisés', 'ok');
+  };
+
+  window.addReservoir = function(){
+    const arr=getReservoirs();
+    arr.push({name:'Réservoir '+(arr.length+1), capacity:5000, level:100, sensor:'Capteur niveau à définir', lowPct:30, criticalPct:15, role:'Réserve / extension'});
+    localStorage.setItem('zarzis_reservoirs_config', JSON.stringify(arr));
+    applyReservoirConfig(true);
+  };
+
+  window.removeReservoir = function(i){
+    const arr=getReservoirs();
+    if(arr.length<=1){ if(typeof toast==='function') toast('⚠️ Il faut garder au moins un réservoir', 'warn'); return; }
+    arr.splice(i,1);
+    localStorage.setItem('zarzis_reservoirs_config', JSON.stringify(arr));
+    applyReservoirConfig(true);
+  };
+
+  window.resetReservoirs = function(){
+    localStorage.removeItem('zarzis_reservoirs_config');
+    applyReservoirConfig(true);
+  };
+
+  window.applyReservoirConfig = function(rebuildTables=true){
+    const s=getReservoirSummary();
+    const pct=Math.round(s.avg||0);
+    const set=(id,txt)=>{const el=document.getElementById(id); if(el) el.textContent=txt;};
+    const capacityTxt=s.capacity.toLocaleString('fr-FR')+' L';
+    const volumeTxt=Math.round(s.volume).toLocaleString('fr-FR')+' L';
+    const nb=s.reservoirs.length;
+    if(rebuildTables){ bindReservoirTable('reservoirs-body'); bindReservoirTable('reservoirs-body-param'); }
+
+    set('dash-res-title', nb>1 ? `🌊 Réservoirs (${nb})` : `🌊 ${s.primaryName}`);
+    set('dash-res-subtitle', `${capacityTxt} total · niveau moyen ${pct}% · ${safeText(s.reservoirs[0]?.sensor || '')}`);
+    set('dash-res-float-label', `${nb>1 ? 'Réservoirs' : s.primaryName} — ${capacityTxt} total`);
+    set('stat-reservoir-label', nb>1 ? 'Réservoirs' : 'Réservoir');
+    set('stat-reservoir', pct+'%');
+    set('water-label', pct+'%');
+    set('water-vol', volumeTxt);
+    const body=document.getElementById('water-body'); if(body) body.style.height=pct+'%';
+    const state = pct>80?'PLEIN':pct>s.lowPct?'NORMAL':pct>s.criticalPct?'BAS':'CRITIQUE';
+    set('water-state', state);
+    const ws=document.getElementById('water-state'); if(ws) ws.style.color=pct>80?'var(--green)':pct>s.lowPct?'var(--blue)':pct>s.criticalPct?'var(--yellow)':'var(--red)';
+
+    set('res-total-capacity', capacityTxt);
+    set('res-total-volume', volumeTxt);
+    set('res-average-level', pct+'%');
+    const flow=getFlowLh();
+    const autonomy=flow>0 ? (s.volume/flow) : 0;
+    set('res-autonomy-1h', flow>0 ? autonomy.toFixed(1).replace('.',',')+' h' : '--');
+    const note=document.getElementById('res-summary-note');
+    if(note) note.innerHTML = `Résumé réservoirs : <strong>${nb}</strong> réservoir(s), capacité totale <strong>${capacityTxt}</strong>, volume estimé <strong>${volumeTxt}</strong>. Débit irrigation théorique actuel : <strong>${(flow/1000).toFixed(2).replace('.',',')} m³/h</strong>. Autonomie estimée : <strong>${flow>0 ? autonomy.toFixed(1).replace('.',',')+' h' : 'à calculer'}</strong>.`;
+
+    set('equip-res-title', nb>1 ? `🌊 Réservoirs — ${capacityTxt}` : `🌊 ${s.primaryName} ${capacityTxt}`);
+    const list=document.getElementById('equip-res-list');
+    if(list){
+      list.innerHTML = s.reservoirs.map(r=>`<li>${safeText(r.name)} : ${n(r.capacity).toLocaleString('fr-FR')} L · niveau ${n(r.level)}% · ${safeText(r.role)}</li>`).join('') + `<li>Seuil bas minimum : ${s.lowPct}% · très bas : ${s.criticalPct}%.</li><li>Suivi volume estimé relié au Dashboard.</li>`;
+    }
+    set('alert-res-low-text', `${nb>1 ? 'Réservoirs' : s.primaryName} très bas : arrêt ou blocage surpresseur Wilo.`);
+    const msg=document.getElementById('reservoir-config-msg');
+    if(msg){ msg.className='param-status ok'; msg.textContent=`✅ Réservoirs synchronisés : ${capacityTxt} total, ${volumeTxt} disponible.`; }
+    if(typeof applyHeaderExploitationSummary === 'function') applyHeaderExploitationSummary();
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){ applyReservoirConfig(true); });
+  if(document.readyState !== 'loading') applyReservoirConfig(true);
 })();
 </script>
 

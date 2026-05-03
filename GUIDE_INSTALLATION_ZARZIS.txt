@@ -1,0 +1,85 @@
+========================================================
+GUIDE INSTALLATION ZARZIS — G781-E + DR302 + RS485
+========================================================
+
+OBJECTIF
+--------
+Dashboard = démarrer / arrêter / planifier / visualiser.
+Les sécurités restent dans les coffrets d'origine.
+
+ARCHITECTURE RECOMMANDÉE
+------------------------
+Wilo / Salmson / INVT / Coffret 4
+        ↓ RS485 Modbus RTU
+USR-DR302
+        ↓ Ethernet
+USR-G781-E
+        ↓ 4G
+Render API
+        ↓
+Dashboard PWA
+
+MATÉRIEL
+--------
+1. USR-G781-E, lettre E obligatoire.
+2. USR-DR302 rail DIN RS485 vers Ethernet.
+3. Alimentation DIN 24V DC, type Mean Well HDR-60-24 ou équivalent.
+4. Carte SIM Tunisie Telecom ou Ooredoo.
+5. Câble RS485 torsadé blindé, idéalement 120 ohms.
+6. 2 résistances 120 ohms.
+7. Borniers A/B/GND.
+8. Antenne 4G externe si signal faible.
+
+ALIMENTATION
+------------
+Ne pas utiliser le transformateur 24V AC pour alimenter le G781-E ou le DR302.
+Il faut du 24V DC stable.
+
+CÂBLAGE RS485
+-------------
+Faire un bus linéaire, pas une étoile.
+
+A+ DR302/G781 -> A+ appareil 1 -> A+ appareil 2 -> A+ appareil 3
+B- DR302/G781 -> B- appareil 1 -> B- appareil 2 -> B- appareil 3
+GND si disponible.
+Blindage à la terre d'un seul côté.
+
+ADRESSES MODBUS PROPOSÉES
+-------------------------
+INVT    = 1
+Salmson = 2
+Wilo    = 3
+Coffret4/capteur = 4
+
+PARAMÈTRES SÉRIE DE DÉPART
+--------------------------
+9600 bauds
+8 bits
+parité None
+1 stop bit
+Modbus RTU
+
+ORDRE DE TEST
+-------------
+1. Alimenter le G781-E seul.
+2. Configurer SIM + APN.
+3. Vérifier internet.
+4. Alimenter DR302.
+5. Configurer IP fixe DR302.
+6. Brancher un seul appareil RS485.
+7. Tester lecture registre.
+8. Tester start/stop.
+9. Ajouter le deuxième appareil.
+10. Ajouter le troisième appareil.
+11. Ajouter le quatrième.
+12. Activer planning.
+
+POINTS CRITIQUES
+----------------
+- Ne pas inverser A/B.
+- Ne pas mettre la même adresse Modbus sur deux appareils.
+- Ne pas activer toutes les terminaisons 120 ohms.
+- Ne pas coller le câble RS485 aux câbles moteur/variateur.
+- Ne pas dépendre du cloud pour la sécurité pompe.
+
+========================================================
