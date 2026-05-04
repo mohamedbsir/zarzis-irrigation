@@ -1,9 +1,11 @@
-const CACHE_NAME = 'zarzis-irrigation-v4';
+const CACHE_NAME = 'zarzis-irrigation-v5';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg'
+  './icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 self.addEventListener('install', event => {

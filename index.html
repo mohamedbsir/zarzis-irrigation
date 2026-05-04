@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Zarzis">
 <link rel="manifest" href="manifest.webmanifest" id="manifest-link">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <title>Zarzis SunNode — Supervision Irrigation Solaire v7.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -1634,7 +1634,10 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         <div class="card-title">📅 Programmateur d'Irrigation</div>
         <div class="card-subtitle">Créer · modifier · supprimer des programmes hebdomadaires</div>
       </div>
-      <button class="btn btn-green" onclick="openProgramModal()" style="padding:8px 16px">+ NOUVEAU PROGRAMME</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="syncPlanningToCloud()" style="padding:8px 14px">☁ SYNC CLOUD</button>
+        <button class="btn btn-green" onclick="openProgramModal()" style="padding:8px 16px">+ NOUVEAU PROGRAMME</button>
+      </div>
     </div>
     
     <!-- Liste des programmes -->
@@ -2929,6 +2932,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <button class="btn btn-green" onclick="connectCloud()">CONNECTER</button>
       <button class="btn btn-red" onclick="disconnectCloud()">DÉCONNECTER</button>
       <button class="btn btn-ghost" onclick="simulateData()">SIMULATION</button>
+      <button class="btn btn-ghost" onclick="syncSharedStateNow(false)">SYNC APPAREILS</button>
     </div>
 
     <div class="divider"></div>
@@ -3030,7 +3034,7 @@ let history_vdc = [];
 let history_power = [];
 let history_pressure = [];
 let chartVdc, chartPower, chartPressure;
-const DEFAULT_PASSWORD = '1234';
+const DEFAULT_PASSWORD = 'zarzis2026';
 const RESTART_DELAY_MS = 60000;
 let lastStopAt = { forage: 0, wilo: 0 };
 let maintenanceMode = false;
@@ -3444,7 +3448,7 @@ function rbTestPing() {
   const ip = document.getElementById('rb-ip').value.trim();
   if(!ip) { toast('⚠️ Entrez d\'abord l\'IP', 'warn'); return; }
   toast(`🔍 Ping ${ip}...`, 'info');
-  fetch(`${apiUrl}/api/rainbird/status`, {signal:AbortSignal.timeout(5000)})
+  fetch(`${apiUrl}/api/rainbird/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
       if(d.connected) toast(`✅ Rain Bird répond !`, 'ok');
@@ -3455,7 +3459,7 @@ function rbTestPing() {
 
 function rbRefreshStatus() {
   toast('🔄 Actualisation...', 'info');
-  fetch(`${apiUrl}/api/rainbird/status`, {signal:AbortSignal.timeout(5000)})
+  fetch(`${apiUrl}/api/rainbird/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
       const badge = document.getElementById('rb-badge');
@@ -3738,11 +3742,246 @@ const dayLong = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanch
 // Charger les programmes sauvegardés
 let irrigPrograms = JSON.parse(localStorage.getItem('irrigPrograms') || '[]');
 let editingProgramId = null;
+let planningSyncInProgress = false;
+const SYNC_KEYS = [
+  'zoneConfig',
+  'rbPrograms',
+  'irrigPrograms',
+  'fertConfig',
+  'fertHistory',
+  'runHours',
+  'systemMode',
+  'zarzis_exploitation_config',
+  'zarzis_exploitation_zones',
+  'zarzis_drip_lines',
+  'zarzis_location',
+  'zarzis_equipment_config',
+  'zarzis_reservoirs_config'
+];
+let sharedSyncTimer = null;
+let sharedSyncDebounce = null;
+let sharedSyncDirty = false;
+let sharedSyncApplying = false;
+let sharedSyncRevision = parseInt(localStorage.getItem('zarzis_shared_sync_revision') || '0', 10) || 0;
+let sharedSyncClientId = localStorage.getItem('zarzis_shared_sync_client_id') || '';
+if(!sharedSyncClientId) {
+  sharedSyncClientId = 'client-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  localStorage.setItem('zarzis_shared_sync_client_id', sharedSyncClientId);
+}
 let modalSelectedZones = new Set();
 let modalSelectedDays = new Set();
 let modalProgType = 'arrosage';
 
 // Afficher la liste des programmes
+
+
+
+function isSharedSyncKey(key) {
+  return SYNC_KEYS.includes(String(key));
+}
+
+function collectSharedState() {
+  const state = {};
+  SYNC_KEYS.forEach(key => {
+    const value = localStorage.getItem(key);
+    if(value !== null) state[key] = value;
+  });
+  return state;
+}
+
+function hasSharedState() {
+  return Object.keys(collectSharedState()).length > 0;
+}
+
+function markSharedSyncDirty() {
+  if(sharedSyncApplying) return;
+  sharedSyncDirty = true;
+  if(sharedSyncDebounce) clearTimeout(sharedSyncDebounce);
+  sharedSyncDebounce = setTimeout(() => syncSharedStateNow(true), 1200);
+}
+
+function patchLocalStorageForSharedSync() {
+  if(window.__zarzisSharedSyncPatched) return;
+  window.__zarzisSharedSyncPatched = true;
+  const originalSetItem = Storage.prototype.setItem;
+  const originalRemoveItem = Storage.prototype.removeItem;
+  Storage.prototype.setItem = function(key, value) {
+    originalSetItem.call(this, key, value);
+    if(this === localStorage && isSharedSyncKey(key)) markSharedSyncDirty();
+  };
+  Storage.prototype.removeItem = function(key) {
+    originalRemoveItem.call(this, key);
+    if(this === localStorage && isSharedSyncKey(key)) markSharedSyncDirty();
+  };
+}
+
+function applySharedStateToUi() {
+  try { zoneConfig = JSON.parse(localStorage.getItem('zoneConfig')) || zoneConfig; } catch(e) {}
+  try { rbPrograms = JSON.parse(localStorage.getItem('rbPrograms')) || rbPrograms; } catch(e) {}
+  try { irrigPrograms = JSON.parse(localStorage.getItem('irrigPrograms') || '[]'); } catch(e) {}
+  try { fertConfig = JSON.parse(localStorage.getItem('fertConfig')) || fertConfig; } catch(e) {}
+  try { fertHistory = JSON.parse(localStorage.getItem('fertHistory') || '[]'); } catch(e) {}
+  try { runHours = JSON.parse(localStorage.getItem('runHours') || JSON.stringify(runHours)); } catch(e) {}
+  systemMode = localStorage.getItem('systemMode') || systemMode || 'auto';
+
+  if(typeof initZones === 'function') initZones();
+  if(typeof renderProgramsList === 'function') renderProgramsList();
+  if(typeof renderWeekCalendar === 'function') renderWeekCalendar();
+  if(typeof renderRbPrograms === 'function') renderRbPrograms();
+  if(typeof refreshFertUI === 'function') refreshFertUI();
+  if(typeof renderExploitationConfig === 'function') renderExploitationConfig();
+  if(typeof renderExploitationZones === 'function') renderExploitationZones();
+  if(typeof renderDripLines === 'function') renderDripLines();
+  if(typeof applyEquipmentConfig === 'function') applyEquipmentConfig(getEquipmentConfig());
+  if(typeof applyReservoirConfig === 'function') applyReservoirConfig(true);
+  if(typeof setSystemMode === 'function') setSystemMode(systemMode);
+}
+
+function applySharedStateFromCloud(state, revision) {
+  sharedSyncApplying = true;
+  try {
+    Object.entries(state || {}).forEach(([key, value]) => {
+      if(!isSharedSyncKey(key)) return;
+      if(value === null || value === undefined) localStorage.removeItem(key);
+      else localStorage.setItem(key, String(value));
+    });
+    sharedSyncRevision = revision || sharedSyncRevision;
+    localStorage.setItem('zarzis_shared_sync_revision', String(sharedSyncRevision));
+    sharedSyncDirty = false;
+  } finally {
+    sharedSyncApplying = false;
+  }
+  applySharedStateToUi();
+}
+
+async function pushSharedStateToCloud(silent=true) {
+  if(!connected) return false;
+  try {
+    const res = await fetch(`${apiUrl}/api/app-state`, {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({client_id: sharedSyncClientId, state: collectSharedState()}),
+      signal: AbortSignal.timeout(8000)
+    });
+    const data = await res.json();
+    if(!data.success) throw new Error(data.error || 'sync refusée');
+    sharedSyncRevision = data.revision || sharedSyncRevision;
+    localStorage.setItem('zarzis_shared_sync_revision', String(sharedSyncRevision));
+    sharedSyncDirty = false;
+    if(!silent) toast('Synchronisation partagée envoyée', 'ok');
+    addLog(`Sync partagée envoyée rev ${sharedSyncRevision}`, 'ok');
+    return true;
+  } catch(e) {
+    if(!silent) toast('Synchronisation partagée impossible', 'warn');
+    addLog(`Sync partagée erreur: ${e.message}`, 'warn');
+    return false;
+  }
+}
+
+async function pullSharedStateFromCloud(silent=true) {
+  if(!connected) return false;
+  try {
+    const res = await fetch(`${apiUrl}/api/app-state`, {headers: apiHeaders(), signal: AbortSignal.timeout(8000)});
+    const data = await res.json();
+    if(!data.success) throw new Error(data.error || 'lecture sync refusée');
+    const serverRevision = data.revision || 0;
+    if(serverRevision > sharedSyncRevision && !sharedSyncDirty) {
+      applySharedStateFromCloud(data.state || {}, serverRevision);
+      if(!silent) toast('Réglages partagés reçus', 'ok');
+      addLog(`Sync partagée reçue rev ${serverRevision}`, 'ok');
+    } else if(serverRevision === 0 && hasSharedState()) {
+      await pushSharedStateToCloud(true);
+    }
+    return true;
+  } catch(e) {
+    if(!silent) toast('Lecture sync partagée impossible', 'warn');
+    addLog(`Lecture sync partagée: ${e.message}`, 'warn');
+    return false;
+  }
+}
+
+async function syncSharedStateNow(silent=true) {
+  if(!connected) return false;
+  if(sharedSyncDirty) return pushSharedStateToCloud(silent);
+  return pullSharedStateFromCloud(silent);
+}
+
+function startSharedStateSync() {
+  patchLocalStorageForSharedSync();
+  if(sharedSyncTimer) clearInterval(sharedSyncTimer);
+  pullSharedStateFromCloud(true).then(() => {
+    if(sharedSyncRevision === 0 && hasSharedState()) pushSharedStateToCloud(true);
+  });
+  sharedSyncTimer = setInterval(() => syncSharedStateNow(true), 5000);
+}
+
+function stopSharedStateSync() {
+  if(sharedSyncTimer) clearInterval(sharedSyncTimer);
+  sharedSyncTimer = null;
+}
+
+function addMinutesHHMM(time, minutes) {
+  const parts = String(time || '00:00').split(':').map(Number);
+  const total = ((parts[0] || 0) * 60 + (parts[1] || 0) + minutes) % 1440;
+  return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+}
+
+function programToCloudPlan(program) {
+  return {
+    id: 'rb-seq-' + program.id,
+    type: 'rainbird_sequence',
+    name: program.name || 'Programme irrigation',
+    time: program.time,
+    days: program.days || [],
+    enabled: !!program.active,
+    zones: program.zones || [],
+    duration: program.duration || 20,
+    pause_min: 2,
+    start_pumps: true,
+    pumps: ['forage', 'wilo'],
+    source: 'dashboard'
+  };
+}
+
+function buildCloudPlanning() {
+  return irrigPrograms.map(programToCloudPlan);
+}
+
+async function syncPlanningToCloud(silent=false) {
+  if(!connected || planningSyncInProgress) return false;
+  planningSyncInProgress = true;
+  try {
+    const res = await fetch(`${apiUrl}/api/planning`, {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify({planning: buildCloudPlanning()}),
+      signal: AbortSignal.timeout(8000)
+    });
+    const data = await res.json();
+    if(!data.success) throw new Error(data.error || 'sync planning refusé');
+    if(!silent) toast('✅ Planning cloud synchronisé', 'ok');
+    addLog(`📅 Planning cloud synchronisé (${data.planning.length} entrée(s))`, 'ok');
+    return true;
+  } catch(e) {
+    if(!silent) toast('⚠️ Planning cloud non synchronisé', 'warn');
+    addLog(`⚠️ Planning cloud: ${e.message}`, 'warn');
+    return false;
+  } finally {
+    planningSyncInProgress = false;
+  }
+}
+
+async function fetchCloudPlanningStatus() {
+  if(!connected) return;
+  try {
+    const res = await fetch(`${apiUrl}/api/planning`, {headers: apiHeaders(), signal: AbortSignal.timeout(8000)});
+    const data = await res.json();
+    if(Array.isArray(data.planning)) addLog(`📅 Serveur: ${data.planning.length} planning(s), heure ${data.server_time || '--'}`, 'info');
+  } catch(e) {
+    addLog(`⚠️ Lecture planning cloud impossible: ${e.message}`, 'warn');
+  }
+}
+
 function renderProgramsList() {
   const list = document.getElementById('programs-list');
   const empty = document.getElementById('no-programs');
@@ -3985,6 +4224,7 @@ function saveProgram() {
   closeProgramModal();
   renderProgramsList();
   renderWeekCalendar();
+  syncPlanningToCloud(true);
 }
 
 function toggleProgramActive(idx) {
@@ -3992,6 +4232,7 @@ function toggleProgramActive(idx) {
   localStorage.setItem('irrigPrograms', JSON.stringify(irrigPrograms));
   renderProgramsList();
   renderWeekCalendar();
+  syncPlanningToCloud(true);
   toast(`${irrigPrograms[idx].active ? '▶️ Activé' : '⏸️ Désactivé'}: ${irrigPrograms[idx].name}`, 'info');
   addLog(`${irrigPrograms[idx].active ? 'Activé' : 'Désactivé'}: ${irrigPrograms[idx].name}`, 'info');
 }
@@ -4007,6 +4248,7 @@ function deleteProgram(idx) {
   localStorage.setItem('irrigPrograms', JSON.stringify(irrigPrograms));
   renderProgramsList();
   renderWeekCalendar();
+  syncPlanningToCloud(true);
   toast(`🗑️ ${name} supprimé`, 'warn');
   addLog(`Supprimé: ${name}`, 'warn');
 }
@@ -5420,6 +5662,9 @@ function connectCloud() {
         if(fetchInterval) clearInterval(fetchInterval);
         fetchInterval = setInterval(fetchRealData, interval*1000);
         fetchRealData();
+        fetchCloudPlanningStatus();
+        syncPlanningToCloud(true);
+        startSharedStateSync();
       }
     })
     .catch(e => {
@@ -5433,6 +5678,7 @@ function connectCloud() {
 function disconnectCloud() {
   if(fetchInterval){clearInterval(fetchInterval);fetchInterval=null;}
   connected = false;
+  stopSharedStateSync();
   updateConnStatus('DÉCONNECTÉ', 'badge-off');
   toast('🔌 Déconnecté', 'warn');
   addLog('Déconnexion', 'warn');

@@ -122,8 +122,31 @@ Jours :
 6 = dimanche
 ```
 
+## Version prête installation
+
+Cette version ajoute :
+
+- planning exécuté côté serveur, sauvegardé dans `planning_zarzis.json`
+- synchronisation des programmes du dashboard vers `/api/planning`
+- mode simulation backend via `G781_MODE=simulation` pour tester avant réception du matériel
+- protection API sur tous les endpoints `/api/*` sauf `/api/ping` quand `API_TOKEN` existe
+- verrouillage serveur minimal avant démarrage si défaut INVT/Salmson/Wilo déjà connu
+- icônes PWA PNG 192/512 pour installation mobile
+
+Avant réception des modules, tu peux laisser le dashboard en simulation locale. Pour tester le serveur sans matériel, mettre temporairement `G781_MODE=simulation` sur Render. À la réception des modules, remettre `G781_MODE=direct_tcp` et renseigner `G781_HOST` + `G781_PORT`.
+
+Le mot de passe local par défaut du dashboard est maintenant : `zarzis2026`. Le vrai verrouillage des commandes distantes reste `API_TOKEN` côté Render.
+
 ## Sécurité
 
 Les sécurités pompes doivent rester locales dans les coffrets d'origine : thermique, manque d'eau, pression, défaut variateur, arrêt d'urgence.
 
 Le dashboard sert à superviser, démarrer, arrêter et planifier. Il ne remplace pas une sécurité électrique ou hydraulique locale.
+
+Synchronisation multi-appareils :
+
+- Les données partagées sont centralisées sur Render via `/api/app-state`.
+- iPhone, tablette et PC récupèrent les réglages toutes les 5 secondes après connexion au cloud.
+- Sont synchronisés : zones, programmes, planning irrigation, exploitation, goutte-à-goutte, réservoirs, matériel, fertigation, localisation et compteurs.
+- Ne sont pas synchronisés : `API_TOKEN`, mot de passe local, son et mode maintenance. Ces éléments restent propres à chaque appareil pour la sécurité.
+- Après modification sur un appareil, attendre quelques secondes ou cliquer `SYNC APPAREILS` dans Connexion.

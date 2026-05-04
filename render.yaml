@@ -14,6 +14,14 @@ services:
         value: "502"
       - key: UPDATE_SEC
         value: "5"
+      - key: PLANNING_POLL_SEC
+        value: "10"
+      - key: LOCAL_TZ
+        value: Africa/Tunis
+      - key: SERVER_SAFETY_ENABLED
+        value: "true"
+      - key: ALLOW_PARAM_WRITE
+        value: "true"
       - key: MODBUS_BAUDRATE
         value: "9600"
       - key: MODBUS_SERIAL
