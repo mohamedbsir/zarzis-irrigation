@@ -1509,7 +1509,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="card-header">
       <div>
         <div class="card-title">🌧️ Rain Bird ESP-TM2v3</div>
-        <div class="card-subtitle">Configuration côté serveur · 6 zones · Module LNK</div>
+        <div class="card-subtitle" id="rb-card-subtitle">Configuration côté serveur · zones exploitation · Module LNK</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openZonesConfigModal()">⚙️ ZONES</button>
@@ -3072,8 +3072,91 @@ function getZoneFlow(z) {
   return (z.trees || 0) * (z.drippers || 0) * (z.dripperFlow || 0);
 }
 
-function saveZoneConfig() {
+function saveZoneConfig(syncExploitation=true) {
   localStorage.setItem('zoneConfig', JSON.stringify(zoneConfig));
+  if(syncExploitation && typeof irrigationZonesToExploitationZones === 'function') {
+    localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(irrigationZonesToExploitationZones()));
+    if(typeof renderExploitationZones === 'function') renderExploitationZones();
+    if(typeof renderExploitationConfig === 'function') renderExploitationConfig();
+    if(typeof applyGlobalExploitationSync === 'function') applyGlobalExploitationSync();
+  }
+}
+
+function cleanZoneLabel(label, fallback) {
+  const text = String(label || fallback || '').trim();
+  return text.replace(/^zone\s*\d+\s*[—\-:]\s*/i, '').trim() || fallback || 'Zone';
+}
+
+function irrigationZoneTypeFromExploitation(type) {
+  const text = String(type || '').toLowerCase();
+  if(text.includes('petit') || text.includes('futur')) return 'petit';
+  if(text.includes('mixte')) return 'mixte';
+  if(text.includes('grand')) return 'grand';
+  return 'autre';
+}
+
+function exploitationZoneTypeFromIrrigation(type) {
+  const text = String(type || '').toLowerCase();
+  if(text.includes('petit')) return 'Petit/Futur';
+  if(text.includes('grand')) return 'Grand';
+  return 'Mixte';
+}
+
+function exploitationZoneToIrrigationZone(zone, idx) {
+  const type = irrigationZoneTypeFromExploitation(zone.type);
+  const trees = parseFloat(zone.trees) || 0;
+  const drippers = parseFloat(zone.drippers) || 0;
+  const dripperFlow = parseFloat(zone.flow ?? zone.dripperFlow) || 0;
+  return {
+    num: idx + 1,
+    label: cleanZoneLabel(zone.name, `Zone ${idx + 1}`),
+    type,
+    trees,
+    drippers,
+    dripperFlow,
+    spacing: zone.spacing || '',
+  };
+}
+
+function irrigationZonesToExploitationZones() {
+  return zoneConfig.map(z => ({
+    name: `Zone ${z.num} — ${cleanZoneLabel(z.label, 'Zone')}`,
+    type: exploitationZoneTypeFromIrrigation(z.type),
+    trees: parseFloat(z.trees) || 0,
+    drippers: parseFloat(z.drippers) || 0,
+    flow: parseFloat(z.dripperFlow) || 0,
+    spacing: z.spacing || '',
+  }));
+}
+
+function normalizeRainBirdProgramsForZones() {
+  if(typeof rbPrograms === 'undefined' || !Array.isArray(rbPrograms)) return;
+  const valid = new Set(zoneConfig.map(z => z.num));
+  const allZones = zoneConfig.map(z => z.num);
+  let changed = false;
+  rbPrograms.forEach((program, idx) => {
+    const before = JSON.stringify(program.zones || []);
+    program.zones = (program.zones || []).filter(zone => valid.has(zone));
+    if(!program.zones.length) {
+      if(idx === 1) program.zones = allZones.filter((_, i) => i % 2 === 0);
+      else if(idx === 2) program.zones = allZones.filter((_, i) => i % 2 === 1);
+      else program.zones = [...allZones];
+      if(!program.zones.length) program.zones = [...allZones];
+    }
+    if(JSON.stringify(program.zones) !== before) changed = true;
+  });
+  if(changed && typeof saveRbPrograms === 'function') saveRbPrograms();
+}
+
+function syncIrrigationZonesFromExploitation(silent=true) {
+  if(typeof getExploitationZones !== 'function') return false;
+  const zones = getExploitationZones();
+  if(!Array.isArray(zones) || !zones.length) return false;
+  zoneConfig = zones.map(exploitationZoneToIrrigationZone);
+  saveZoneConfig(false);
+  normalizeRainBirdProgramsForZones();
+  if(!silent && typeof toast === 'function') toast('Zones irrigation synchronisées avec exploitation', 'ok');
+  return true;
 }
 
 // Programmes Rain Bird modifiables (3 programmes max)
@@ -3148,6 +3231,8 @@ function initApp() {
   if(cloudInput) cloudInput.value = apiUrl;
   if(tokenInput) tokenInput.value = apiToken;
   initSolarBar();
+  initExploitationModule();
+  syncIrrigationZonesFromExploitation(true);
   initZones();
   renderProgramsList();
   renderWeekCalendar();
@@ -3158,7 +3243,6 @@ function initApp() {
   setInterval(updateClock, 1000);
   loadCounters();
   calcFert();
-  initExploitationModule();
   simulateData();
   fetchWeather();
 }
@@ -3342,8 +3426,11 @@ function addChartPoint(vdc, power, pressure) {
 // ============ ZONES ============
 // ============ RAIN BIRD CONTROL ============
 function initZones() {
+  syncIrrigationZonesFromExploitation(true);
   // Init Rain Bird zones grid
   const grid = document.getElementById('rb-zones-grid');
+  const subtitle = document.getElementById('rb-card-subtitle');
+  if(subtitle) subtitle.textContent = `Configuration côté serveur · ${zoneConfig.length} zones exploitation · Module LNK`;
   if(!grid) return;
   grid.innerHTML = '';
   zoneConfig.forEach(z => {
@@ -3817,6 +3904,7 @@ function patchLocalStorageForSharedSync() {
 
 function applySharedStateToUi() {
   try { zoneConfig = JSON.parse(localStorage.getItem('zoneConfig')) || zoneConfig; } catch(e) {}
+  syncIrrigationZonesFromExploitation(true);
   try { rbPrograms = JSON.parse(localStorage.getItem('rbPrograms')) || rbPrograms; } catch(e) {}
   try { irrigPrograms = JSON.parse(localStorage.getItem('irrigPrograms') || '[]'); } catch(e) {}
   try { fertConfig = JSON.parse(localStorage.getItem('fertConfig')) || fertConfig; } catch(e) {}
@@ -5980,9 +6068,21 @@ function rbRunProgramCustom(idx) {
   startSequence();
 }
 
+function buildDefaultRbProgramsForCurrentZones() {
+  const allZones = zoneConfig.map(z => z.num);
+  return [
+    { id:1, name:'Arrosage', icon:'💧', zones:[...allZones], duration:20, type:'arrosage' },
+    { id:2, name:'Fertilisation', icon:'🧪', zones:allZones.filter((_, i) => i % 2 === 0), duration:30, type:'fertigation' },
+    { id:3, name:'Programme 3', icon:'🌊', zones:allZones.filter((_, i) => i % 2 === 1), duration:15, type:'arrosage' },
+  ].map(program => {
+    if(!program.zones.length) program.zones = [...allZones];
+    return program;
+  });
+}
+
 function resetRbPrograms() {
   if(!confirm('Réinitialiser les 3 programmes Rain Bird ?')) return;
-  rbPrograms = JSON.parse(JSON.stringify(DEFAULT_RB_PROGRAMS));
+  rbPrograms = buildDefaultRbProgramsForCurrentZones();
   saveRbPrograms();
   renderRbPrograms();
   toast('↺ Programmes réinitialisés', 'info');
@@ -6149,6 +6249,7 @@ function resetExploitationConfig(){
   localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(DEFAULT_EXPLOITATION_ZONES));
   if(typeof DEFAULT_DRIP_LINES !== 'undefined') localStorage.setItem('zarzis_drip_lines', JSON.stringify(DEFAULT_DRIP_LINES));
   initExploitationModule();
+  refreshIrrigationAfterExploitationChange();
   toast('↩️ Exploitation réinitialisée','info');
 }
 function renderExploitationZones(){
@@ -6178,10 +6279,22 @@ function collectExploitationZones(){
   });
   return zones;
 }
-function saveExploitationZonesSilent(){ localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(collectExploitationZones())); renderExploitationZones(); if(typeof applyGlobalExploitationSync==='function') applyGlobalExploitationSync(); }
+function refreshIrrigationAfterExploitationChange(){
+  syncIrrigationZonesFromExploitation(true);
+  if(typeof initZones === 'function') initZones();
+  if(typeof renderZonesConfigList === 'function') renderZonesConfigList();
+  if(typeof updateRbStats === 'function') updateRbStats();
+  if(typeof renderRbPrograms === 'function') renderRbPrograms();
+}
+function saveExploitationZonesSilent(){
+  localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(collectExploitationZones()));
+  refreshIrrigationAfterExploitationChange();
+  renderExploitationZones();
+  if(typeof applyGlobalExploitationSync==='function') applyGlobalExploitationSync();
+}
 function saveExploitationZones(){ saveExploitationZonesSilent(); toast('✅ Zones exploitation enregistrées','ok'); }
-function addExploitationZone(){ const zones=getExploitationZones(); zones.push({name:'Nouvelle zone', type:'Mixte', trees:0, drippers:2, flow:8, spacing:'6 x 6 m'}); localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); renderExploitationZones(); }
-function removeExploitationZone(i){ const zones=getExploitationZones(); zones.splice(i,1); localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); renderExploitationZones(); }
+function addExploitationZone(){ const zones=getExploitationZones(); zones.push({name:'Nouvelle zone', type:'Mixte', trees:0, drippers:2, flow:8, spacing:'6 x 6 m'}); localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); refreshIrrigationAfterExploitationChange(); renderExploitationZones(); }
+function removeExploitationZone(i){ const zones=getExploitationZones(); zones.splice(i,1); localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); refreshIrrigationAfterExploitationChange(); renderExploitationZones(); }
 function syncZonesFromExploitation(){
   const cfg=readExploitationForm();
   const zones=[
@@ -6190,7 +6303,7 @@ function syncZonesFromExploitation(){
     {name:'Zone 3 — grands oliviers', type:'Grand', trees:cfg.bigTrees-Math.ceil(cfg.bigTrees/3)-Math.floor(cfg.bigTrees/3), drippers:cfg.bigDrippers, flow:cfg.bigFlow, spacing:`${cfg.bigRow} x ${cfg.bigPlant} m`},
     {name:'Zone 4 — petits/futurs', type:'Petit/Futur', trees:cfg.smallTrees+cfg.futureTrees, drippers:cfg.smallDrippers, flow:cfg.smallFlow, spacing:`${cfg.smallRow} x ${cfg.smallPlant} m`}
   ];
-  localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); renderExploitationZones(); if(typeof applyGlobalExploitationSync==='function') applyGlobalExploitationSync(); toast('⚙️ Zones générées depuis la fiche exploitation','ok');
+  localStorage.setItem('zarzis_exploitation_zones', JSON.stringify(zones)); refreshIrrigationAfterExploitationChange(); renderExploitationZones(); if(typeof applyGlobalExploitationSync==='function') applyGlobalExploitationSync(); toast('⚙️ Zones générées depuis la fiche exploitation','ok');
 }
 
 
