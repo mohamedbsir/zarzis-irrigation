@@ -2,4 +2,3 @@ flask==3.0.0
 flask-cors==4.0.0
 pymodbus==3.6.3
 gunicorn==21.2.0
-pyrainbird==4.0.0

@@ -1509,7 +1509,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="card-header">
       <div>
         <div class="card-title">🌧️ Rain Bird ESP-TM2v3</div>
-        <div class="card-subtitle">Stick: 10061C5496B8 · WiFi: BABOUCHE 2 · 6 zones · Module LNK</div>
+        <div class="card-subtitle">Configuration côté serveur · 6 zones · Module LNK</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openZonesConfigModal()">⚙️ ZONES</button>
@@ -1520,7 +1520,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
     <!-- IP Connexion -->
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📡 Connexion Rain Bird local (WiFi BABOUCHE 2)</div>
+      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📡 Connexion Rain Bird local</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div>
           <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:4px">IP locale du Rain Bird</div>
@@ -2914,11 +2914,15 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="conn-row">
       <div class="conn-group">
         <div class="conn-label">URL Serveur Cloud</div>
-        <input type="text" class="conn-input wide" id="cloud-url" value="https://zarzis-irrigation.onrender.com" placeholder="https://xxx.onrender.com">
+        <input type="text" class="conn-input wide" id="cloud-url" value="https://zarzis-irrigation-1.onrender.com" placeholder="https://xxx.onrender.com">
       </div>
       <div class="conn-group">
         <div class="conn-label">Intervalle (s)</div>
         <input type="number" class="conn-input narrow" id="poll-interval" value="5">
+      </div>
+      <div class="conn-group">
+        <div class="conn-label">Token API</div>
+        <input type="password" class="conn-input wide" id="api-token" placeholder="API_TOKEN Render">
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
@@ -3011,7 +3015,8 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
 <script>
 // ============ CONFIG ============
-let apiUrl = localStorage.getItem('zarzis_api') || 'https://zarzis-irrigation.onrender.com';
+let apiUrl = localStorage.getItem('zarzis_api') || 'https://zarzis-irrigation-1.onrender.com';
+let apiToken = localStorage.getItem('zarzis_api_token') || '';
 let connected = false;
 let simInterval = null;
 let fetchInterval = null;
@@ -3030,6 +3035,15 @@ const RESTART_DELAY_MS = 60000;
 let lastStopAt = { forage: 0, wilo: 0 };
 let maintenanceMode = false;
 let activeAlarms = {};
+
+function apiHeaders(extra={}) {
+  const headers = {'Content-Type':'application/json', ...extra};
+  if(apiToken) {
+    headers.Authorization = `Bearer ${apiToken}`;
+    headers['X-API-Token'] = apiToken;
+  }
+  return headers;
+}
 
 // Zones irrigation — CONFIGURATION MODIFIABLE
 const DEFAULT_ZONES = [
@@ -3125,6 +3139,10 @@ async function changePw() {
 
 // ============ INIT ============
 function initApp() {
+  const cloudInput = document.getElementById('cloud-url');
+  const tokenInput = document.getElementById('api-token');
+  if(cloudInput) cloudInput.value = apiUrl;
+  if(tokenInput) tokenInput.value = apiToken;
   initSolarBar();
   initZones();
   renderProgramsList();
@@ -3399,7 +3417,7 @@ function rbConnect() {
   msgEl.style.color = 'var(--yellow)';
 
   fetch(`${apiUrl}/api/rainbird/setip`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method:'POST', headers: apiHeaders(),
     body:JSON.stringify({ip}), signal:AbortSignal.timeout(5000)
   })
   .then(r=>r.json())
@@ -3460,7 +3478,7 @@ function rbStartZone(num) {
   updateRbStats();
 
   fetch(`${apiUrl}/api/rainbird/start`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method:'POST', headers: apiHeaders(),
     body:JSON.stringify({zone:num, duration}), signal:AbortSignal.timeout(5000)
   })
   .then(r=>r.json())
@@ -3478,7 +3496,7 @@ function rbStartZone(num) {
 
 function rbStopZone(num) {
   fetch(`${apiUrl}/api/rainbird/stop`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method:'POST', headers: apiHeaders(),
     body:JSON.stringify({zone:num}), signal:AbortSignal.timeout(5000)
   }).catch(()=>{});
 
@@ -3496,7 +3514,7 @@ function rbAllOn() {
 
 function rbStopAll() {
   fetch(`${apiUrl}/api/rainbird/stop`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method:'POST', headers: apiHeaders(),
     body:JSON.stringify({}), signal:AbortSignal.timeout(5000)
   }).catch(()=>{});
 
@@ -4761,7 +4779,7 @@ async function readParam(device, addr, reg, id, divisor, unit) {
   try {
     const res = await fetch(`${apiUrl}/api/param/read`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: apiHeaders(),
       body: JSON.stringify({device, addr, reg}),
       signal: AbortSignal.timeout(5000)
     });
@@ -4806,7 +4824,7 @@ async function writeParam(device, addr, reg, id, multiplier, unit) {
   try {
     const res = await fetch(`${apiUrl}/api/param/write`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: apiHeaders(),
       body: JSON.stringify({device, addr, reg, value: rawVal}),
       signal: AbortSignal.timeout(5000)
     });
@@ -4858,7 +4876,7 @@ async function readParamSelect(device, addr, reg, id, mapping) {
 
   try {
     const res = await fetch(`${apiUrl}/api/param/read`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers: apiHeaders(),
       body: JSON.stringify({device, addr, reg}),
       signal: AbortSignal.timeout(5000)
     });
@@ -4894,7 +4912,7 @@ async function writeParamSelect(device, addr, reg, id) {
 
   try {
     const res = await fetch(`${apiUrl}/api/param/write`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method:'POST', headers: apiHeaders(),
       body: JSON.stringify({device, addr, reg, value: rawVal}),
       signal: AbortSignal.timeout(5000)
     });
@@ -5238,7 +5256,7 @@ function controlInverter(action){
   if(st){ st.textContent = action==='forward'?'MARCHE AVANT':action==='reverse'?'MARCHE ARRIÈRE':'VEILLE'; st.style.color = on?'var(--green)':'var(--text-dim)'; }
   toast(action==='stop'?'■ INVT arrêté':action==='reverse'?'↩ INVT marche arrière':'▶ INVT marche avant', action==='stop'?'warn':'ok');
   addLog(`Commande INVT : ${action}`, action==='stop'?'warn':'ok');
-  if(connected) fetch(`${apiUrl}/api/inverter`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action})}).catch(e=>addLog('Erreur commande INVT: '+e.message,'err'));
+  if(connected) fetch(`${apiUrl}/api/inverter`, {method:'POST', headers:apiHeaders(), body:JSON.stringify({action})}).catch(e=>addLog('Erreur commande INVT: '+e.message,'err'));
 }
 
 // ============ PUMP CONTROL ============
@@ -5381,12 +5399,14 @@ function updateConnStatus(text, cls) {
 function connectCloud() {
   const url = document.getElementById('cloud-url').value.trim();
   const interval = parseInt(document.getElementById('poll-interval').value)||5;
+  apiToken = document.getElementById('api-token')?.value.trim() || '';
   apiUrl = url.startsWith('http') ? url : `https://${url}`;
   localStorage.setItem('zarzis_api', apiUrl);
+  localStorage.setItem('zarzis_api_token', apiToken);
   updateConnStatus('CONNEXION...', 'badge-warn');
   addLog(`Connexion serveur cloud → ${apiUrl}`, 'info');
 
-  fetch(`${apiUrl}/api/ping`, {signal:AbortSignal.timeout(10000)})
+  fetch(`${apiUrl}/api/ping`, {headers: apiHeaders(), signal:AbortSignal.timeout(10000)})
     .then(r=>r.json())
     .then(d => {
       if(d.status==='ok') {
@@ -5395,6 +5415,7 @@ function connectCloud() {
         updateConnStatus('CONNECTÉ ✅', 'badge-on');
         toast('✅ Connecté au serveur cloud', 'ok');
         addLog(`✅ Serveur cloud connecté — G781: ${d.connected?'✅ CONNECTÉ':'⏳ ATTENTE'}`, 'ok');
+        if(d.auth_required && !apiToken) addLog('⚠️ API_TOKEN requis pour les commandes. Renseignez le token Render dans Connexion.', 'warn');
         if(simInterval){clearInterval(simInterval);simInterval=null;}
         if(fetchInterval) clearInterval(fetchInterval);
         fetchInterval = setInterval(fetchRealData, interval*1000);
@@ -5424,7 +5445,7 @@ function connectG781() {
   if(!ip) { toast('⚠️ Entrez l\'IP du USR-G781', 'warn'); return; }
   addLog(`Connexion USR-G781 → ${ip}:${port}`, 'info');
   fetch(`${apiUrl}/api/connect`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method:'POST', headers: apiHeaders(),
     body:JSON.stringify({ip, port:parseInt(port)})
   })
   .then(r=>r.json())
@@ -5436,14 +5457,17 @@ function connectG781() {
 }
 
 function fetchRealData() {
-  fetch(`${apiUrl}/api/status`, {signal:AbortSignal.timeout(5000)})
+  fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
-      updateINVT(d.invt.dc_bus_v||0, d.invt.freq_hz||0, d.invt.power_kw||0, d.invt.current_a||0, d.invt.voltage_v||0, Math.min(100,(d.invt.dc_bus_v||0)/7), d.invt.error_text?{code:'ERR',desc:d.invt.error_text}:null);
-      updateSalmson(d.salmson.current_a||0, d.salmson.float_low===1, d.salmson.float_high===1, d.salmson.running||false, d.salmson.error_text?{code:'ERR',desc:d.salmson.error_text}:null);
-      updateWilo(d.wilo.pressure||0, d.wilo.flow||0, d.wilo.running||false);
-      updateSolarBar(Math.min(100,(d.invt.dc_bus_v||0)/7));
-      addChartPoint(d.invt.dc_bus_v||0, d.invt.power_kw||0);
+      const invt = d.invt || {};
+      const salmson = d.salmson || {};
+      const wilo = d.wilo || {};
+      updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
+      updateSalmson(salmson.current_a||0, salmson.float_low===1, salmson.float_high===1, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
+      updateWilo(wilo.pressure||0, wilo.flow||0, wilo.running||false);
+      updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
+      addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
     })
     .catch(e => { setAlarm('COM', 'Perte communication serveur', false); addLog(`⚠️ Erreur lecture: ${e.message}`, 'warn'); });
 }
@@ -5452,8 +5476,8 @@ function sendModbusCmd(pump, action) {
   addLog(`[CMD] ${pump} → ${action.toUpperCase()}`, 'cmd');
   if(!connected) { addLog('[SIM] Commande simulée localement', 'info'); return; }
   fetch(`${apiUrl}/api/control`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pump, action}), signal:AbortSignal.timeout(5000)
+    method:'POST', headers: apiHeaders(),
+    body:JSON.stringify({pump, device:pump, action}), signal:AbortSignal.timeout(5000)
   })
   .then(r=>r.json())
   .then(d => {
@@ -5651,7 +5675,7 @@ function editRbProgram(idx) {
     btn.style.cssText = `padding:8px 14px;border-radius:6px;font-family:var(--mono);font-size:13px;cursor:pointer;font-weight:700;${isOn?'background:rgba(0,232,122,0.15);border:1px solid var(--green);color:var(--green)':'background:var(--surface2);border:1px solid var(--border);color:var(--text-dim)'}`;
     btn.onclick = () => {
       btn.classList.toggle('active');
-      const active = btn.classList.contains('active') ? false : true; // toggle
+      const active = btn.classList.contains('active');
       if(active) {
         btn.style.background = 'rgba(0,232,122,0.15)';
         btn.style.borderColor = 'var(--green)';

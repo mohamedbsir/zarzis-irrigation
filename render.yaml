@@ -12,9 +12,29 @@ services:
         value: ""
       - key: G781_PORT
         value: "502"
+      - key: UPDATE_SEC
+        value: "5"
       - key: MODBUS_BAUDRATE
         value: "9600"
       - key: MODBUS_SERIAL
         value: "8N1"
+      - key: ADDR_INVT
+        value: "1"
+      - key: ADDR_SALMSON
+        value: "2"
+      - key: ADDR_WILO
+        value: "3"
+      - key: ADDR_COFFRET4
+        value: "4"
+      - key: RAINBIRD_STICK_ID
+        value: ""
+      - key: RAINBIRD_SERIAL
+        value: ""
+      - key: RAINBIRD_KEYCODE
+        value: ""
+      - key: RAINBIRD_WIFI
+        value: ""
+      - key: RAINBIRD_ZONES
+        value: "1,2,3,4,5,6"
       - key: API_TOKEN
         generateValue: true

@@ -1,27 +1,35 @@
-# Zarzis Irrigation — Mise à jour GitHub V3
+# Zarzis Irrigation - Dashboard + API Cloud
 
-Cette mise à jour prépare le projet pour :
+Version corrigée pour Render / GitHub.
 
-- 4 appareils Modbus : INVT, Salmson, Wilo, coffret/capteur 4
-- démarrage / arrêt depuis le dashboard
-- planning simple de démarrage / arrêt
-- lecture des états, consommations et alertes
-- connexion USR-G781-E / DR302 selon architecture retenue
+Le projet contient :
 
-## Fichiers à mettre sur GitHub
+- un dashboard PWA : `index.html`, `manifest.webmanifest`, `sw.js`, `icon.svg`
+- une API Flask : `modbus_proxy_cloud.py`
+- la configuration Render : `render.yaml`
+- les dépendances Python : `requirements.txt`
+- les guides d'installation et d'achat matériel
 
-Remplacer ou ajouter :
+## Architecture
 
 ```txt
-modbus_proxy_cloud.py
-requirements.txt
-render.yaml
-README.md
-GUIDE_INSTALLATION_ZARZIS.txt
-MATERIEL_A_ACHETER.txt
+Pompes / coffrets / capteurs
+        -> RS485 Modbus RTU
+USR-DR302
+        -> Ethernet Modbus TCP
+USR-G781-E
+        -> 4G
+Render API + Dashboard
 ```
 
-## Variables Render importantes
+Important : Render expose surtout HTTP/HTTPS. Le mode `direct_tcp` fonctionne seulement si le G781-E est joignable depuis Internet, par exemple via IP publique, APN privé ou VPN.
+
+Si la SIM 4G n'a pas d'IP publique, utiliser plutôt :
+
+1. `G781_MODE=http_push` avec `/api/g781/push` et `/api/g781/commands`
+2. ou une passerelle locale DR302/Raspberry qui synchronise avec le cloud
+
+## Variables Render
 
 Dans Render > Environment :
 
@@ -29,20 +37,23 @@ Dans Render > Environment :
 G781_MODE=direct_tcp
 G781_HOST=
 G781_PORT=502
-API_TOKEN=mettre_un_mot_de_passe_long
-MODBUS_BAUDRATE=9600
-MODBUS_SERIAL=8N1
+API_TOKEN=mot_de_passe_long
+UPDATE_SEC=5
+ADDR_INVT=1
+ADDR_SALMSON=2
+ADDR_WILO=3
+ADDR_COFFRET4=4
 ```
 
-### Très important
+Rain Bird est optionnel. Ne pas mettre de clé Rain Bird directement dans le code :
 
-Render expose surtout HTTP/HTTPS. Si le G781-E est derrière une SIM 4G sans IP publique, le mode `direct_tcp` ne pourra pas l'appeler directement.
-
-Solutions possibles :
-
-1. APN privé / IP publique / VPN : `direct_tcp` possible.
-2. G781 en mode HTTPD Client : utiliser `/api/g781/push` et `/api/g781/commands`.
-3. Architecture pro locale : DR302/Raspberry local puis synchro cloud.
+```txt
+RAINBIRD_STICK_ID=
+RAINBIRD_SERIAL=
+RAINBIRD_KEYCODE=
+RAINBIRD_WIFI=
+RAINBIRD_ZONES=1,2,3,4,5,6
+```
 
 ## Endpoints API
 
@@ -50,17 +61,21 @@ Solutions possibles :
 GET  /api/ping
 GET  /api/status
 GET  /api/devices
+POST /api/connect
 POST /api/control
+POST /api/inverter
 POST /api/param/read
 POST /api/param/write
 GET  /api/planning
 POST /api/planning
 GET  /api/events
+POST /api/g781/push
+GET  /api/g781/commands
 ```
 
-## Commande start/stop
+Les commandes `POST` demandent `API_TOKEN` si la variable existe sur Render. Dans le dashboard, renseigner ce token dans l'onglet Connexion.
 
-Exemple :
+## Commande start/stop
 
 ```json
 POST /api/control
@@ -75,14 +90,15 @@ Appareils disponibles :
 ```txt
 invt
 salmson
+forage
 wilo
 coffret4
 all
 ```
 
-## Planning
+`forage` commande l'ensemble INVT + Salmson. `coffret4` est prévu pour lecture/supervision tant que son registre de commande réel n'est pas défini.
 
-Exemple :
+## Planning
 
 ```json
 POST /api/planning
@@ -94,7 +110,7 @@ POST /api/planning
 }
 ```
 
-Les jours sont :
+Jours :
 
 ```txt
 0 = lundi
@@ -110,4 +126,4 @@ Les jours sont :
 
 Les sécurités pompes doivent rester locales dans les coffrets d'origine : thermique, manque d'eau, pression, défaut variateur, arrêt d'urgence.
 
-Le dashboard sert seulement à superviser, démarrer, arrêter et planifier.
+Le dashboard sert à superviser, démarrer, arrêter et planifier. Il ne remplace pas une sécurité électrique ou hydraulique locale.
