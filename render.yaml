@@ -5,18 +5,30 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn modbus_proxy_cloud:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    # Quand tu passes au stockage Render payant, ajoute un disque persistant ici :
+    # disk:
+    #   name: zarzis-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # Puis mets DATA_DIR=/var/data et PERSISTENT_STORAGE_ENABLED=true.
     envVars:
       - key: G781_MODE
-        value: direct_tcp
+        value: http_push
       - key: G781_HOST
         value: ""
       - key: G781_PORT
         value: "502"
+      - key: G781_HTTP_PUSH_STALE_SEC
+        value: "45"
+      - key: G781_COMMAND_TTL_SEC
+        value: "300"
       - key: UPDATE_SEC
         value: "5"
       - key: PLANNING_POLL_SEC
         value: "10"
       - key: ENABLE_PLANNING
+        value: "false"
+      - key: PERSISTENT_STORAGE_ENABLED
         value: "false"
       - key: LOCAL_TZ
         value: Africa/Tunis
@@ -40,8 +52,42 @@ services:
         value: "1"
       - key: INVT_OFF_VALUE
         value: "5"
+      - key: INVT_NOMINAL_KW
+        value: "5.5"
+      - key: INVT_REG_FREQ_HZ
+        value: "0x3000"
+      - key: INVT_REG_SET_FREQ_HZ
+        value: "0x3001"
+      - key: INVT_REG_DC_BUS_V
+        value: "0x3002"
+      - key: INVT_REG_VOLTAGE_V
+        value: "0x3003"
+      - key: INVT_REG_CURRENT_A
+        value: "0x3004"
+      - key: INVT_REG_POWER_PCT
+        value: "0x3006"
+      - key: INVT_REG_FAULT_CODE
+        value: "0x5000"
       - key: SALMSON_FLOAT_LOW_OK_VALUE
         value: "1"
+      - key: SALMSON_COMMAND_ENABLED
+        value: "false"
+      - key: WILO_CMD_REG
+        value: "14"
+      - key: WILO_REG_PRESSURE
+        value: "25"
+      - key: WILO_REG_FLOW
+        value: "-1"
+      - key: WILO_REG_PUMP1_MODE
+        value: "40"
+      - key: WILO_REG_PUMP2_MODE
+        value: "41"
+      - key: WILO_REG_SWITCH_STATE
+        value: "61"
+      - key: WILO_REG_ERROR_CODE
+        value: "138"
+      - key: WILO_ACK_REG
+        value: "140"
       - key: MODBUS_BAUDRATE
         value: "9600"
       - key: MODBUS_SERIAL

@@ -2,8 +2,9 @@
 """
 Proxy cloud Zarzis Irrigation.
 
-Le serveur expose l'API HTTP du dashboard et, en mode direct_tcp, interroge la
-passerelle USR-G781-E/DR302 en Modbus TCP.
+Le serveur expose l'API HTTP du dashboard.
+En production 4G/NAT, il fonctionne en mode http_push avec un agent local.
+Le mode direct_tcp reste disponible seulement via VPN/APN prive.
 """
 
 from __future__ import annotations
@@ -38,12 +39,20 @@ def env_int(name: str, default: int) -> int:
     return int(str(value).strip(), 0)
 
 
+def env_float(name: str, default: float) -> float:
+    value = os.environ.get(name)
+    if value is None or str(value).strip() == "":
+        return default
+    return float(str(value).strip().replace(",", "."))
+
+
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.05-zarzis-manual-secure-v6"
+APP_VERSION = "2026.05.05-zarzis-http-push-v7"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
 APP_STATE_FILE = Path(os.environ.get("APP_STATE_FILE", str(DATA_DIR / "app_state_zarzis.json")))
+PERSISTENT_STORAGE_ENABLED = env_bool("PERSISTENT_STORAGE_ENABLED", False)
 
 G781_MODE = os.environ.get("G781_MODE", "direct_tcp").strip().lower()
 G781_HOST = os.environ.get("G781_HOST") or os.environ.get("USR_G781_IP", "")
@@ -67,7 +76,11 @@ ENABLE_PLANNING = env_bool("ENABLE_PLANNING", False)
 ALLOW_REMOTE_G781_CONNECT = env_bool("ALLOW_REMOTE_G781_CONNECT", False)
 COMMAND_MIN_INTERVAL_SEC = max(0, int(os.environ.get("COMMAND_MIN_INTERVAL_SEC", "30")))
 COMMAND_RESTART_DELAY_SEC = max(0, int(os.environ.get("COMMAND_RESTART_DELAY_SEC", "60")))
+G781_HTTP_PUSH_STALE_SEC = max(10, env_int("G781_HTTP_PUSH_STALE_SEC", 45))
+G781_COMMAND_TTL_SEC = max(30, env_int("G781_COMMAND_TTL_SEC", 300))
 SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
+SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
+INVT_NOMINAL_KW = env_float("INVT_NOMINAL_KW", 5.5)
 
 ADDR_INVT = int(os.environ.get("ADDR_INVT", "1"))
 ADDR_SALMSON = int(os.environ.get("ADDR_SALMSON", "2"))
@@ -98,12 +111,13 @@ SYNC_STATE_KEYS = {
 
 # Registres INVT GD100-PV.
 INVT_REGS = {
-    "freq_hz": env_int("INVT_REG_FREQ_HZ", 0x1000),
-    "current_a": env_int("INVT_REG_CURRENT_A", 0x1001),
-    "voltage_v": env_int("INVT_REG_VOLTAGE_V", 0x1002),
-    "dc_bus_v": env_int("INVT_REG_DC_BUS_V", 0x1003),
-    "power_kw": env_int("INVT_REG_POWER_KW", 0x1004),
-    "fault_code": env_int("INVT_REG_FAULT_CODE", 0x8000),
+    "freq_hz": env_int("INVT_REG_FREQ_HZ", 0x3000),
+    "set_freq_hz": env_int("INVT_REG_SET_FREQ_HZ", 0x3001),
+    "dc_bus_v": env_int("INVT_REG_DC_BUS_V", 0x3002),
+    "voltage_v": env_int("INVT_REG_VOLTAGE_V", 0x3003),
+    "current_a": env_int("INVT_REG_CURRENT_A", 0x3004),
+    "power_pct": env_int("INVT_REG_POWER_PCT", 0x3006),
+    "fault_code": env_int("INVT_REG_FAULT_CODE", 0x5000),
 }
 INVT_CMD = env_int("INVT_CMD_REG", 0x2000)
 INVT_ACTIONS = {
@@ -125,15 +139,18 @@ SALMSON_REGS = {
 }
 SALMSON_CMD = env_int("SALMSON_CMD_REG", 0x0100)
 
-# Registres Wilo.
+# Registres Wilo Control EC-B Booster (notice 43587401).
+# Les adresses sont zero-based: 40015 => 14, 40026 => 25.
 WILO_REGS = {
-    "pressure": env_int("WILO_REG_PRESSURE", 0x0001),
-    "flow": env_int("WILO_REG_FLOW", 0x0002),
-    "pump1": env_int("WILO_REG_PUMP1", 0x0010),
-    "pump2": env_int("WILO_REG_PUMP2", 0x0011),
-    "error_code": env_int("WILO_REG_ERROR_CODE", 0x0020),
+    "pressure": env_int("WILO_REG_PRESSURE", 25),
+    "flow": env_int("WILO_REG_FLOW", -1),
+    "pump1_mode": env_int("WILO_REG_PUMP1_MODE", 40),
+    "pump2_mode": env_int("WILO_REG_PUMP2_MODE", 41),
+    "switch_state": env_int("WILO_REG_SWITCH_STATE", 61),
+    "error_code": env_int("WILO_REG_ERROR_CODE", 138),
 }
-WILO_CMD = env_int("WILO_CMD_REG", 0x0100)
+WILO_CMD = env_int("WILO_CMD_REG", 14)
+WILO_ACK_REG = env_int("WILO_ACK_REG", 140)
 
 # Coffret/capteur 4 : registres génériques à adapter si le matériel réel change.
 COFFRET4_REGS = {
@@ -299,9 +316,18 @@ def add_minutes(time_text: str, minutes: int) -> str:
     return f"{total // 60:02d}:{total % 60:02d}"
 
 
+def http_push_is_fresh() -> bool:
+    if G781_MODE not in HTTP_PUSH_MODES:
+        return False
+    last_update = float(cache.get("last_update") or 0)
+    return last_update > 0 and (time.time() - last_update) <= G781_HTTP_PUSH_STALE_SEC
+
+
 def client_is_open() -> bool:
     if G781_MODE in SIMULATION_MODES:
         return True
+    if G781_MODE in HTTP_PUSH_MODES:
+        return http_push_is_fresh()
     if client is None:
         return False
     connected = getattr(client, "connected", None)
@@ -341,6 +367,13 @@ def connect(host: str | None = None, port: int | None = None) -> bool:
             add_event("info", "Mode simulation backend actif")
             return True
 
+        if G781_MODE in HTTP_PUSH_MODES:
+            cache["connected"] = http_push_is_fresh()
+            cache["g781_ip"] = "HTTP PUSH - en attente agent local"
+            cache["mode"] = G781_MODE
+            add_event("info", "Mode HTTP PUSH actif: aucune IP publique G781 necessaire")
+            return True
+
         if not host:
             cache["connected"] = False
             cache["g781_ip"] = "En attente G781_HOST"
@@ -370,6 +403,8 @@ def connect(host: str | None = None, port: int | None = None) -> bool:
 def read_reg(addr: int, reg: int, count: int = 1):
     if G781_MODE in SIMULATION_MODES:
         return [0] * count
+    if G781_MODE in HTTP_PUSH_MODES:
+        return None
     if not client_is_open():
         return None
     try:
@@ -388,6 +423,8 @@ def write_reg(addr: int, reg: int, value: int) -> bool:
     if G781_MODE in SIMULATION_MODES:
         add_event("info", f"[SIMULATION] Écriture addr={addr} reg={hex(reg)} val={value}")
         return True
+    if G781_MODE in HTTP_PUSH_MODES:
+        return False
     if not client_is_open():
         return False
     try:
@@ -402,10 +439,17 @@ def write_reg(addr: int, reg: int, value: int) -> bool:
 
 
 def queue_command(command: dict) -> dict:
-    item = {"id": int(time.time() * 1000), "ts": now_iso(), **command}
+    item = {"id": int(time.time() * 1000), "ts": now_iso(), "expires_at": time.time() + G781_COMMAND_TTL_SEC, **command}
     pending_commands.append(item)
-    add_event("info", "Commande ajoutée à la file HTTPD Client", command=item)
+    add_event("info", "Commande ajoutee a la file HTTP PUSH", command=item)
     return item
+
+
+def cleanup_pending_commands() -> None:
+    current = time.time()
+    kept = [cmd for cmd in pending_commands if float(cmd.get("expires_at", current)) >= current]
+    pending_commands.clear()
+    pending_commands.extend(kept)
 
 
 # ============ LECTURE APPAREILS ============
@@ -427,23 +471,41 @@ def decode_salmson(code: int) -> str:
     }.get(code, f"Erreur Salmson {code}")
 
 
+def decode_wilo_error_bitmap(bits: int) -> str:
+    names = {
+        0: "Defaut capteur",
+        1: "Pression trop haute",
+        2: "Pression trop basse",
+        5: "Alarme pompe 1",
+        6: "Alarme pompe 2",
+        7: "Alarme pompe 3",
+        15: "Niveau haut",
+        20: "Defaut alimentation",
+        21: "Fuite detectee",
+    }
+    active = [label for bit, label in names.items() if bits & (1 << bit)]
+    return " / ".join(active) if active else f"Erreur Wilo {bits}"
+
+
 def get_invt() -> dict:
     data = {}
     for name, reg in INVT_REGS.items():
+        if reg < 0:
+            continue
         value = read_reg(ADDR_INVT, reg)
         if value is None:
             continue
         raw = value[0]
-        if name == "freq_hz":
+        if name in {"freq_hz", "set_freq_hz"}:
             data[name] = round(raw / 100, 2)
-        elif name == "current_a":
+        elif name in {"current_a", "dc_bus_v", "power_pct"}:
             data[name] = round(raw / 10, 1)
-        elif name == "power_kw":
-            data[name] = round(raw / 10, 2)
         else:
             data[name] = raw
     if not data:
         return unavailable_state()
+    if "power_pct" in data:
+        data["power_kw"] = round((data["power_pct"] / 100) * INVT_NOMINAL_KW, 2)
     data["running"] = data.get("freq_hz", 0) > 0.5
     fault = data.get("fault_code", 0)
     data["error_text"] = decode_invt(fault) if fault else None
@@ -473,16 +535,21 @@ def get_salmson() -> dict:
 def get_wilo() -> dict:
     data = {}
     for name, reg in WILO_REGS.items():
-        value = read_reg(ADDR_WILO, reg)
+        if reg < 0:
+            continue
+        count = 2 if name == "error_code" else 1
+        value = read_reg(ADDR_WILO, reg, count=count)
         if value is None:
             continue
-        raw = value[0]
-        data[name] = round(raw / 100, 2) if name in {"pressure", "flow"} else raw
+        raw = value[0] if count == 1 else (value[0] | (value[1] << 16))
+        data[name] = round(raw / 10, 1) if name in {"pressure", "flow"} else raw
     if not data:
         return unavailable_state()
-    data["running"] = data.get("pump1", 0) == 1 or data.get("pump2", 0) == 1
+    switch_state = int(data.get("switch_state", 0) or 0)
+    data["running"] = bool(switch_state & 0x01)
+    data["running_source"] = "Wilo switch_box_state.SBM"
     error = data.get("error_code", 0)
-    data["error_text"] = f"Erreur Wilo {error}" if error else None
+    data["error_text"] = decode_wilo_error_bitmap(error) if error else None
     data["status"] = "ERREUR" if error else ("EN MARCHE" if data["running"] else "ARRÊTÉ")
     data["last_seen"] = now_iso()
     return data
@@ -641,6 +708,8 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
         return False, f"Action invalide: {action}"
     if device == "coffret4":
         return False, "Aucun registre de commande défini pour coffret4"
+    if device == "salmson" and not SALMSON_COMMAND_ENABLED:
+        return False, "Commande Salmson desactivee: table Modbus EC-L non validee"
 
     validation_error = registers_validation_error(action)
     if validation_error:
@@ -663,7 +732,13 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
         return True, None
 
     if G781_MODE in HTTP_PUSH_MODES:
-        queue_command({"type": "control", "device": device, "action": action, "source": source})
+        queue_command({
+            "type": "control",
+            "device": device,
+            "action": action,
+            "source": source,
+            "salmson_command_enabled": SALMSON_COMMAND_ENABLED,
+        })
         record_control_success(device, action)
         return True, None
 
@@ -676,7 +751,9 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
 
         ok = True
         if device == "forage":
-            ok = write_reg(ADDR_INVT, INVT_CMD, invt_value) and write_reg(ADDR_SALMSON, SALMSON_CMD, value)
+            ok = write_reg(ADDR_INVT, INVT_CMD, invt_value)
+            if SALMSON_COMMAND_ENABLED:
+                ok = ok and write_reg(ADDR_SALMSON, SALMSON_CMD, value)
         elif device == "salmson":
             ok = write_reg(ADDR_SALMSON, SALMSON_CMD, value)
         elif device == "invt":
@@ -684,11 +761,9 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
         elif device == "wilo":
             ok = write_reg(ADDR_WILO, WILO_CMD, value)
         elif device == "all":
-            ok = (
-                write_reg(ADDR_INVT, INVT_CMD, invt_value)
-                and write_reg(ADDR_SALMSON, SALMSON_CMD, value)
-                and write_reg(ADDR_WILO, WILO_CMD, value)
-            )
+            ok = write_reg(ADDR_INVT, INVT_CMD, invt_value) and write_reg(ADDR_WILO, WILO_CMD, value)
+            if SALMSON_COMMAND_ENABLED:
+                ok = ok and write_reg(ADDR_SALMSON, SALMSON_CMD, value)
 
     if ok:
         record_control_success(device, action)
@@ -1000,18 +1075,21 @@ def start_background_threads() -> None:
 # ============ API ============
 @app.route("/api/ping")
 def ping():
+    connected = client_is_open()
     return jsonify(
         {
             "status": "ok",
             "version": APP_VERSION,
             "mode": G781_MODE,
-            "connected": cache["connected"],
+            "connected": connected,
             "g781_ip": cache["g781_ip"],
             "auth_required": bool(API_TOKEN),
             "server_time": local_now().isoformat(),
             "timezone": LOCAL_TZ_NAME,
             "planning_enabled": ENABLE_PLANNING,
             "planning_count": len(planning),
+            "http_push_stale_sec": G781_HTTP_PUSH_STALE_SEC if G781_MODE in HTTP_PUSH_MODES else None,
+            "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED},
             "simulation": G781_MODE in SIMULATION_MODES,
         }
     )
@@ -1020,9 +1098,12 @@ def ping():
 @app.route("/api/status")
 def status():
     with lock:
+        connected = client_is_open()
+        if G781_MODE in HTTP_PUSH_MODES:
+            cache["connected"] = connected
         return jsonify(
             {
-                "connected": cache["connected"],
+                "connected": connected,
                 "last_update": cache["last_update"],
                 "g781_ip": cache["g781_ip"],
                 "mode": cache["mode"],
@@ -1030,6 +1111,9 @@ def status():
                 "timezone": LOCAL_TZ_NAME,
                 "planning_enabled": ENABLE_PLANNING,
                 "planning_count": len(planning),
+                "http_push_stale_sec": G781_HTTP_PUSH_STALE_SEC if G781_MODE in HTTP_PUSH_MODES else None,
+                "commands_pending": len(pending_commands),
+                "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED},
                 "invt": cache["invt"],
                 "salmson": cache["salmson"],
                 "wilo": cache["wilo"],
@@ -1061,7 +1145,7 @@ def api_connect():
     else:
         host = G781_HOST
         port = G781_PORT
-    if not host and G781_MODE not in SIMULATION_MODES:
+    if not host and G781_MODE not in SIMULATION_MODES and G781_MODE not in HTTP_PUSH_MODES:
         return jsonify({"success": False, "error": "G781_HOST non configure cote serveur"}), 400
     ok = connect(host, port)
     return jsonify(
@@ -1106,6 +1190,8 @@ def param_read():
     addr = parse_int(body.get("addr"), 1)
     reg = parse_int(body.get("reg"), 0)
     count = min(max(parse_int(body.get("count"), 1), 1), 64)
+    if G781_MODE in HTTP_PUSH_MODES:
+        return jsonify({"success": False, "error": "Lecture registre brute indisponible en HTTP PUSH: utiliser l'agent local ou qModMaster sur site"}), 409
     if not client_is_open():
         return jsonify({"success": False, "error": "USR-G781 non connecté"}), 503
     with lock:
@@ -1123,6 +1209,8 @@ def param_write():
     addr = parse_int(body.get("addr"), 1)
     reg = parse_int(body.get("reg"), 0)
     value = parse_int(body.get("value"), 0)
+    if G781_MODE in HTTP_PUSH_MODES:
+        return jsonify({"success": False, "error": "Ecriture registre brute indisponible en HTTP PUSH depuis le cloud"}), 409
     if not client_is_open():
         return jsonify({"success": False, "error": "USR-G781 non connecté"}), 503
     with lock:
@@ -1223,21 +1311,30 @@ def api_events():
 def g781_push():
     body = request.get_json(silent=True) or {}
     with lock:
+        payload = body.get("devices") if isinstance(body.get("devices"), dict) else body
         for key in ("invt", "salmson", "wilo", "coffret4"):
-            if isinstance(body.get(key), dict):
-                cache[key].update(body[key])
+            item = payload.get(key) if isinstance(payload, dict) else None
+            if isinstance(item, dict):
+                cache[key].update(item)
+                if "last_seen" not in item:
+                    cache[key]["last_seen"] = now_iso()
         cache["connected"] = True
-        cache["g781_ip"] = request.headers.get("X-Forwarded-For", request.remote_addr or "G781 HTTPD Client")
+        cache["mode"] = G781_MODE
+        cache["g781_ip"] = str(body.get("agent_id") or request.headers.get("X-Forwarded-For") or request.remote_addr or "agent local")
         cache["last_update"] = time.time()
+        cleanup_pending_commands()
+        queued = len(pending_commands)
     add_event("info", "Push G781 reçu")
-    return jsonify({"success": True, "commands_pending": len(pending_commands)})
+    return jsonify({"success": True, "commands_pending": queued, "server_time": local_now().isoformat()})
 
 
 @app.route("/api/g781/commands")
 def g781_commands():
-    commands = list(pending_commands)
-    pending_commands.clear()
-    return jsonify({"commands": commands})
+    with lock:
+        cleanup_pending_commands()
+        commands = list(pending_commands)
+        pending_commands.clear()
+    return jsonify({"success": True, "commands": commands, "count": len(commands), "server_time": local_now().isoformat()})
 
 
 @app.route("/api/rainbird/config")

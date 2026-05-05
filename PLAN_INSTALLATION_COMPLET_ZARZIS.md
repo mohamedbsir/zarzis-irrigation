@@ -8,7 +8,8 @@ Objectif : gérer 4 appareils avec le dashboard Zarzis, depuis téléphone, avec
 Téléphone / PC
   -> Dashboard PWA installé
   -> Render API HTTPS
-  -> USR-G781-E 4G
+  -> Agent local Zarzis en HTTPS sortant
+  -> USR-G781-E 4G / LAN local
   -> USR-DR302 Ethernet vers RS485
   -> Bus RS485 Modbus RTU
   -> 4 appareils
@@ -168,15 +169,17 @@ Procedure de mapping :
 2. Tester avec qModMaster ou Modbus Poll en local, pas depuis le cloud.
 3. Lire les registres de mesure et verifier que les valeurs changent correctement.
 4. Lire les registres de defaut et provoquer seulement des etats sans danger si possible.
-5. Confirmer le registre de commande marche/arret de chaque appareil.
-6. Pour INVT, verifier la valeur d'arret : `INVT_OFF_VALUE=5` est une hypothese tant que la notice et le test ne confirment pas.
-7. Pour Salmson, verifier le flotteur : si `0 = eau presente`, mettre `SALMSON_FLOAT_LOW_OK_VALUE=0`; si `1 = eau presente`, garder `1`.
-8. Pour Wilo et Coffret4, remplacer les registres generiques par les adresses reelles via les variables `WILO_REG_*`, `WILO_CMD_REG`, `COFFRET4_REG_*`.
-9. Faire un cycle local on/off avec les securites locales actives.
-10. Seulement apres ces tests, mettre :
+5. INVT : verifier `0x2000`, marche `1`, arret `5`, lectures `0x3000` a `0x3006`.
+6. Wilo EC-B : verifier 40015, 40026, 40041, 40042, 40062, 40139-40140.
+7. Pour Salmson, garder `SALMSON_COMMAND_ENABLED=false` tant que la table Modbus EC-L complete n'est pas validee.
+8. Verifier le flotteur : si `0 = eau presente`, mettre `SALMSON_FLOAT_LOW_OK_VALUE=0`; si `1 = eau presente`, garder `1`.
+9. Pour Coffret4, remplacer les registres generiques par les adresses reelles via les variables `COFFRET4_REG_*`.
+10. Faire un cycle local on/off avec les securites locales actives.
+11. Seulement apres ces tests, mettre :
 
 ```txt
 MODBUS_REGISTERS_VALIDATED=true
+EDGE_ALLOW_START=true sur l'agent local
 ```
 
 ## Phase 4 - Configurer le USR-DR302
@@ -193,7 +196,7 @@ Configuration recommandée :
 ```txt
 Mode réseau      : IP fixe ou DHCP réservé
 Mode de travail  : Modbus TCP vers Modbus RTU
-Port local TCP   : 502 sur reseau prive VPN/APN
+Port local TCP   : 502 sur LAN local uniquement
 RS485 vitesse    : 9600
 RS485 format     : None / 8 / 1
 Modbus gateway   : activé
@@ -227,7 +230,7 @@ Stop     = 1
 8. Régler le port local TCP :
 
 ```txt
-502 uniquement si reseau prive/VPN/APN
+502 uniquement sur LAN local ou reseau prive/VPN/APN
 Ne pas exposer 502/1502 sur Internet ouvert
 ```
 
@@ -264,14 +267,15 @@ G781 LAN IP = 192.168.8.1
 DR302 IP    = 192.168.8.10
 ```
 
-Pour que Render puisse appeler le DR302, il faut une de ces solutions :
+Le choix retenu est HTTP PUSH : Render ne doit pas appeler le DR302 directement.
 
-Solution A - recommandee en production :
+Solution A - retenue maintenant :
 
 ```txt
-VPN ou APN prive
-Le G781/DR302 reste joignable seulement sur une IP privee
-Render ou la passerelle locale parle au site via ce reseau prive
+Agent local Zarzis sur PC/Raspberry
+Il lit le DR302 en local
+Il pousse vers Render en HTTPS
+Il recupere les commandes via /api/g781/commands
 ```
 
 Ne pas faire en production :
@@ -285,22 +289,22 @@ Risque            : Modbus non chiffre et non authentifie
 Dans Render :
 
 ```txt
+G781_MODE=http_push
+G781_HOST=
+G781_PORT=502
+```
+
+Solution B - option future seulement si APN/VPN :
+
+```txt
 G781_MODE=direct_tcp
 G781_HOST=IP privee VPN/APN du G781-E
 G781_PORT=502
 ```
 
-Solution B - si pas de VPN/APN prive :
+Ne jamais exposer Modbus TCP directement sur Internet.
 
-```txt
-G781_MODE=http_push
-Le G781 ou une passerelle locale pousse les états vers Render
-Les commandes sont récupérées via /api/g781/commands
-```
-
-Cette solution demande une configuration plus spécifique du mode HTTPD Client et du format envoyé. Elle sera à finaliser avec le module devant nous.
-
-Solution C - la plus robuste à long terme :
+Solution C - evolution autonome a long terme :
 
 ```txt
 Raspberry Pi ou mini PC local
@@ -314,9 +318,11 @@ Le planning peut continuer même si le cloud tombe
 Variables à mettre dans Render :
 
 ```txt
-G781_MODE=direct_tcp
-G781_HOST=IP privee VPN/APN du G781-E
+G781_MODE=http_push
+G781_HOST=
 G781_PORT=502
+G781_HTTP_PUSH_STALE_SEC=45
+G781_COMMAND_TTL_SEC=300
 API_TOKEN=mot_de_passe_long
 UPDATE_SEC=5
 CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
@@ -329,22 +335,53 @@ COMMAND_RESTART_DELAY_SEC=60
 INVT_CMD_REG=0x2000
 INVT_ON_VALUE=1
 INVT_OFF_VALUE=5
+INVT_NOMINAL_KW=5.5
+INVT_REG_FREQ_HZ=0x3000
+INVT_REG_SET_FREQ_HZ=0x3001
+INVT_REG_DC_BUS_V=0x3002
+INVT_REG_VOLTAGE_V=0x3003
+INVT_REG_CURRENT_A=0x3004
+INVT_REG_POWER_PCT=0x3006
+INVT_REG_FAULT_CODE=0x5000
 SALMSON_FLOAT_LOW_OK_VALUE=1
+SALMSON_COMMAND_ENABLED=false
+WILO_CMD_REG=14
+WILO_REG_PRESSURE=25
+WILO_REG_FLOW=-1
+WILO_REG_PUMP1_MODE=40
+WILO_REG_PUMP2_MODE=41
+WILO_REG_SWITCH_STATE=61
+WILO_REG_ERROR_CODE=138
 ADDR_INVT=1
 ADDR_SALMSON=2
 ADDR_WILO=3
 ADDR_COFFRET4=4
 ```
 
-Le port 502 est acceptable seulement en prive :
+Le port 502 reste local entre l'agent et le DR302. Ne pas exposer directement 502 ou 1502 sur Internet.
+
+Stockage Render :
 
 ```txt
-G781_PORT=502
+Plan gratuit = stockage ephemere, OK pour tests.
+Avant de compter durablement sur /api/app-state, passer au disque Render payant :
+DATA_DIR=/var/data
+PERSISTENT_STORAGE_ENABLED=true
 ```
 
-Ne pas exposer directement 502 ou 1502 sur Internet. Un port externe different ne remplace pas un VPN/APN prive.
-
 ## Phase 7 - Connecter l'application
+
+Avant le dashboard, lancer l'agent local sur le PC/Raspberry du site :
+
+```txt
+python -m pip install -r requirements.txt
+set CLOUD_URL=https://zarzis-irrigation-1.onrender.com
+set API_TOKEN=API_TOKEN_RENDER
+set DR302_HOST=192.168.8.10
+set DR302_PORT=502
+set EDGE_ALLOW_START=false
+python zarzis_edge_agent.py
+```
 
 Dans le dashboard :
 
@@ -357,19 +394,13 @@ Token API = API_TOKEN Render
 ```
 
 3. Cliquer `CONNECTER`.
-4. Si le G781 est joignable via VPN/APN prive, renseigner :
-
-```txt
-IP privee VPN/APN = IP du G781-E
-Port Modbus = 502
-```
-
-5. Cliquer `Connecter G781`.
+4. Cliquer `Verifier HTTP PUSH`.
+5. Attendre que le champ dernier agent affiche `zarzis-edge-agent` ou l'adresse source.
 6. Vérifier le badge :
 
 ```txt
 Serveur cloud connecté
-G781 connecté
+Agent local connecté
 ```
 
 ## Phase 8 - Mise en service progressive
@@ -380,7 +411,7 @@ Ne jamais brancher les 4 appareils d'un coup pour le premier test.
 
 ```txt
 Objectif : vérifier réseau + port TCP
-Résultat attendu : Render peut joindre le port du DR302/G781
+Résultat attendu : l'agent local lit le DR302 puis Render voit un push
 ```
 
 Étape 2 : INVT seul
@@ -406,6 +437,7 @@ Tester ON seulement si eau et protections OK
 ```txt
 Adresse = 3
 Lire pression, débit, pompe 1, pompe 2, défaut
+Registres confirmes a tester : 40015, 40026, 40041, 40042, 40062, 40139-40140
 Tester arrêt
 Tester marche avec pression/débit surveillés
 ```
@@ -443,16 +475,18 @@ Checklist :
 [ ] L'arrêt d'urgence coupe localement
 [ ] Le dashboard lit les états avant d'écrire
 [ ] API_TOKEN renseigné dans l'application
+[ ] Agent local lance et visible dans le dashboard
+[ ] EDGE_ALLOW_START=true seulement apres essais terrain
 [ ] MODBUS_REGISTERS_VALIDATED=true seulement apres mapping reel
 [ ] Mode maintenance activé seulement pour tester les commandes
 ```
 
 ## Pannes fréquentes
 
-Serveur Render OK mais G781 non connecté :
+Serveur Render OK mais agent non connecté :
 
 ```txt
-Vérifier VPN/APN prive, routage vers le G781/DR302, pare-feu et G781_PORT Render.
+Verifier que zarzis_edge_agent.py tourne, API_TOKEN, CLOUD_URL, Internet local et DR302_HOST.
 ```
 
 Lecture impossible d'un appareil :
@@ -470,8 +504,8 @@ Deux appareils ont peut-être la même adresse, ou le bus RS485 est mal câblé.
 Ça marche en local mais pas depuis Render :
 
 ```txt
-La SIM est probablement derrière NAT opérateur.
-Demander APN privé/VPN, ou passer en passerelle locale. Eviter IP publique + redirection Modbus.
+En http_push, le NAT operateur n'est pas le probleme principal.
+Verifier plutot que l'agent local peut joindre Render en HTTPS et que le token est bon.
 ```
 
 L'appli ne s'installe pas sur téléphone :
@@ -487,10 +521,10 @@ Sur iPhone utiliser Safari -> Partager -> Ajouter à l'écran d'accueil.
 1. Version exacte du G781-E.
 2. IP LAN par défaut et identifiants de configuration.
 3. APN exact de la SIM.
-4. Si l'opérateur propose un APN prive ou une option VPN machine-to-machine.
+4. Si l'opérateur propose un APN prive ou une option VPN machine-to-machine, utile seulement pour direct_tcp futur.
 5. Registres Modbus exacts du coffret/capteur 4.
-6. Registres réels de commande marche/arrêt Salmson/Wilo/INVT si différents de ceux déjà préparés dans le code.
-7. Valeur exacte INVT arrêt (`INVT_OFF_VALUE`) et sens du flotteur Salmson (`SALMSON_FLOAT_LOW_OK_VALUE`).
+6. Table Modbus EC-L complete du Salmson avant d'activer `SALMSON_COMMAND_ENABLED`.
+7. Confirmation terrain INVT arrêt (`INVT_OFF_VALUE=5`) et sens du flotteur Salmson (`SALMSON_FLOAT_LOW_OK_VALUE`).
 
 ## Décision importante
 
@@ -508,7 +542,7 @@ AJOUT VERSION PRÊTE INSTALLATION
 - API_TOKEN Render obligatoire pour les commandes et la lecture API.
 - Le planning cloud est desactive par defaut (ENABLE_PLANNING=false) pour rester en lecture/commande manuelle.
 - Pour tester avant réception du matériel : G781_MODE=simulation.
-- Pour mise en service réelle : G781_MODE=direct_tcp seulement via VPN/APN prive, G781_HOST=IP privee du G781-E, G781_PORT=502.
+- Pour mise en service réelle : G781_MODE=http_push et lancement de zarzis_edge_agent.py sur site.
 - ALLOW_REMOTE_G781_CONNECT=false : le navigateur ne choisit pas l'IP du G781 en production.
 - API_TOKEN accepte seulement les headers Authorization Bearer ou X-API-Token, pas le token dans l'URL.
 - /api/param/write reste desactive par defaut avec ALLOW_PARAM_WRITE=false.

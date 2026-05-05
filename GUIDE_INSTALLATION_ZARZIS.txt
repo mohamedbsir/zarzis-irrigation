@@ -15,15 +15,16 @@ USR-DR302
         ↓ Ethernet
 USR-G781-E
         ↓ 4G
+Agent local Zarzis
+        ↓ HTTPS sortant
 Render API
         ↓
 Dashboard PWA
 
 NOTE CLOUD
 ----------
-Le mode direct_tcp doit etre utilise seulement si le G781-E est joignable depuis Render
-via un reseau prive (APN prive ou VPN). Si la SIM 4G est derrière un NAT opérateur,
-utiliser le mode HTTPD Client/push ou une passerelle locale.
+Le mode choisi est HTTP PUSH. L'agent local sort vers Render en HTTPS, donc le NAT
+operateur 4G ne bloque pas le systeme. direct_tcp est reserve a un APN prive/VPN.
 
 MATÉRIEL
 --------
@@ -74,7 +75,7 @@ ORDRE DE TEST
 5. Configurer IP fixe DR302.
 6. Brancher un seul appareil RS485.
 7. Tester lecture registre.
-8. Tester start/stop.
+8. Tester lectures. Les start restent bloques tant que EDGE_ALLOW_START=false.
 9. Ajouter le deuxième appareil.
 10. Ajouter le troisième appareil.
 11. Ajouter le quatrième.
@@ -82,9 +83,11 @@ ORDRE DE TEST
 
 CONFIGURATION RENDER MINIMALE
 -----------------------------
-G781_MODE=direct_tcp
-G781_HOST=IP privee VPN/APN du G781-E
+G781_MODE=http_push
+G781_HOST=
 G781_PORT=502
+G781_HTTP_PUSH_STALE_SEC=45
+G781_COMMAND_TTL_SEC=300
 API_TOKEN=mot de passe long
 CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
 ENABLE_PLANNING=false
@@ -96,11 +99,49 @@ COMMAND_RESTART_DELAY_SEC=60
 INVT_CMD_REG=0x2000
 INVT_ON_VALUE=1
 INVT_OFF_VALUE=5
+INVT_NOMINAL_KW=5.5
+INVT_REG_FREQ_HZ=0x3000
+INVT_REG_SET_FREQ_HZ=0x3001
+INVT_REG_DC_BUS_V=0x3002
+INVT_REG_VOLTAGE_V=0x3003
+INVT_REG_CURRENT_A=0x3004
+INVT_REG_POWER_PCT=0x3006
+INVT_REG_FAULT_CODE=0x5000
 SALMSON_FLOAT_LOW_OK_VALUE=1
+SALMSON_COMMAND_ENABLED=false
+WILO_CMD_REG=14
+WILO_REG_PRESSURE=25
+WILO_REG_FLOW=-1
+WILO_REG_PUMP1_MODE=40
+WILO_REG_PUMP2_MODE=41
+WILO_REG_SWITCH_STATE=61
+WILO_REG_ERROR_CODE=138
 ADDR_INVT=1
 ADDR_SALMSON=2
 ADDR_WILO=3
 ADDR_COFFRET4=4
+
+AGENT LOCAL SUR SITE
+--------------------
+Sur le PC/Raspberry relie au DR302 :
+
+python -m pip install -r requirements.txt
+set CLOUD_URL=https://zarzis-irrigation-1.onrender.com
+set API_TOKEN=API_TOKEN_RENDER
+set DR302_HOST=IP_LOCALE_DR302
+set DR302_PORT=502
+set EDGE_ALLOW_START=false
+python zarzis_edge_agent.py
+
+Passer EDGE_ALLOW_START=true uniquement apres validation terrain.
+
+STOCKAGE RENDER
+---------------
+Plan gratuit = stockage ephemere, OK pour essais.
+Avant de compter durablement sur la synchro multi-appareils :
+DATA_DIR=/var/data
+PERSISTENT_STORAGE_ENABLED=true
+et ajouter le disque Render payant indique dans render.yaml.
 
 POINTS CRITIQUES
 ----------------
@@ -110,6 +151,7 @@ POINTS CRITIQUES
 - Ne pas coller le câble RS485 aux câbles moteur/variateur.
 - Ne pas dépendre du cloud pour la sécurité pompe.
 - Ne pas exposer Modbus TCP directement sur Internet ouvert.
+- Utiliser http_push par defaut avec agent local.
 - Utiliser direct_tcp seulement via VPN, APN prive ou reseau prive equivalent.
 - Garder ALLOW_PARAM_WRITE=false en production.
 - Garder MODBUS_REGISTERS_VALIDATED=false jusqu'au mapping exact des registres.
@@ -120,11 +162,12 @@ VALIDATION REGISTRES MODBUS
 1. Garder MODBUS_REGISTERS_VALIDATED=false.
 2. Tester un seul appareil a la fois avec qModMaster ou Modbus Poll.
 3. Lire les registres de mesure et de defaut avant toute ecriture.
-4. Confirmer le registre de commande et les valeurs marche/arret.
-5. Pour INVT, verifier la valeur d'arret : INVT_OFF_VALUE=5 est une hypothese.
-6. Pour Salmson, verifier le flotteur : SALMSON_FLOAT_LOW_OK_VALUE=1 ou 0 selon cablage NO/NC.
-7. Corriger les variables Render *_REG_* et *_CMD_REG si la notice donne d'autres adresses.
-8. Apres essai local on/off avec securites actives, passer MODBUS_REGISTERS_VALIDATED=true.
+4. INVT : verifier 0x2000 marche=1 arret=5, lectures 0x3000 a 0x3006.
+5. Wilo EC-B : verifier 40015, 40026, 40041, 40042, 40062, 40139-40140.
+6. Pour Salmson, garder SALMSON_COMMAND_ENABLED=false tant que la table EC-L complete n'est pas validee.
+7. Verifier le flotteur : SALMSON_FLOAT_LOW_OK_VALUE=1 ou 0 selon cablage NO/NC.
+8. Corriger les variables Render *_REG_* et *_CMD_REG si la notice donne d'autres adresses.
+9. Apres essai local on/off avec securites actives, passer MODBUS_REGISTERS_VALIDATED=true et EDGE_ALLOW_START=true.
 
 ========================================================
 
@@ -135,7 +178,7 @@ AJOUT VERSION PRÊTE INSTALLATION
 - API_TOKEN accepte seulement en header Authorization Bearer ou X-API-Token, pas dans l'URL.
 - Le planning cloud est desactive par defaut (ENABLE_PLANNING=false) pour rester en lecture/commande manuelle.
 - Pour tester avant réception du matériel : G781_MODE=simulation.
-- Pour mise en service réelle : G781_MODE=direct_tcp seulement via VPN/APN prive, G781_HOST=IP privee du G781-E, G781_PORT=502.
+- Pour mise en service réelle : garder G781_MODE=http_push et lancer zarzis_edge_agent.py sur site.
 - ALLOW_REMOTE_G781_CONNECT=false : le navigateur ne choisit pas l'IP du G781 en production.
 - /api/param/write reste desactive par defaut avec ALLOW_PARAM_WRITE=false.
 - Les demarrages reels sont bloques tant que MODBUS_REGISTERS_VALIDATED=false.

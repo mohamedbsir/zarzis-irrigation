@@ -27,6 +27,11 @@ LISTE MATÉRIEL VALIDÉE
 1 × antenne 4G externe
 - Conseillée si le coffret est métallique ou si le signal est moyen.
 
+1 × mini PC local ou Raspberry Pi industriel léger
+- Recommandé avec le mode http_push.
+- Il lance zarzis_edge_agent.py, lit le DR302 en local et pousse vers Render.
+- Si tu as déjà un PC qui reste allumé sur site, achat non urgent.
+
 Borniers rail DIN :
 - +24V
 - 0V
@@ -35,4 +40,5 @@ Borniers rail DIN :
 - GND/Shield
 
 Option plus tard :
-- Raspberry Pi / mini PC local si tu veux rendre le planning autonome même sans cloud.
+- Onduleur/UPS 24V ou petite sauvegarde secteur si tu veux fiabiliser l'agent local.
+- Render Persistent Disk quand les essais sont bons et que tu veux fiabiliser la synchro.

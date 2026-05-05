@@ -2301,7 +2301,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
 
     <div class="alert-panel alert-warn" style="margin-bottom:14px">
-      ⚠️ Les adresses Modbus sont préparées dans l'application sur la base des numéros de menu Salmson. Avant raccordement réel RS485, il faudra confirmer la table Modbus exacte du coffret. Les écritures restent verrouillées hors mode maintenance.
+      ⚠️ Les adresses Modbus Salmson restent provisoires. Le serveur et l'agent bloquent les commandes Salmson tant que la table EC-L exacte n'est pas validée sur site.
     </div>
 
     <div class="param-section">
@@ -2406,6 +2406,9 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="alert-panel alert-warn" style="margin-bottom:14px">
       ⚠️ Les écritures Wilo sont verrouillées hors mode maintenance. Vérifier les valeurs sur l'écran du coffret après modification.
       Ton coffret EC-B2 pilote des pompes à vitesse fixe : les paramètres de vitesse variable ECe ne sont pas activés ici.
+    </div>
+    <div class="alert-panel alert-ok" style="margin-bottom:14px">
+      Registres Wilo confirmés notice : 40015 marche/arret, 40026 pression actuelle, 40041/40042 modes pompes, 40062 etat coffret, 40139-40140 defauts.
     </div>
     
     <div class="param-section">
@@ -2512,40 +2515,40 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         <div class="param-info">
           <div class="param-name">Déclenchement général pompes</div>
           <div class="param-desc">3.01 — Autorise ou verrouille toutes les pompes.</div>
-          <div class="param-reg">Menu 3.01 · Reg: 0x0301</div>
+          <div class="param-reg">Protocole Wilo · 40015 / Reg: 0x000E</div>
         </div>
         <div class="param-val-display" id="pv-wilo-0301">--</div>
         <select class="param-input-select" id="pi-wilo-0301">
           <option value="0">OFF — pompes verrouillées</option> <option value="1" selected>ON — pompes autorisées</option>
         </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0301,'wilo-0301',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0301,'wilo-0301')">✏️ ÉCRIRE</button>
+        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x000E,'wilo-0301',{0:'OFF',1:'ON'})">📖 LIRE</button>
+        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x000E,'wilo-0301')">✏️ ÉCRIRE</button>
       </div>
       <div class="param-row">
         <div class="param-info">
           <div class="param-name">Mode pompe 1</div>
           <div class="param-desc">3.02 — OFF / Manuel / Auto.</div>
-          <div class="param-reg">Menu 3.02 · Reg: 0x0302</div>
+          <div class="param-reg">Protocole Wilo · 40041 / Reg: 0x0028</div>
         </div>
         <div class="param-val-display" id="pv-wilo-0302">--</div>
         <select class="param-input-select" id="pi-wilo-0302">
           <option value="0">OFF</option> <option value="1">HAND</option> <option value="2" selected>AUTO</option>
         </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0302,'wilo-0302',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0302,'wilo-0302')">✏️ ÉCRIRE</button>
+        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0028,'wilo-0302',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button>
+        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0028,'wilo-0302')">✏️ ÉCRIRE</button>
       </div>
       <div class="param-row">
         <div class="param-info">
           <div class="param-name">Mode pompe 2</div>
           <div class="param-desc">3.03 — OFF / Manuel / Auto.</div>
-          <div class="param-reg">Menu 3.03 · Reg: 0x0303</div>
+          <div class="param-reg">Protocole Wilo · 40042 / Reg: 0x0029</div>
         </div>
         <div class="param-val-display" id="pv-wilo-0303">--</div>
         <select class="param-input-select" id="pi-wilo-0303">
           <option value="0">OFF</option> <option value="1">HAND</option> <option value="2" selected>AUTO</option>
         </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0303,'wilo-0303',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0303,'wilo-0303')">✏️ ÉCRIRE</button>
+        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0029,'wilo-0303',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button>
+        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0029,'wilo-0303')">✏️ ÉCRIRE</button>
       </div>
       <div class="param-row">
         <div class="param-info">
@@ -2936,17 +2939,17 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
 
     <div class="divider"></div>
-    <div class="metric-label" style="margin-bottom:8px">USR-G781 (cible fixee cote serveur)</div>
+    <div class="metric-label" style="margin-bottom:8px">Mode HTTP PUSH (agent local)</div>
     <div class="conn-row">
       <div class="conn-group">
-        <div class="conn-label">G781_HOST Render</div>
-        <input type="text" class="conn-input" id="g781-ip" placeholder="defini dans Render" style="width:160px" readonly>
+        <div class="conn-label">Dernier agent vu par Render</div>
+        <input type="text" class="conn-input" id="g781-ip" placeholder="en attente push agent" style="width:220px" readonly>
       </div>
       <div class="conn-group">
-        <div class="conn-label">G781_PORT Render</div>
+        <div class="conn-label">Port DR302 local</div>
         <input type="number" class="conn-input narrow" id="g781-port" value="502" readonly>
       </div>
-      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectG781()">Connecter G781</button>
+      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectG781()">Verifier HTTP PUSH</button>
     </div>
 
     <div class="divider"></div>
@@ -2995,7 +2998,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
 
     <div class="alert-panel alert-ok" style="margin-top:12px">
-      ℹ️ L'IP du USR-G781 change à chaque reconnexion 4G — vérifiez dans l'app USR-Cloud
+      ℹ️ Mode HTTP PUSH : l'agent local sort vers Render en HTTPS. Aucune IP publique 4G n'est necessaire.
     </div>
   </div>
 </main>
@@ -5334,7 +5337,7 @@ function readAllParams(device) {
     const wiloReads = [
       ['num',0x0101,'wilo-0101',10,'bar'], ['num',0x0104,'wilo-0104',1,'%'], ['num',0x0107,'wilo-0107',1,'%'], ['num',0x0108,'wilo-0108',1,'%'],
       ['num',0x0109,'wilo-0109',1,'sec'], ['num',0x0110,'wilo-0110',1,'sec'], ['num',0x0111,'wilo-0111',1,'sec'],
-      ['sel',0x0301,'wilo-0301',{0:'OFF',1:'ON'}], ['sel',0x0302,'wilo-0302',{0:'OFF',1:'HAND',2:'AUTO'}], ['sel',0x0303,'wilo-0303',{0:'OFF',1:'HAND',2:'AUTO'}], ['num',0x0310,'wilo-0310',1,'sec'],
+      ['sel',0x000E,'wilo-0301',{0:'OFF',1:'ON'}], ['sel',0x0028,'wilo-0302',{0:'OFF',1:'HAND',2:'AUTO'}], ['sel',0x0029,'wilo-0303',{0:'OFF',1:'HAND',2:'AUTO'}], ['num',0x0310,'wilo-0310',1,'sec'],
       ['num',0x0502,'wilo-0502',1,''], ['sel',0x0503,'wilo-0503',{0:'OFF',1:'ON'}], ['num',0x0511,'wilo-0511',1,'bar'],
       ['num',0x0517,'wilo-0517',10,'bar'], ['num',0x0518,'wilo-0518',10,'bar'], ['sel',0x0573,'wilo-0573',{0:'OFF',1:'CONT'}], ['num',0x0574,'wilo-0574',1,'sec'],
       ['num',0x0562,'wilo-0562',1,'sec'], ['num',0x0563,'wilo-0563',1,'sec'], ['sel',0x0561,'wilo-0561',{0:'OFF',1:'ON'}],
@@ -5772,6 +5775,7 @@ function connectCloud() {
         updateConnStatus('CONNECTÉ ✅', 'badge-on');
         toast('✅ Connecté au serveur cloud', 'ok');
         addLog(`✅ Serveur cloud connecté — G781: ${d.connected?'✅ CONNECTÉ':'⏳ ATTENTE'}`, 'ok');
+        if(d.storage && !d.storage.persistent) addLog('⚠️ Stockage Render non persistant pour l’instant. OK pour tests, à passer sur disque Render avant usage long terme.', 'warn');
         if(d.auth_required && !apiToken) addLog('⚠️ API_TOKEN requis pour les commandes. Renseignez le token Render dans Connexion.', 'warn');
         if(simInterval){clearInterval(simInterval);simInterval=null;}
         if(fetchInterval) clearInterval(fetchInterval);
@@ -5803,15 +5807,14 @@ function disconnectCloud() {
 function connectG781() {
   const ip = document.getElementById('g781-ip').value;
   const port = document.getElementById('g781-port').value;
-  if(!ip) { toast('⚠️ Entrez l\'IP du USR-G781', 'warn'); return; }
-  addLog(`Connexion USR-G781 → ${ip}:${port}`, 'info');
+  addLog('Verification HTTP PUSH cote serveur', 'info');
   fetch(`${apiUrl}/api/connect`, {
     method:'POST', headers: apiHeaders(),
     body:JSON.stringify({ip, port:parseInt(port)})
   })
   .then(r=>r.json())
   .then(d => {
-    if(d.success) { toast('✅ USR-G781 connecté', 'ok'); addLog(`✅ USR-G781 connecté: ${ip}`, 'ok'); }
+    if(d.success) { toast('✅ HTTP PUSH prêt', 'ok'); addLog(`✅ Mode ${d.mode} prêt — agent: ${d.host || ip || 'en attente push'}`, 'ok'); }
     else { toast('❌ Échec G781', 'err'); addLog(`❌ Échec G781: ${d.error}`, 'err'); }
   })
   .catch(e => addLog(`❌ Erreur G781: ${e.message}`, 'err'));
@@ -5824,6 +5827,10 @@ function fetchRealData() {
       const invt = d.invt || {};
       const salmson = d.salmson || {};
       const wilo = d.wilo || {};
+      const g781Input = document.getElementById('g781-ip');
+      if(g781Input) g781Input.value = d.g781_ip || '';
+      if(d.mode === 'http_push' && !d.connected) updateConnStatus('AGENT ATTENTE', 'badge-warn');
+      else updateConnStatus('CONNECTÉ ✅', 'badge-on');
       updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
       updateSalmson(salmson.current_a||0, salmson.float_low===1, salmson.float_high===1, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
       updateWilo(wilo.pressure||0, wilo.flow||0, wilo.running||false);

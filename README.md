@@ -1,11 +1,12 @@
 # Zarzis Irrigation - Dashboard + API Cloud
 
-Version corrigée pour Render / GitHub.
+Version corrigee `http_push` pour Render / GitHub.
 
 Le projet contient :
 
 - un dashboard PWA : `index.html`, `manifest.webmanifest`, `sw.js`, `icon.svg`
 - une API Flask : `modbus_proxy_cloud.py`
+- un agent local HTTP PUSH : `zarzis_edge_agent.py`
 - la configuration Render : `render.yaml`
 - les dépendances Python : `requirements.txt`
 - les guides d'installation et d'achat matériel
@@ -19,28 +20,46 @@ USR-DR302
         -> Ethernet Modbus TCP
 USR-G781-E
         -> 4G
+Agent local Zarzis
+        -> HTTPS sortant
 Render API + Dashboard
 ```
 
-Important : Render expose surtout HTTP/HTTPS. Le mode `direct_tcp` doit etre utilise seulement si le G781-E est joignable via un reseau prive, par exemple APN prive ou VPN.
+Important : le mode choisi est maintenant `http_push`. Il fonctionne meme si la SIM 4G est derriere NAT, car l'agent local sort vers Render en HTTPS. Tu n'as donc pas besoin de payer une IP publique/APN prive au depart.
 
-Si la SIM 4G n'a pas de reseau prive fiable, utiliser plutôt :
+Le mode `direct_tcp` reste une option seulement si le G781-E est joignable depuis Render via un reseau prive, par exemple APN prive ou VPN industriel.
 
-1. `G781_MODE=http_push` avec `/api/g781/push` et `/api/g781/commands`
-2. ou une passerelle locale DR302/Raspberry qui synchronise avec le cloud
+## Agent local HTTP PUSH
+
+Sur le PC/Raspberry du site Zarzis :
+
+```txt
+python -m pip install -r requirements.txt
+set CLOUD_URL=https://zarzis-irrigation-1.onrender.com
+set API_TOKEN=API_TOKEN_RENDER
+set DR302_HOST=IP_LOCALE_DR302
+set DR302_PORT=502
+set EDGE_ALLOW_START=false
+python zarzis_edge_agent.py
+```
+
+`EDGE_ALLOW_START=false` bloque les demarrages mais laisse les arrets possibles. Passer `EDGE_ALLOW_START=true` seulement apres validation qModMaster et essai terrain.
 
 ## Variables Render
 
 Dans Render > Environment :
 
 ```txt
-G781_MODE=direct_tcp
-G781_HOST=IP privee VPN/APN du G781-E
+G781_MODE=http_push
+G781_HOST=
 G781_PORT=502
+G781_HTTP_PUSH_STALE_SEC=45
+G781_COMMAND_TTL_SEC=300
 API_TOKEN=mot_de_passe_long
 UPDATE_SEC=5
 CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
 ENABLE_PLANNING=false
+PERSISTENT_STORAGE_ENABLED=false
 ALLOW_REMOTE_G781_CONNECT=false
 ALLOW_PARAM_WRITE=false
 MODBUS_REGISTERS_VALIDATED=false
@@ -49,14 +68,30 @@ COMMAND_RESTART_DELAY_SEC=60
 INVT_CMD_REG=0x2000
 INVT_ON_VALUE=1
 INVT_OFF_VALUE=5
+INVT_NOMINAL_KW=5.5
+INVT_REG_FREQ_HZ=0x3000
+INVT_REG_SET_FREQ_HZ=0x3001
+INVT_REG_DC_BUS_V=0x3002
+INVT_REG_VOLTAGE_V=0x3003
+INVT_REG_CURRENT_A=0x3004
+INVT_REG_POWER_PCT=0x3006
+INVT_REG_FAULT_CODE=0x5000
 SALMSON_FLOAT_LOW_OK_VALUE=1
+SALMSON_COMMAND_ENABLED=false
+WILO_CMD_REG=14
+WILO_REG_PRESSURE=25
+WILO_REG_FLOW=-1
+WILO_REG_PUMP1_MODE=40
+WILO_REG_PUMP2_MODE=41
+WILO_REG_SWITCH_STATE=61
+WILO_REG_ERROR_CODE=138
 ADDR_INVT=1
 ADDR_SALMSON=2
 ADDR_WILO=3
 ADDR_COFFRET4=4
 ```
 
-Ne pas exposer le port Modbus TCP directement sur Internet. Utiliser `G781_PORT=502` seulement sur un reseau prive VPN/APN. Si un port public est ouvert vers le DR302/G781, Modbus reste non chiffre et non authentifie.
+Ne pas exposer le port Modbus TCP directement sur Internet. En `http_push`, Render ne contacte jamais le DR302/G781 en direct : seul l'agent local parle au Modbus.
 
 Tant que les registres réels ne sont pas validés avec le matériel, garder `MODBUS_REGISTERS_VALIDATED=false`. Les commandes `off` restent possibles, mais les démarrages réels sont bloqués. Après mapping et essai local, passer `MODBUS_REGISTERS_VALIDATED=true` dans Render.
 
@@ -71,6 +106,20 @@ RAINBIRD_ZONES=1,2,3,4,5,6
 RAINBIRD_MAX_DURATION_MIN=240
 RAINBIRD_MIN_INTERVAL_SEC=30
 ```
+
+## Stockage Render
+
+Le code utilise `DATA_DIR` pour stocker `planning_zarzis.json` et `app_state_zarzis.json`.
+En plan gratuit Render, ce stockage reste ephemere. C'est suffisant pour tester le dashboard, mais pas pour compter durablement sur la synchro multi-appareils.
+
+Quand tu passes au plan payant avec Persistent Disk :
+
+```txt
+DATA_DIR=/var/data
+PERSISTENT_STORAGE_ENABLED=true
+```
+
+Et ajouter le disque Render indique en commentaire dans `render.yaml`.
 
 ## Endpoints API
 
@@ -113,7 +162,7 @@ coffret4
 all
 ```
 
-`forage` commande l'ensemble INVT + Salmson. `coffret4` est prévu pour lecture/supervision tant que son registre de commande réel n'est pas défini.
+`forage` commande l'INVT. La commande Salmson est desactivee par defaut (`SALMSON_COMMAND_ENABLED=false`) tant que la table Modbus EC-L exacte n'est pas validee. `coffret4` est prevu pour lecture/supervision tant que son registre de commande reel n'est pas defini.
 
 ## Planning
 
@@ -146,6 +195,8 @@ Jours :
 Cette version ajoute :
 
 - planning cloud present mais desactive par defaut avec `ENABLE_PLANNING=false`
+- mode `http_push` actif par defaut pour eviter le blocage NAT operateur
+- agent local `zarzis_edge_agent.py` pour pousser mesures et recuperer commandes
 - synchronisation planning bloquee tant que `ENABLE_PLANNING=false`
 - mode simulation backend via `G781_MODE=simulation` pour tester avant réception du matériel
 - protection API sur tous les endpoints `/api/*` sauf `/api/ping` quand `API_TOKEN` existe
@@ -156,7 +207,7 @@ Cette version ajoute :
 - valeurs critiques configurables : `INVT_OFF_VALUE`, `SALMSON_FLOAT_LOW_OK_VALUE`, `*_CMD_REG`, `*_REG_*`
 - icônes PWA PNG 192/512 pour installation mobile
 
-Avant réception des modules, tu peux laisser le dashboard en simulation locale. Pour tester le serveur sans matériel, mettre temporairement `G781_MODE=simulation` sur Render. À la réception des modules, remettre `G781_MODE=direct_tcp` et renseigner `G781_HOST` + `G781_PORT`.
+Avant reception des modules, tu peux laisser le dashboard en simulation locale. Pour tester le serveur sans materiel, mettre temporairement `G781_MODE=simulation` sur Render. Pour la mise en service reelle, garder `G781_MODE=http_push` et lancer l'agent local sur site.
 
 Le mot de passe local par défaut du dashboard est maintenant : `zarzis2026`. Le vrai verrouillage des commandes distantes reste `API_TOKEN` côté Render.
 
@@ -177,9 +228,10 @@ Synchronisation multi-appareils :
 ## Securite production
 
 - Ne jamais exposer Modbus TCP directement sur Internet ouvert.
+- Utiliser `http_push` par defaut avec agent local.
 - Utiliser `direct_tcp` seulement via VPN, APN prive ou reseau prive equivalent.
 - Un VPN grand public pour naviguer anonymement ne suffit pas. Il faut que Render/la passerelle et le site Zarzis soient dans le meme reseau prive.
-- Garder `ALLOW_REMOTE_G781_CONNECT=false` en production : l'IP du G781 doit etre fixee dans `G781_HOST`, pas changee depuis le navigateur.
+- Garder `ALLOW_REMOTE_G781_CONNECT=false` en production. En `http_push`, `G781_HOST` reste vide cote Render; en `direct_tcp`, il serait fixe cote serveur, jamais depuis le navigateur.
 - Garder `ENABLE_PLANNING=false` si le dashboard doit rester en lecture/commande manuelle seulement.
 - Garder `ALLOW_PARAM_WRITE=false` en production. L'activer seulement pour une maintenance courte et controlee.
 - Le token API passe seulement par `Authorization: Bearer ...` ou `X-API-Token`. Ne jamais le mettre dans l'URL.
@@ -191,9 +243,10 @@ Avant le premier demarrage reel :
 
 1. Garder `MODBUS_REGISTERS_VALIDATED=false` dans Render.
 2. Avec qModMaster ou Modbus Poll, lire un appareil a la fois en RS485 local.
-3. Confirmer les registres de lecture : frequence, courant, tension, defaut, pression, debit.
-4. Confirmer le registre de commande et les valeurs marche/arret.
+3. Confirmer INVT : commande `0x2000`, marche `1`, arret `5`, lectures `0x3000` a `0x3006`.
+4. Confirmer Wilo EC-B : 40015/40026/40041/40042/40062/40139-40140.
 5. Confirmer le sens du flotteur Salmson : si `0 = eau presente`, mettre `SALMSON_FLOAT_LOW_OK_VALUE=0`; si `1 = eau presente`, garder `1`.
-6. Corriger les variables Render (`INVT_OFF_VALUE`, `SALMSON_CMD_REG`, `WILO_CMD_REG`, `*_REG_*`) si la notice ou le test donne d'autres valeurs.
-7. Faire un essai manuel local on/off avec les securites locales actives.
-8. Seulement apres validation, passer `MODBUS_REGISTERS_VALIDATED=true`.
+6. Laisser `SALMSON_COMMAND_ENABLED=false` tant que la table EC-L complete n'est pas validee.
+7. Corriger les variables Render (`INVT_OFF_VALUE`, `SALMSON_CMD_REG`, `WILO_CMD_REG`, `*_REG_*`) si le test terrain donne d'autres valeurs.
+8. Faire un essai manuel local on/off avec les securites locales actives.
+9. Seulement apres validation, passer `MODBUS_REGISTERS_VALIDATED=true` et `EDGE_ALLOW_START=true`.
