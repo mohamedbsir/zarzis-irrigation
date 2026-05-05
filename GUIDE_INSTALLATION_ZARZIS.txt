@@ -1,0 +1,151 @@
+========================================================
+GUIDE INSTALLATION ZARZIS — G781-E + DR302 + RS485
+========================================================
+
+OBJECTIF
+--------
+Dashboard = démarrer / arrêter / planifier / visualiser.
+Les sécurités restent dans les coffrets d'origine.
+
+ARCHITECTURE RECOMMANDÉE
+------------------------
+Wilo / Salmson / INVT / Coffret 4
+        ↓ RS485 Modbus RTU
+USR-DR302
+        ↓ Ethernet
+USR-G781-E
+        ↓ 4G
+Render API
+        ↓
+Dashboard PWA
+
+NOTE CLOUD
+----------
+Le mode direct_tcp doit etre utilise seulement si le G781-E est joignable depuis Render
+via un reseau prive (APN prive ou VPN). Si la SIM 4G est derrière un NAT opérateur,
+utiliser le mode HTTPD Client/push ou une passerelle locale.
+
+MATÉRIEL
+--------
+1. USR-G781-E, lettre E obligatoire.
+2. USR-DR302 rail DIN RS485 vers Ethernet.
+3. Alimentation DIN 24V DC, type Mean Well HDR-60-24 ou équivalent.
+4. Carte SIM Tunisie Telecom ou Ooredoo.
+5. Câble RS485 torsadé blindé, idéalement 120 ohms.
+6. 2 résistances 120 ohms.
+7. Borniers A/B/GND.
+8. Antenne 4G externe si signal faible.
+
+ALIMENTATION
+------------
+Ne pas utiliser le transformateur 24V AC pour alimenter le G781-E ou le DR302.
+Il faut du 24V DC stable.
+
+CÂBLAGE RS485
+-------------
+Faire un bus linéaire, pas une étoile.
+
+A+ DR302/G781 -> A+ appareil 1 -> A+ appareil 2 -> A+ appareil 3
+B- DR302/G781 -> B- appareil 1 -> B- appareil 2 -> B- appareil 3
+GND si disponible.
+Blindage à la terre d'un seul côté.
+
+ADRESSES MODBUS PROPOSÉES
+-------------------------
+INVT    = 1
+Salmson = 2
+Wilo    = 3
+Coffret4/capteur = 4
+
+PARAMÈTRES SÉRIE DE DÉPART
+--------------------------
+9600 bauds
+8 bits
+parité None
+1 stop bit
+Modbus RTU
+
+ORDRE DE TEST
+-------------
+1. Alimenter le G781-E seul.
+2. Configurer SIM + APN.
+3. Vérifier internet.
+4. Alimenter DR302.
+5. Configurer IP fixe DR302.
+6. Brancher un seul appareil RS485.
+7. Tester lecture registre.
+8. Tester start/stop.
+9. Ajouter le deuxième appareil.
+10. Ajouter le troisième appareil.
+11. Ajouter le quatrième.
+12. Laisser planning desactive, sauf decision explicite plus tard.
+
+CONFIGURATION RENDER MINIMALE
+-----------------------------
+G781_MODE=direct_tcp
+G781_HOST=IP privee VPN/APN du G781-E
+G781_PORT=502
+API_TOKEN=mot de passe long
+CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
+ENABLE_PLANNING=false
+ALLOW_REMOTE_G781_CONNECT=false
+ALLOW_PARAM_WRITE=false
+MODBUS_REGISTERS_VALIDATED=false
+COMMAND_MIN_INTERVAL_SEC=30
+COMMAND_RESTART_DELAY_SEC=60
+INVT_CMD_REG=0x2000
+INVT_ON_VALUE=1
+INVT_OFF_VALUE=5
+SALMSON_FLOAT_LOW_OK_VALUE=1
+ADDR_INVT=1
+ADDR_SALMSON=2
+ADDR_WILO=3
+ADDR_COFFRET4=4
+
+POINTS CRITIQUES
+----------------
+- Ne pas inverser A/B.
+- Ne pas mettre la même adresse Modbus sur deux appareils.
+- Ne pas activer toutes les terminaisons 120 ohms.
+- Ne pas coller le câble RS485 aux câbles moteur/variateur.
+- Ne pas dépendre du cloud pour la sécurité pompe.
+- Ne pas exposer Modbus TCP directement sur Internet ouvert.
+- Utiliser direct_tcp seulement via VPN, APN prive ou reseau prive equivalent.
+- Garder ALLOW_PARAM_WRITE=false en production.
+- Garder MODBUS_REGISTERS_VALIDATED=false jusqu'au mapping exact des registres.
+- Verifier INVT_OFF_VALUE et SALMSON_FLOAT_LOW_OK_VALUE sur le materiel reel.
+
+VALIDATION REGISTRES MODBUS
+---------------------------
+1. Garder MODBUS_REGISTERS_VALIDATED=false.
+2. Tester un seul appareil a la fois avec qModMaster ou Modbus Poll.
+3. Lire les registres de mesure et de defaut avant toute ecriture.
+4. Confirmer le registre de commande et les valeurs marche/arret.
+5. Pour INVT, verifier la valeur d'arret : INVT_OFF_VALUE=5 est une hypothese.
+6. Pour Salmson, verifier le flotteur : SALMSON_FLOAT_LOW_OK_VALUE=1 ou 0 selon cablage NO/NC.
+7. Corriger les variables Render *_REG_* et *_CMD_REG si la notice donne d'autres adresses.
+8. Apres essai local on/off avec securites actives, passer MODBUS_REGISTERS_VALIDATED=true.
+
+========================================================
+
+AJOUT VERSION PRÊTE INSTALLATION
+--------------------------------
+- Mot de passe local dashboard par défaut : zarzis2026
+- API_TOKEN Render obligatoire pour les commandes et la lecture API.
+- API_TOKEN accepte seulement en header Authorization Bearer ou X-API-Token, pas dans l'URL.
+- Le planning cloud est desactive par defaut (ENABLE_PLANNING=false) pour rester en lecture/commande manuelle.
+- Pour tester avant réception du matériel : G781_MODE=simulation.
+- Pour mise en service réelle : G781_MODE=direct_tcp seulement via VPN/APN prive, G781_HOST=IP privee du G781-E, G781_PORT=502.
+- ALLOW_REMOTE_G781_CONNECT=false : le navigateur ne choisit pas l'IP du G781 en production.
+- /api/param/write reste desactive par defaut avec ALLOW_PARAM_WRITE=false.
+- Les demarrages reels sont bloques tant que MODBUS_REGISTERS_VALIDATED=false.
+- Anti-redemarrage serveur : COMMAND_MIN_INTERVAL_SEC=30 et COMMAND_RESTART_DELAY_SEC=60.
+- Activer les programmes seulement après validation manuelle des arrêts, sécurités locales et registres Modbus réels.
+
+Synchronisation multi-appareils :
+
+- Les données partagées sont centralisées sur Render via `/api/app-state`.
+- iPhone, tablette et PC récupèrent les réglages toutes les 5 secondes après connexion au cloud.
+- Sont synchronisés : zones, programmes, planning irrigation, exploitation, goutte-à-goutte, réservoirs, matériel, fertigation, localisation et compteurs.
+- Ne sont pas synchronisés : `API_TOKEN`, mot de passe local, son et mode maintenance. Ces éléments restent propres à chaque appareil pour la sécurité.
+- Après modification sur un appareil, attendre quelques secondes ou cliquer `SYNC APPAREILS` dans Connexion.

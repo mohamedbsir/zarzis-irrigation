@@ -16,12 +16,32 @@ services:
         value: "5"
       - key: PLANNING_POLL_SEC
         value: "10"
+      - key: ENABLE_PLANNING
+        value: "false"
       - key: LOCAL_TZ
         value: Africa/Tunis
+      - key: CORS_ORIGINS
+        value: "https://zarzis-irrigation-1.onrender.com"
       - key: SERVER_SAFETY_ENABLED
         value: "true"
       - key: ALLOW_PARAM_WRITE
-        value: "true"
+        value: "false"
+      - key: MODBUS_REGISTERS_VALIDATED
+        value: "false"
+      - key: COMMAND_MIN_INTERVAL_SEC
+        value: "30"
+      - key: COMMAND_RESTART_DELAY_SEC
+        value: "60"
+      - key: ALLOW_REMOTE_G781_CONNECT
+        value: "false"
+      - key: INVT_CMD_REG
+        value: "0x2000"
+      - key: INVT_ON_VALUE
+        value: "1"
+      - key: INVT_OFF_VALUE
+        value: "5"
+      - key: SALMSON_FLOAT_LOW_OK_VALUE
+        value: "1"
       - key: MODBUS_BAUDRATE
         value: "9600"
       - key: MODBUS_SERIAL
@@ -44,5 +64,9 @@ services:
         value: ""
       - key: RAINBIRD_ZONES
         value: "1,2,3,4,5,6"
+      - key: RAINBIRD_MAX_DURATION_MIN
+        value: "240"
+      - key: RAINBIRD_MIN_INTERVAL_SEC
+        value: "30"
       - key: API_TOKEN
         generateValue: true

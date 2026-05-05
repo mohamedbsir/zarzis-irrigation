@@ -2936,15 +2936,15 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
 
     <div class="divider"></div>
-    <div class="metric-label" style="margin-bottom:8px">USR-G781 (IP 4G Tunisie)</div>
+    <div class="metric-label" style="margin-bottom:8px">USR-G781 (cible fixee cote serveur)</div>
     <div class="conn-row">
       <div class="conn-group">
-        <div class="conn-label">IP Publique 4G</div>
-        <input type="text" class="conn-input" id="g781-ip" placeholder="XX.XX.XX.XX" style="width:160px">
+        <div class="conn-label">G781_HOST Render</div>
+        <input type="text" class="conn-input" id="g781-ip" placeholder="defini dans Render" style="width:160px" readonly>
       </div>
       <div class="conn-group">
-        <div class="conn-label">Port Modbus</div>
-        <input type="number" class="conn-input narrow" id="g781-port" value="502">
+        <div class="conn-label">G781_PORT Render</div>
+        <input type="number" class="conn-input narrow" id="g781-port" value="502" readonly>
       </div>
       <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectG781()">Connecter G781</button>
     </div>
@@ -3036,6 +3036,7 @@ let history_pressure = [];
 let chartVdc, chartPower, chartPressure;
 const DEFAULT_PASSWORD = 'zarzis2026';
 const RESTART_DELAY_MS = 60000;
+const ENABLE_PLANNING_UI = false;
 let lastStopAt = { forage: 0, wilo: 0 };
 let maintenanceMode = false;
 let activeAlarms = {};
@@ -3047,6 +3048,19 @@ function apiHeaders(extra={}) {
     headers['X-API-Token'] = apiToken;
   }
   return headers;
+}
+
+async function postApiJson(path, payload={}, timeout=5000) {
+  const res = await fetch(`${apiUrl}${path}`, {
+    method: 'POST',
+    headers: apiHeaders(),
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(timeout)
+  });
+  let data = {};
+  try { data = await res.json(); } catch(e) {}
+  if(!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
 }
 
 // Zones irrigation — CONFIGURATION MODIFIABLE
@@ -3225,11 +3239,21 @@ async function changePw() {
 }
 
 // ============ INIT ============
+function applyFeatureFlags() {
+  if(ENABLE_PLANNING_UI) return;
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    if((tab.getAttribute('onclick') || '').includes("'planning'")) tab.style.display = 'none';
+  });
+  const planningPanel = document.getElementById('tab-planning');
+  if(planningPanel) planningPanel.style.display = 'none';
+}
+
 function initApp() {
   const cloudInput = document.getElementById('cloud-url');
   const tokenInput = document.getElementById('api-token');
   if(cloudInput) cloudInput.value = apiUrl;
   if(tokenInput) tokenInput.value = apiToken;
+  applyFeatureFlags();
   initSolarBar();
   initExploitationModule();
   syncIrrigationZonesFromExploitation(true);
@@ -3257,6 +3281,7 @@ function updateClock() {
 
 // ============ TABS ============
 function switchTab(id) {
+  if(id === 'planning' && !ENABLE_PLANNING_UI) id = 'dashboard';
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const panel = document.getElementById('tab-'+id);
@@ -4036,6 +4061,7 @@ function buildCloudPlanning() {
 }
 
 async function syncPlanningToCloud(silent=false) {
+  if(!ENABLE_PLANNING_UI) return false;
   if(!connected || planningSyncInProgress) return false;
   planningSyncInProgress = true;
   try {
@@ -4060,6 +4086,7 @@ async function syncPlanningToCloud(silent=false) {
 }
 
 async function fetchCloudPlanningStatus() {
+  if(!ENABLE_PLANNING_UI) return;
   if(!connected) return;
   try {
     const res = await fetch(`${apiUrl}/api/planning`, {headers: apiHeaders(), signal: AbortSignal.timeout(8000)});
@@ -5821,6 +5848,201 @@ function sendModbusCmd(pump, action) {
   .catch(e => addLog(`❌ Erreur commande: ${e.message}`, 'err'));
 }
 
+
+function setPumpControlStateLocal(pump, action) {
+  pumpStates[pump] = action === 'on';
+  if(action === 'off') recordPumpStop(pump);
+  const ind = document.getElementById(`ctrl-${pump}-ind`);
+  const st = document.getElementById(`ctrl-${pump}-state`);
+  const isOn = action === 'on';
+  if(ind) ind.className = 'pump-indicator ' + (isOn ? 'on' : 'off');
+  if(st) {
+    st.textContent = isOn ? 'EN MARCHE' : (pump === 'forage' ? 'ARRETEE' : 'ARRETE');
+    st.style.color = isOn ? 'var(--green)' : 'var(--text-dim)';
+  }
+}
+
+function setInverterControlStateLocal(action) {
+  const ind = document.getElementById('ctrl-invt-ind');
+  const st = document.getElementById('ctrl-invt-state');
+  const on = action !== 'stop';
+  if(ind) ind.className = 'pump-indicator ' + (on ? 'on' : 'off');
+  if(st) {
+    st.textContent = action === 'forward' ? 'MARCHE AVANT' : action === 'reverse' ? 'MARCHE ARRIERE' : 'VEILLE';
+    st.style.color = on ? 'var(--green)' : 'var(--text-dim)';
+  }
+}
+
+sendModbusCmd = async function(pump, action) {
+  if(!connected) {
+    addLog('[SIM] Commande simulee localement', 'info');
+    return {success:true, simulation:true};
+  }
+  const data = await postApiJson('/api/control', {pump, device:pump, action});
+  addLog(`Modbus accepte: ${pump} ${action}`, 'ok');
+  return data;
+};
+
+controlInverter = async function(action) {
+  if(action !== 'stop') {
+    const guard = canExecutePumpCommand('invt', 'on');
+    if(!guard.ok) {
+      toast('Commande refusee', 'err');
+      addLog(`INVT ${action} refuse - ${guard.reason}`, 'err');
+      return;
+    }
+  }
+
+  addLog(`Commande INVT demandee: ${action}`, 'cmd');
+  if(!connected) {
+    setInverterControlStateLocal(action);
+    toast(`[SIM] INVT ${action}`, 'info');
+    addLog(`[SIM] INVT ${action}`, 'info');
+    return;
+  }
+
+  try {
+    await postApiJson('/api/inverter', {action});
+    toast('Commande INVT acceptee', action === 'stop' ? 'warn' : 'ok');
+    addLog(`INVT ${action} accepte par le serveur`, action === 'stop' ? 'warn' : 'ok');
+    fetchRealData();
+  } catch(e) {
+    toast('Commande INVT refusee', 'err');
+    addLog(`Erreur commande INVT: ${e.message}`, 'err');
+    fetchRealData();
+  }
+};
+
+controlPump = async function(pump, action) {
+  const guard = canExecutePumpCommand(pump, action);
+  if(!guard.ok) {
+    toast('Commande refusee', 'err');
+    addLog(`Commande ${pump} ${action} refusee - ${guard.reason}`, 'err');
+    return;
+  }
+
+  addLog(`[CMD] ${pump} -> ${action.toUpperCase()}`, 'cmd');
+  if(!connected) {
+    setPumpControlStateLocal(pump, action);
+    toast(`[SIM] ${pump} ${action}`, 'info');
+    addLog(`[SIM] ${pump} ${action}`, 'info');
+    return;
+  }
+
+  try {
+    await sendModbusCmd(pump, action);
+    if(action === 'off') recordPumpStop(pump);
+    toast(`Commande ${pump} ${action.toUpperCase()} acceptee`, action === 'on' ? 'ok' : 'warn');
+    fetchRealData();
+  } catch(e) {
+    toast('Commande refusee', 'err');
+    addLog(`Erreur commande ${pump}: ${e.message}`, 'err');
+    fetchRealData();
+  }
+};
+
+function setRainBirdZoneLocal(num, active, remainSec=0) {
+  if(active) rbActiveZones.add(num);
+  else rbActiveZones.delete(num);
+  updateRbZoneUI(num, active, remainSec);
+  if(!active && rbTimers[num]) {
+    clearInterval(rbTimers[num]);
+    delete rbTimers[num];
+  }
+}
+
+function setAllRainBirdZonesClosed() {
+  zoneConfig.forEach(z => setRainBirdZoneLocal(z.num, false, 0));
+  updateRbStats();
+}
+
+rbStartZone = async function(num) {
+  const duration = parseInt(document.getElementById('rb-duration').value) || 20;
+  const z = zoneConfig.find(z => z.num === num);
+  if(!z) return;
+
+  if(!connected) {
+    setRainBirdZoneLocal(num, true, duration * 60);
+    startRbCountdown(num, duration * 60);
+    updateRbStats();
+    toast(`[SIM] Zone ${num} - ${duration}min`, 'info');
+    addLog(`[SIM] Zone ${num} ${duration}min`, 'info');
+    return;
+  }
+
+  try {
+    const data = await postApiJson('/api/rainbird/start', {zone:num, duration});
+    const acceptedDuration = parseInt(data.duration || duration);
+    setRainBirdZoneLocal(num, true, acceptedDuration * 60);
+    startRbCountdown(num, acceptedDuration * 60);
+    updateRbStats();
+    toast(`Zone ${num} ouverte - ${acceptedDuration} min`, 'ok');
+    addLog(`Zone ${num} ${acceptedDuration}min acceptee par le serveur`, 'ok');
+  } catch(e) {
+    toast('Commande Rain Bird refusee', 'err');
+    addLog(`Erreur Rain Bird zone ${num}: ${e.message}`, 'err');
+  }
+};
+
+rbStopZone = async function(num) {
+  if(!connected) {
+    setRainBirdZoneLocal(num, false, 0);
+    updateRbStats();
+    toast(`Zone ${num} fermee`, 'warn');
+    addLog(`Zone ${num} arretee`, 'warn');
+    return;
+  }
+
+  try {
+    await postApiJson('/api/rainbird/stop', {zone:num});
+    setAllRainBirdZonesClosed();
+    toast('Rain Bird arret accepte', 'warn');
+    addLog('Rain Bird arret accepte par le serveur', 'warn');
+  } catch(e) {
+    toast('Arret Rain Bird refuse', 'err');
+    addLog(`Erreur arret Rain Bird: ${e.message}`, 'err');
+  }
+};
+
+rbStopAll = async function() {
+  if(!connected) {
+    setAllRainBirdZonesClosed();
+    toast('Toutes zones fermees', 'warn');
+    addLog('Arret toutes zones', 'warn');
+    return;
+  }
+
+  try {
+    await postApiJson('/api/rainbird/stop', {});
+    setAllRainBirdZonesClosed();
+    toast('Toutes zones fermees', 'warn');
+    addLog('Arret toutes zones accepte par le serveur', 'warn');
+  } catch(e) {
+    toast('Arret Rain Bird refuse', 'err');
+    addLog(`Erreur arret toutes zones: ${e.message}`, 'err');
+  }
+};
+
+connectG781 = async function() {
+  addLog('Connexion G781 via cible serveur Render', 'info');
+  try {
+    const data = await postApiJson('/api/connect', {}, 10000);
+    const ipEl = document.getElementById('g781-ip');
+    const portEl = document.getElementById('g781-port');
+    if(ipEl) ipEl.value = data.host || data.ip || '';
+    if(portEl) portEl.value = data.port || 502;
+    if(data.success) {
+      toast('USR-G781 connecte', 'ok');
+      addLog(`USR-G781 connecte: ${data.host || data.ip}:${data.port}`, 'ok');
+    } else {
+      toast('Echec G781', 'err');
+      addLog(`Echec G781: ${data.error || 'connexion refusee'}`, 'err');
+    }
+  } catch(e) {
+    toast('Echec G781', 'err');
+    addLog(`Erreur G781: ${e.message}`, 'err');
+  }
+};
 
 // ============ V5 SPLASH SUNNODE ==========
 window.addEventListener('load', () => {

@@ -24,8 +24,22 @@ from flask_cors import CORS
 from pymodbus.client import ModbusTcpClient
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None or str(value).strip() == "":
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None or str(value).strip() == "":
+        return default
+    return int(str(value).strip(), 0)
+
+
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.04-zarzis-ready-v5"
+APP_VERSION = "2026.05.05-zarzis-manual-secure-v6"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
@@ -38,6 +52,7 @@ SERVER_PORT = int(os.environ.get("PORT", "8080"))
 UPDATE_SEC = max(2, int(os.environ.get("UPDATE_SEC", "5")))
 PLANNING_POLL_SEC = max(5, int(os.environ.get("PLANNING_POLL_SEC", "10")))
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
+CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "*").split(",") if origin.strip()] or ["*"]
 LOCAL_TZ_NAME = os.environ.get("LOCAL_TZ", "Africa/Tunis").strip() or "Africa/Tunis"
 try:
     LOCAL_TZ = ZoneInfo(LOCAL_TZ_NAME)
@@ -46,7 +61,13 @@ except Exception:
     LOCAL_TZ_NAME = "UTC"
 
 SERVER_SAFETY_ENABLED = os.environ.get("SERVER_SAFETY_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
-ALLOW_PARAM_WRITE = os.environ.get("ALLOW_PARAM_WRITE", "true").strip().lower() not in {"0", "false", "no", "off"}
+ALLOW_PARAM_WRITE = os.environ.get("ALLOW_PARAM_WRITE", "false").strip().lower() not in {"0", "false", "no", "off"}
+MODBUS_REGISTERS_VALIDATED = os.environ.get("MODBUS_REGISTERS_VALIDATED", "false").strip().lower() in {"1", "true", "yes", "on"}
+ENABLE_PLANNING = env_bool("ENABLE_PLANNING", False)
+ALLOW_REMOTE_G781_CONNECT = env_bool("ALLOW_REMOTE_G781_CONNECT", False)
+COMMAND_MIN_INTERVAL_SEC = max(0, int(os.environ.get("COMMAND_MIN_INTERVAL_SEC", "30")))
+COMMAND_RESTART_DELAY_SEC = max(0, int(os.environ.get("COMMAND_RESTART_DELAY_SEC", "60")))
+SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
 
 ADDR_INVT = int(os.environ.get("ADDR_INVT", "1"))
 ADDR_SALMSON = int(os.environ.get("ADDR_SALMSON", "2"))
@@ -77,55 +98,55 @@ SYNC_STATE_KEYS = {
 
 # Registres INVT GD100-PV.
 INVT_REGS = {
-    "freq_hz": 0x1000,
-    "current_a": 0x1001,
-    "voltage_v": 0x1002,
-    "dc_bus_v": 0x1003,
-    "power_kw": 0x1004,
-    "fault_code": 0x8000,
+    "freq_hz": env_int("INVT_REG_FREQ_HZ", 0x1000),
+    "current_a": env_int("INVT_REG_CURRENT_A", 0x1001),
+    "voltage_v": env_int("INVT_REG_VOLTAGE_V", 0x1002),
+    "dc_bus_v": env_int("INVT_REG_DC_BUS_V", 0x1003),
+    "power_kw": env_int("INVT_REG_POWER_KW", 0x1004),
+    "fault_code": env_int("INVT_REG_FAULT_CODE", 0x8000),
 }
-INVT_CMD = 0x2000
+INVT_CMD = env_int("INVT_CMD_REG", 0x2000)
 INVT_ACTIONS = {
-    "on": 1,
-    "start": 1,
-    "forward": 1,
-    "reverse": 2,
-    "off": 5,
-    "stop": 5,
+    "on": env_int("INVT_ON_VALUE", 1),
+    "start": env_int("INVT_ON_VALUE", 1),
+    "forward": env_int("INVT_FORWARD_VALUE", 1),
+    "reverse": env_int("INVT_REVERSE_VALUE", 2),
+    "off": env_int("INVT_OFF_VALUE", 5),
+    "stop": env_int("INVT_OFF_VALUE", 5),
 }
 
 # Registres Salmson.
 SALMSON_REGS = {
-    "pump_state": 0x0001,
-    "current_a": 0x0010,
-    "error_code": 0x0020,
-    "float_low": 0x0030,
-    "float_high": 0x0031,
+    "pump_state": env_int("SALMSON_REG_PUMP_STATE", 0x0001),
+    "current_a": env_int("SALMSON_REG_CURRENT_A", 0x0010),
+    "error_code": env_int("SALMSON_REG_ERROR_CODE", 0x0020),
+    "float_low": env_int("SALMSON_REG_FLOAT_LOW", 0x0030),
+    "float_high": env_int("SALMSON_REG_FLOAT_HIGH", 0x0031),
 }
-SALMSON_CMD = 0x0100
+SALMSON_CMD = env_int("SALMSON_CMD_REG", 0x0100)
 
 # Registres Wilo.
 WILO_REGS = {
-    "pressure": 0x0001,
-    "flow": 0x0002,
-    "pump1": 0x0010,
-    "pump2": 0x0011,
-    "error_code": 0x0020,
+    "pressure": env_int("WILO_REG_PRESSURE", 0x0001),
+    "flow": env_int("WILO_REG_FLOW", 0x0002),
+    "pump1": env_int("WILO_REG_PUMP1", 0x0010),
+    "pump2": env_int("WILO_REG_PUMP2", 0x0011),
+    "error_code": env_int("WILO_REG_ERROR_CODE", 0x0020),
 }
-WILO_CMD = 0x0100
+WILO_CMD = env_int("WILO_CMD_REG", 0x0100)
 
 # Coffret/capteur 4 : registres génériques à adapter si le matériel réel change.
 COFFRET4_REGS = {
-    "input_1": 0x0001,
-    "input_2": 0x0002,
-    "analog_1": 0x0010,
-    "error_code": 0x0020,
+    "input_1": env_int("COFFRET4_REG_INPUT_1", 0x0001),
+    "input_2": env_int("COFFRET4_REG_INPUT_2", 0x0002),
+    "analog_1": env_int("COFFRET4_REG_ANALOG_1", 0x0010),
+    "error_code": env_int("COFFRET4_REG_ERROR_CODE", 0x0020),
 }
 
 
 # ============ APP FLASK ============
 app = Flask(__name__)
-CORS(app, origins="*", allow_headers=["Content-Type", "Authorization", "X-API-Token"])
+CORS(app, origins=CORS_ORIGINS, allow_headers=["Content-Type", "Authorization", "X-API-Token"])
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -162,6 +183,9 @@ app_state_updated_at = ""
 last_event_at: dict[str, float] = {}
 last_plan_runs: dict[str, float] = {}
 running_plan_ids: set[str] = set()
+last_command_at: dict[str, float] = {}
+last_off_at: dict[str, float] = {}
+last_rainbird_command_at = 0.0
 
 
 # ============ RAIN BIRD CONFIG ============
@@ -172,6 +196,8 @@ RAINBIRD_WIFI = os.environ.get("RAINBIRD_WIFI", "")
 RAINBIRD_ZONES = []
 RAINBIRD_ENABLED = []
 RAINBIRD_PROGRAMS = {"1": "Arrosage", "2": "Fertilisation"}
+RAINBIRD_MAX_DURATION_MIN = max(1, env_int("RAINBIRD_MAX_DURATION_MIN", 240))
+RAINBIRD_MIN_INTERVAL_SEC = max(0, env_int("RAINBIRD_MIN_INTERVAL_SEC", 30))
 rainbird_ip = os.environ.get("RAINBIRD_IP", "")
 rainbird_state = {"connected": False, "active_zones": [], "ip": rainbird_ip, "last_cmd": ""}
 
@@ -203,11 +229,7 @@ def token_from_request() -> str:
     auth = request.headers.get("Authorization", "")
     if auth.lower().startswith("bearer "):
         return auth.split(" ", 1)[1].strip()
-    return (
-        request.headers.get("X-API-Token", "")
-        or request.args.get("token", "")
-        or (request.get_json(silent=True) or {}).get("token", "")
-    ).strip()
+    return request.headers.get("X-API-Token", "").strip()
 
 
 def requires_auth() -> bool:
@@ -542,6 +564,53 @@ def set_simulated_device_state(device: str, action: str) -> None:
         cache["last_update"] = time.time()
 
 
+def command_targets(device: str) -> list[str]:
+    if device == "forage":
+        return ["invt", "salmson"]
+    if device == "all":
+        return ["invt", "salmson", "wilo"]
+    if device in {"invt", "salmson", "wilo"}:
+        return [device]
+    return [device]
+
+
+def command_rate_limit_error(device: str, action: str) -> str | None:
+    if action not in {"on", "forward", "reverse"}:
+        return None
+
+    current = time.time()
+    with lock:
+        for target in command_targets(device):
+            since_command = current - last_command_at.get(target, 0)
+            if since_command < COMMAND_MIN_INTERVAL_SEC:
+                remaining = int(COMMAND_MIN_INTERVAL_SEC - since_command) + 1
+                return f"Commande trop rapprochée pour {target}: attendre {remaining}s"
+
+            since_stop = current - last_off_at.get(target, 0)
+            if since_stop < COMMAND_RESTART_DELAY_SEC:
+                remaining = int(COMMAND_RESTART_DELAY_SEC - since_stop) + 1
+                return f"Redémarrage trop rapide pour {target}: attendre {remaining}s"
+
+    return None
+
+
+def registers_validation_error(action: str) -> str | None:
+    if MODBUS_REGISTERS_VALIDATED or action not in {"on", "forward", "reverse"}:
+        return None
+    if G781_MODE in SIMULATION_MODES:
+        return None
+    return "Registres Modbus non validés: définir MODBUS_REGISTERS_VALIDATED=true après mapping matériel"
+
+
+def record_control_success(device: str, action: str) -> None:
+    current = time.time()
+    with lock:
+        for target in command_targets(device):
+            last_command_at[target] = current
+            if action == "off":
+                last_off_at[target] = current
+
+
 def command_blockers(device: str, action: str) -> list[str]:
     if not SERVER_SAFETY_ENABLED or action in {"off", "stop"}:
         return []
@@ -555,7 +624,7 @@ def command_blockers(device: str, action: str) -> list[str]:
     if device in {"salmson", "forage", "all"}:
         if salmson.get("error_code"):
             blockers.append(salmson.get("error_text") or "Défaut Salmson")
-        if "float_low" in salmson and not bool(salmson.get("float_low")):
+        if "float_low" in salmson and salmson.get("float_low") != SALMSON_FLOAT_LOW_OK_VALUE:
             blockers.append("Manque d'eau Salmson")
     if device in {"wilo", "all"} and wilo.get("error_code"):
         blockers.append(wilo.get("error_text") or "Défaut Wilo")
@@ -573,17 +642,29 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
     if device == "coffret4":
         return False, "Aucun registre de commande défini pour coffret4"
 
+    validation_error = registers_validation_error(action)
+    if validation_error:
+        add_event("warning", validation_error, device=device, action=action, source=source)
+        return False, validation_error
+
     blockers = command_blockers(device, action)
     if blockers:
         return False, "Commande bloquée: " + " / ".join(blockers)
 
+    rate_error = command_rate_limit_error(device, action)
+    if rate_error:
+        add_event("warning", f"Commande refusée: {rate_error}", device=device, action=action, source=source)
+        return False, rate_error
+
     if G781_MODE in SIMULATION_MODES:
         set_simulated_device_state(device, action)
+        record_control_success(device, action)
         add_event("info", f"[SIMULATION] Commande OK: {device} {action}", source=source)
         return True, None
 
     if G781_MODE in HTTP_PUSH_MODES:
         queue_command({"type": "control", "device": device, "action": action, "source": source})
+        record_control_success(device, action)
         return True, None
 
     with lock:
@@ -591,7 +672,7 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
             return False, "USR-G781 non connecté"
 
         value = 1 if action in {"on", "forward", "reverse"} else 0
-        invt_value = INVT_ACTIONS.get(action, 1 if value else 5)
+        invt_value = INVT_ACTIONS.get(action, INVT_ACTIONS["on"] if value else INVT_ACTIONS["off"])
 
         ok = True
         if device == "forage":
@@ -610,6 +691,7 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
             )
 
     if ok:
+        record_control_success(device, action)
         add_event("info", f"Commande Modbus OK: {device} {action}", source=source)
         return True, None
     return False, "Commande Modbus échouée"
@@ -640,19 +722,26 @@ def rainbird_request(ip: str, command: str, params: dict | None = None):
 
 
 def rainbird_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
+    global last_rainbird_command_at
     if zone not in RAINBIRD_ZONES:
         return False, {"error": f"Zone {zone} invalide"}
-    duration = max(1, min(int(duration), 360))
+    current = time.time()
+    if current - last_rainbird_command_at < RAINBIRD_MIN_INTERVAL_SEC:
+        remaining = int(RAINBIRD_MIN_INTERVAL_SEC - (current - last_rainbird_command_at)) + 1
+        return False, {"error": f"Commande Rain Bird trop rapprochee: attendre {remaining}s"}
+    duration = max(1, min(int(duration), RAINBIRD_MAX_DURATION_MIN))
     rainbird_state["last_cmd"] = f"START Zone {zone} {duration}min"
     if not rainbird_ip:
         if G781_MODE in SIMULATION_MODES:
             rainbird_state["active_zones"] = [zone]
+            last_rainbird_command_at = current
             return True, {"mode": "simulation", "zone": zone, "duration": duration}
         return False, {"error": "Rain Bird IP manquante: simulation refusée en mode réel"}
     result = rainbird_request(rainbird_ip, "ZoneStartRequest", {"zone": zone, "duration": duration})
     if result:
         rainbird_state["active_zones"] = [zone]
         rainbird_state["connected"] = True
+        last_rainbird_command_at = current
         return True, {"result": result, "zone": zone, "duration": duration}
     return False, {"error": "Pas de réponse Rain Bird"}
 
@@ -903,7 +992,7 @@ def start_background_threads() -> None:
     if not thread_started:
         thread_started = True
         threading.Thread(target=update_loop, daemon=True, name="modbus-update-loop").start()
-    if not scheduler_started:
+    if ENABLE_PLANNING and not scheduler_started:
         scheduler_started = True
         threading.Thread(target=planning_loop, daemon=True, name="planning-loop").start()
 
@@ -921,6 +1010,7 @@ def ping():
             "auth_required": bool(API_TOKEN),
             "server_time": local_now().isoformat(),
             "timezone": LOCAL_TZ_NAME,
+            "planning_enabled": ENABLE_PLANNING,
             "planning_count": len(planning),
             "simulation": G781_MODE in SIMULATION_MODES,
         }
@@ -938,6 +1028,7 @@ def status():
                 "mode": cache["mode"],
                 "server_time": local_now().isoformat(),
                 "timezone": LOCAL_TZ_NAME,
+                "planning_enabled": ENABLE_PLANNING,
                 "planning_count": len(planning),
                 "invt": cache["invt"],
                 "salmson": cache["salmson"],
@@ -964,12 +1055,26 @@ def devices():
 @app.route("/api/connect", methods=["POST"])
 def api_connect():
     body = request.get_json(silent=True) or {}
-    host = str(body.get("host") or body.get("ip") or "").strip()
-    port = parse_int(body.get("port"), G781_PORT)
+    if ALLOW_REMOTE_G781_CONNECT:
+        host = str(body.get("host") or body.get("ip") or "").strip()
+        port = parse_int(body.get("port"), G781_PORT)
+    else:
+        host = G781_HOST
+        port = G781_PORT
     if not host and G781_MODE not in SIMULATION_MODES:
-        return jsonify({"success": False, "error": "IP/host G781 manquant"}), 400
+        return jsonify({"success": False, "error": "G781_HOST non configure cote serveur"}), 400
     ok = connect(host, port)
-    return jsonify({"success": ok, "host": host, "ip": host, "port": port, "mode": G781_MODE})
+    return jsonify(
+        {
+            "success": ok,
+            "error": None if ok else "Connexion G781 echouee",
+            "host": host,
+            "ip": host,
+            "port": port,
+            "mode": G781_MODE,
+            "remote_target_allowed": ALLOW_REMOTE_G781_CONNECT,
+        }
+    ), 200 if ok else 503
 
 
 @app.route("/api/control", methods=["POST"])
@@ -980,7 +1085,7 @@ def control():
     if not device or not action:
         return jsonify({"success": False, "error": "device/pump et action requis"}), 400
     ok, error = apply_control(device, action, source="api")
-    status_code = 200 if ok else (503 if error == "USR-G781 non connecté" else 400)
+    status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "USR-G781 non connecté" else 400))
     return jsonify({"success": ok, "device": device, "pump": device, "action": action, "error": error}), status_code
 
 
@@ -990,11 +1095,9 @@ def inverter():
     action = str(body.get("action") or "stop").strip().lower()
     if action not in INVT_ACTIONS:
         return jsonify({"success": False, "error": f"Action INVT inconnue: {action}"}), 400
-    if G781_MODE in HTTP_PUSH_MODES:
-        item = queue_command({"type": "inverter", "device": "invt", "action": action, "source": "api"})
-        return jsonify({"success": True, "queued": True, "command": item})
     ok, error = apply_control("invt", action, source="api")
-    return jsonify({"success": ok, "device": "invt", "action": action, "error": error}), 200 if ok else 400
+    status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "USR-G781 non connecté" else 400))
+    return jsonify({"success": ok, "device": "invt", "action": action, "error": error}), status_code
 
 
 @app.route("/api/param/read", methods=["POST"])
@@ -1033,8 +1136,27 @@ def param_write():
 @app.route("/api/planning", methods=["GET", "POST"])
 def api_planning():
     global planning
+    if not ENABLE_PLANNING:
+        if request.method == "GET":
+            return jsonify(
+                {
+                    "planning": [],
+                    "enabled": False,
+                    "timezone": LOCAL_TZ_NAME,
+                    "server_time": local_now().isoformat(),
+                }
+            )
+        return jsonify({"success": False, "enabled": False, "error": "Planning desactive cote serveur"}), 403
+
     if request.method == "GET":
-        return jsonify({"planning": planning, "timezone": LOCAL_TZ_NAME, "server_time": local_now().isoformat()})
+        return jsonify(
+            {
+                "planning": planning,
+                "enabled": True,
+                "timezone": LOCAL_TZ_NAME,
+                "server_time": local_now().isoformat(),
+            }
+        )
 
     body = request.get_json(silent=True) or {}
     items = body.get("planning")
@@ -1050,7 +1172,7 @@ def api_planning():
         planning = normalized
         save_planning_to_disk()
     add_event("info", f"Planning sauvegardé: {len(planning)} entrée(s)")
-    return jsonify({"success": True, "planning": planning, "timezone": LOCAL_TZ_NAME})
+    return jsonify({"success": True, "enabled": True, "planning": planning, "timezone": LOCAL_TZ_NAME})
 
 
 
