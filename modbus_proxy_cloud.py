@@ -15,6 +15,7 @@ import os
 import re
 import threading
 import time
+import uuid
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,14 +48,15 @@ def env_float(name: str, default: float) -> float:
 
 
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.05-zarzis-http-push-v7"
+APP_VERSION = "2026.05.06-zarzis-http-push-v8"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
 APP_STATE_FILE = Path(os.environ.get("APP_STATE_FILE", str(DATA_DIR / "app_state_zarzis.json")))
+HISTORY_FILE = Path(os.environ.get("HISTORY_FILE", str(DATA_DIR / "history_zarzis.json")))
 PERSISTENT_STORAGE_ENABLED = env_bool("PERSISTENT_STORAGE_ENABLED", False)
 
-G781_MODE = os.environ.get("G781_MODE", "direct_tcp").strip().lower()
+G781_MODE = os.environ.get("G781_MODE", "http_push").strip().lower()
 G781_HOST = os.environ.get("G781_HOST") or os.environ.get("USR_G781_IP", "")
 G781_PORT = int(os.environ.get("G781_PORT") or os.environ.get("USR_G781_PORT", "502"))
 SERVER_PORT = int(os.environ.get("PORT", "8080"))
@@ -78,6 +80,9 @@ COMMAND_MIN_INTERVAL_SEC = max(0, int(os.environ.get("COMMAND_MIN_INTERVAL_SEC",
 COMMAND_RESTART_DELAY_SEC = max(0, int(os.environ.get("COMMAND_RESTART_DELAY_SEC", "60")))
 G781_HTTP_PUSH_STALE_SEC = max(10, env_int("G781_HTTP_PUSH_STALE_SEC", 45))
 G781_COMMAND_TTL_SEC = max(30, env_int("G781_COMMAND_TTL_SEC", 300))
+G781_COMMAND_ACK_TIMEOUT_SEC = max(10, env_int("G781_COMMAND_ACK_TIMEOUT_SEC", 45))
+HISTORY_MAX_ITEMS = max(100, env_int("HISTORY_MAX_ITEMS", 2000))
+HISTORY_SAVE_MIN_INTERVAL_SEC = max(5, env_int("HISTORY_SAVE_MIN_INTERVAL_SEC", 30))
 SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
 INVT_NOMINAL_KW = env_float("INVT_NOMINAL_KW", 5.5)
@@ -193,10 +198,13 @@ scheduler_started = False
 
 events: deque[dict] = deque(maxlen=300)
 pending_commands: deque[dict] = deque(maxlen=200)
+history: deque[dict] = deque(maxlen=HISTORY_MAX_ITEMS)
+recent_command_acks: deque[dict] = deque(maxlen=100)
 planning: list[dict] = []
 app_state: dict[str, str] = {}
 app_state_revision = 0
 app_state_updated_at = ""
+last_history_save_at = 0.0
 last_event_at: dict[str, float] = {}
 last_plan_runs: dict[str, float] = {}
 running_plan_ids: set[str] = set()
@@ -438,18 +446,165 @@ def write_reg(addr: int, reg: int, value: int) -> bool:
         return False
 
 
+def command_snapshot(command: dict) -> dict:
+    public = dict(command)
+    public.pop("expires_at", None)
+    return public
+
+
+def save_history_to_disk(force: bool = False) -> None:
+    global last_history_save_at
+    current = time.time()
+    if not force and current - last_history_save_at < HISTORY_SAVE_MIN_INTERVAL_SEC:
+        return
+    try:
+        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "version": APP_VERSION,
+            "saved_at": now_iso(),
+            "history": list(history),
+        }
+        tmp = HISTORY_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(HISTORY_FILE)
+        last_history_save_at = current
+    except Exception as exc:
+        add_event("warning", f"Historique non sauvegardé: {exc}")
+
+
+def add_history(kind: str, force_save: bool = False, **data) -> dict:
+    entry = {"ts": now_iso(), "kind": kind, **data}
+    history.appendleft(entry)
+    save_history_to_disk(force=force_save or kind.startswith("command"))
+    return entry
+
+
 def queue_command(command: dict) -> dict:
-    item = {"id": int(time.time() * 1000), "ts": now_iso(), "expires_at": time.time() + G781_COMMAND_TTL_SEC, **command}
+    item = {
+        "id": f"cmd-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}",
+        "ts": now_iso(),
+        "created_at": time.time(),
+        "expires_at": time.time() + G781_COMMAND_TTL_SEC,
+        "status": "queued",
+        "attempts": 0,
+        "last_fetch_at": 0,
+        **command,
+    }
     pending_commands.append(item)
+    add_history("command_queued", force_save=True, command=command_snapshot(item))
     add_event("info", "Commande ajoutee a la file HTTP PUSH", command=item)
     return item
 
 
 def cleanup_pending_commands() -> None:
     current = time.time()
-    kept = [cmd for cmd in pending_commands if float(cmd.get("expires_at", current)) >= current]
+    kept = []
+    expired = []
+    for cmd in pending_commands:
+        if float(cmd.get("expires_at", current)) >= current:
+            kept.append(cmd)
+        else:
+            expired.append(cmd)
+    for cmd in expired:
+        cmd["status"] = "expired"
+        add_history("command_expired", force_save=True, command=command_snapshot(cmd))
     pending_commands.clear()
     pending_commands.extend(kept)
+
+
+def command_can_retry(command: dict) -> bool:
+    if str(command.get("type") or "") == "rainbird":
+        return str(command.get("action") or "").lower() == "stop"
+    return str(command.get("action") or "").lower() in {"off", "stop"}
+
+
+def command_status_counts() -> dict[str, int]:
+    cleanup_pending_commands()
+    counts = {"queued": 0, "sent": 0}
+    for cmd in pending_commands:
+        status = str(cmd.get("status") or "queued")
+        counts[status] = counts.get(status, 0) + 1
+    return counts
+
+
+def is_start_action(action: str) -> bool:
+    return normalize_action(action) in {"on", "forward", "reverse"}
+
+
+def safe_int(value, default: int | None = None) -> int | None:
+    try:
+        if value is None or value == "":
+            return default
+        return int(float(value))
+    except Exception:
+        return default
+
+
+def device_reading_unavailable(data: dict) -> bool:
+    status = str(data.get("status") or "").lower()
+    error_text = str(data.get("error_text") or "").lower()
+    if not data:
+        return True
+    if any(marker in status or marker in error_text for marker in ("connect", "non lu", "aucune lecture", "indisponible")):
+        return True
+    unavailable_markers = ("deconnect", "dã‰connect", "non lu", "aucune lecture", "indisponible")
+    return False
+
+
+def start_freshness_blocker() -> str | None:
+    if G781_MODE in SIMULATION_MODES:
+        return None
+    if G781_MODE in HTTP_PUSH_MODES:
+        if not http_push_is_fresh():
+            return "Agent local absent ou mesures trop anciennes"
+        return None
+    last_update = float(cache.get("last_update") or 0)
+    max_age = max(15, UPDATE_SEC * 3 + 5)
+    if last_update <= 0 or time.time() - last_update > max_age:
+        return "Mesures Modbus trop anciennes"
+    if not client_is_open():
+        return "USR-G781 non connecte"
+    return None
+
+
+def device_start_blockers(target: str, data: dict) -> list[str]:
+    blockers: list[str] = []
+    if device_reading_unavailable(data):
+        blockers.append(f"{target}: lecture critique absente")
+        return blockers
+
+    if target == "invt":
+        if "fault_code" not in data:
+            blockers.append("INVT: registre defaut non lu")
+            return blockers
+        fault = safe_int(data.get("fault_code"), 0) or 0
+        if fault:
+            blockers.append(data.get("error_text") or f"Defaut variateur INVT {fault}")
+
+    elif target == "salmson":
+        if "error_code" not in data:
+            blockers.append("Salmson: registre defaut non lu")
+        else:
+            error = safe_int(data.get("error_code"), 0) or 0
+            if error:
+                blockers.append(data.get("error_text") or f"Defaut Salmson {error}")
+        if "float_low" not in data:
+            blockers.append("Salmson: flotteur manque d'eau non lu")
+        elif safe_int(data.get("float_low")) != SALMSON_FLOAT_LOW_OK_VALUE:
+            blockers.append("Manque d'eau Salmson")
+
+    elif target == "wilo":
+        required = ["error_code", "switch_state"]
+        if WILO_REGS.get("pressure", -1) >= 0:
+            required.append("pressure")
+        missing = [name for name in required if name not in data]
+        if missing:
+            blockers.append("Wilo: registre critique non lu (" + ", ".join(missing) + ")")
+        error = safe_int(data.get("error_code"), 0) or 0
+        if error:
+            blockers.append(data.get("error_text") or f"Defaut Wilo {error}")
+
+    return blockers
 
 
 # ============ LECTURE APPAREILS ============
@@ -698,14 +853,36 @@ def command_blockers(device: str, action: str) -> list[str]:
     return blockers
 
 
+def command_blockers_strict(device: str, action: str) -> list[str]:
+    if not SERVER_SAFETY_ENABLED or not is_start_action(action):
+        return []
+    blockers: list[str] = []
+    freshness = start_freshness_blocker()
+    if freshness:
+        blockers.append(freshness)
+        return blockers
+
+    for target in command_targets(device):
+        if target == "coffret4":
+            blockers.append("coffret4: aucun registre de commande valide")
+            continue
+        blockers.extend(device_start_blockers(target, cache.get(target, {})))
+    return blockers
+
+
 def apply_control(device: str, action: str, source: str = "manual") -> tuple[bool, str | None]:
     device = str(device or "").strip().lower()
     action = normalize_action(action)
+    source = str(source or "manual")
 
     if device not in VALID_DEVICES:
         return False, f"Appareil inconnu: {device}"
     if action not in {"on", "off", "forward", "reverse"}:
         return False, f"Action invalide: {action}"
+    if source.lower().startswith("ai"):
+        add_event("warning", "Commande refusée: IA en lecture seule", device=device, action=action, source=source)
+        add_history("command_rejected", force_save=True, device=device, action=action, source=source, error="IA lecture seule")
+        return False, "IA en lecture seule: diagnostic et proposition uniquement"
     if device == "coffret4":
         return False, "Aucun registre de commande défini pour coffret4"
     if device == "salmson" and not SALMSON_COMMAND_ENABLED:
@@ -714,24 +891,33 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
     validation_error = registers_validation_error(action)
     if validation_error:
         add_event("warning", validation_error, device=device, action=action, source=source)
+        add_history("command_rejected", force_save=True, device=device, action=action, source=source, error=validation_error)
         return False, validation_error
 
-    blockers = command_blockers(device, action)
+    blockers = command_blockers_strict(device, action)
     if blockers:
-        return False, "Commande bloquée: " + " / ".join(blockers)
+        error = "Commande bloquée: " + " / ".join(blockers)
+        add_history("command_rejected", force_save=True, device=device, action=action, source=source, error=error)
+        return False, error
 
     rate_error = command_rate_limit_error(device, action)
     if rate_error:
         add_event("warning", f"Commande refusée: {rate_error}", device=device, action=action, source=source)
+        add_history("command_rejected", force_save=True, device=device, action=action, source=source, error=rate_error)
         return False, rate_error
 
     if G781_MODE in SIMULATION_MODES:
         set_simulated_device_state(device, action)
         record_control_success(device, action)
+        add_history("command_executed", force_save=True, device=device, action=action, source=source, mode="simulation")
         add_event("info", f"[SIMULATION] Commande OK: {device} {action}", source=source)
         return True, None
 
     if G781_MODE in HTTP_PUSH_MODES:
+        if action in {"on", "forward", "reverse"} and not http_push_is_fresh():
+            error = "Agent local absent ou trop ancien: démarrage refusé"
+            add_history("command_rejected", force_save=True, device=device, action=action, source=source, error=error)
+            return False, error
         queue_command({
             "type": "control",
             "device": device,
@@ -767,8 +953,10 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
 
     if ok:
         record_control_success(device, action)
+        add_history("command_executed", force_save=True, device=device, action=action, source=source, mode="direct_tcp")
         add_event("info", f"Commande Modbus OK: {device} {action}", source=source)
         return True, None
+    add_history("command_failed", force_save=True, device=device, action=action, source=source, mode="direct_tcp", error="Commande Modbus échouée")
     return False, "Commande Modbus échouée"
 
 
@@ -806,10 +994,18 @@ def rainbird_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
         return False, {"error": f"Commande Rain Bird trop rapprochee: attendre {remaining}s"}
     duration = max(1, min(int(duration), RAINBIRD_MAX_DURATION_MIN))
     rainbird_state["last_cmd"] = f"START Zone {zone} {duration}min"
+    if G781_MODE in HTTP_PUSH_MODES:
+        if not http_push_is_fresh():
+            return False, {"error": "Agent local absent ou trop ancien: Rain Bird refusé"}
+        queue_command({"type": "rainbird", "action": "start", "zone": zone, "duration": duration})
+        rainbird_state["last_cmd"] = f"QUEUED START Zone {zone} {duration}min"
+        last_rainbird_command_at = current
+        return True, {"mode": "http_push", "queued": True, "zone": zone, "duration": duration}
     if not rainbird_ip:
         if G781_MODE in SIMULATION_MODES:
             rainbird_state["active_zones"] = [zone]
             last_rainbird_command_at = current
+            add_history("command_executed", force_save=True, type="rainbird", action="start", zone=zone, duration=duration, mode="simulation")
             return True, {"mode": "simulation", "zone": zone, "duration": duration}
         return False, {"error": "Rain Bird IP manquante: simulation refusée en mode réel"}
     result = rainbird_request(rainbird_ip, "ZoneStartRequest", {"zone": zone, "duration": duration})
@@ -817,19 +1013,26 @@ def rainbird_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
         rainbird_state["active_zones"] = [zone]
         rainbird_state["connected"] = True
         last_rainbird_command_at = current
+        add_history("command_executed", force_save=True, type="rainbird", action="start", zone=zone, duration=duration, mode="direct")
         return True, {"result": result, "zone": zone, "duration": duration}
+    add_history("command_failed", force_save=True, type="rainbird", action="start", zone=zone, duration=duration, error="Pas de réponse Rain Bird")
     return False, {"error": "Pas de réponse Rain Bird"}
 
 
 def rainbird_stop_zone(zone: int | None = None) -> tuple[bool, dict]:
     rainbird_state["last_cmd"] = f"STOP {'zone ' + str(zone) if zone else 'tout'}"
     rainbird_state["active_zones"] = []
+    if G781_MODE in HTTP_PUSH_MODES:
+        queue_command({"type": "rainbird", "action": "stop", "zone": zone})
+        return True, {"mode": "http_push", "queued": True, "zone": zone}
     if not rainbird_ip:
         return True, {"mode": "simulation"}
     result = rainbird_request(rainbird_ip, "StopIrrigationRequest")
     if result:
         rainbird_state["connected"] = True
+        add_history("command_executed", force_save=True, type="rainbird", action="stop", zone=zone, mode="direct")
         return True, {"result": result}
+    add_history("command_failed", force_save=True, type="rainbird", action="stop", zone=zone, error="Pas de réponse Rain Bird")
     return False, {"error": "Pas de réponse Rain Bird"}
 
 
@@ -918,6 +1121,22 @@ def save_planning_to_disk() -> None:
         tmp.replace(PLANNING_FILE)
     except Exception as exc:
         add_event("warning", f"Planning non sauvegardé: {exc}")
+
+
+def load_history_from_disk() -> None:
+    try:
+        if not HISTORY_FILE.exists():
+            return
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        items = data.get("history", data if isinstance(data, list) else [])
+        history.clear()
+        for item in items[:HISTORY_MAX_ITEMS]:
+            if isinstance(item, dict):
+                history.append(item)
+        add_event("info", f"Historique chargé: {len(history)} entrée(s)")
+    except Exception as exc:
+        history.clear()
+        add_event("warning", f"Historique non chargé: {exc}")
 
 
 
@@ -1072,6 +1291,95 @@ def start_background_threads() -> None:
         threading.Thread(target=planning_loop, daemon=True, name="planning-loop").start()
 
 
+# ============ ASSISTANT IA LECTURE SEULE ============
+def device_problem(label: str, data: dict) -> list[str]:
+    findings = []
+    status = str(data.get("status") or "")
+    error_text = data.get("error_text")
+    if "DÉCONNECT" in status or "DECONNECT" in status:
+        findings.append(f"{label}: aucune lecture récente valide.")
+    if error_text:
+        findings.append(f"{label}: {error_text}.")
+    return findings
+
+
+def build_planning_suggestion(question: str) -> list[str]:
+    text = question.lower()
+    if not any(word in text for word in ("planning", "programme", "arros", "irrig", "demain", "olivier")):
+        return []
+    return [
+        "Brouillon planning: privilégier une fenêtre tôt le matin, par exemple 06:00-08:00, avant forte chaleur.",
+        "Séparer grands et petits oliviers si les débits par ligne sont différents.",
+        "Garder le planning cloud désactivé tant que les démarrages, arrêts et sécurités locales ne sont pas validés terrain.",
+        "Transformer ce brouillon en programme seulement après validation humaine dans l'onglet Planning.",
+    ]
+
+
+def build_ai_diagnostic(question: str) -> dict:
+    q = str(question or "").strip()
+    findings: list[str] = []
+    recommendations: list[str] = []
+    blocked = []
+
+    with lock:
+        connected = client_is_open()
+        status_snapshot = {
+            "connected": connected,
+            "mode": cache.get("mode"),
+            "last_update": cache.get("last_update"),
+            "invt": dict(cache.get("invt", {})),
+            "salmson": dict(cache.get("salmson", {})),
+            "wilo": dict(cache.get("wilo", {})),
+            "coffret4": dict(cache.get("coffret4", {})),
+            "commands": command_status_counts(),
+            "events": list(events)[:8],
+        }
+
+    if G781_MODE in HTTP_PUSH_MODES and not http_push_is_fresh():
+        findings.append("Agent local absent ou données trop anciennes.")
+        blocked.append("Aucun démarrage ne doit être proposé tant que l'agent n'est pas frais.")
+    if not connected:
+        findings.append("Serveur non connecté à une source terrain fraîche.")
+
+    findings.extend(device_problem("INVT", status_snapshot["invt"]))
+    findings.extend(device_problem("Salmson", status_snapshot["salmson"]))
+    findings.extend(device_problem("Wilo", status_snapshot["wilo"]))
+
+    salmson = status_snapshot["salmson"]
+    if "float_low" in salmson and salmson.get("float_low") != SALMSON_FLOAT_LOW_OK_VALUE:
+        blocked.append("Manque d'eau Salmson détecté par flotteur.")
+    if status_snapshot["commands"].get("sent", 0):
+        findings.append(f"{status_snapshot['commands']['sent']} commande(s) envoyée(s) en attente d'ACK agent.")
+    if not MODBUS_REGISTERS_VALIDATED:
+        blocked.append("Registres Modbus non validés: démarrages réels bloqués.")
+    if not SALMSON_COMMAND_ENABLED:
+        recommendations.append("Laisser Salmson en lecture/supervision tant que la table EC-L n'est pas confirmée.")
+
+    if not findings:
+        findings.append("Aucune anomalie évidente dans les données disponibles.")
+    if blocked:
+        recommendations.extend([f"Ne pas démarrer: {item}" for item in blocked])
+    else:
+        recommendations.append("Si un test est nécessaire, le préparer en mode maintenance, durée courte, avec validation humaine.")
+
+    if any(word in q.lower() for word in ("démarre", "demarre", "start", "lance", "ouvre", "arrête", "arrete", "stop")):
+        recommendations.insert(0, "Je ne peux pas exécuter de commande. Je peux seulement préparer une action à valider manuellement.")
+
+    planning = build_planning_suggestion(q)
+    risk_level = "danger" if blocked else ("warning" if findings else "ok")
+    return {
+        "mode": "read_only",
+        "can_execute_commands": False,
+        "risk_level": risk_level,
+        "summary": "Assistant IA Zarzis: diagnostic lecture seule, aucune écriture Modbus.",
+        "question": q,
+        "findings": findings,
+        "recommendations": recommendations,
+        "planning_suggestion": planning,
+        "status": status_snapshot,
+    }
+
+
 # ============ API ============
 @app.route("/api/ping")
 def ping():
@@ -1101,6 +1409,7 @@ def status():
         connected = client_is_open()
         if G781_MODE in HTTP_PUSH_MODES:
             cache["connected"] = connected
+        command_counts = command_status_counts()
         return jsonify(
             {
                 "connected": connected,
@@ -1113,6 +1422,9 @@ def status():
                 "planning_count": len(planning),
                 "http_push_stale_sec": G781_HTTP_PUSH_STALE_SEC if G781_MODE in HTTP_PUSH_MODES else None,
                 "commands_pending": len(pending_commands),
+                "commands_status": command_counts,
+                "last_command_ack": recent_command_acks[0] if recent_command_acks else None,
+                "recent_command_acks": list(recent_command_acks)[:20],
                 "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED},
                 "invt": cache["invt"],
                 "salmson": cache["salmson"],
@@ -1166,22 +1478,53 @@ def control():
     body = request.get_json(silent=True) or {}
     device = str(body.get("device") or body.get("pump") or "").strip().lower()
     action = str(body.get("action") or "").strip().lower()
+    source = str(body.get("source") or "api").strip().lower()
+    if source.startswith("ai"):
+        return jsonify({"success": False, "error": "IA en lecture seule: commande directe interdite"}), 403
     if not device or not action:
         return jsonify({"success": False, "error": "device/pump et action requis"}), 400
-    ok, error = apply_control(device, action, source="api")
+    ok, error = apply_control(device, action, source=source)
     status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "USR-G781 non connecté" else 400))
-    return jsonify({"success": ok, "device": device, "pump": device, "action": action, "error": error}), status_code
+    queued = bool(ok and G781_MODE in HTTP_PUSH_MODES)
+    executed = bool(ok and not queued)
+    return jsonify({
+        "success": ok,
+        "device": device,
+        "pump": device,
+        "action": action,
+        "error": error,
+        "queued": queued,
+        "executed": executed,
+        "pending_ack": queued,
+        "command_status": "queued" if queued else ("executed" if executed else "rejected"),
+        "message": "Commande mise en file, attente ACK agent" if queued else ("Commande executee" if executed else error),
+    }), status_code
 
 
 @app.route("/api/inverter", methods=["POST"])
 def inverter():
     body = request.get_json(silent=True) or {}
     action = str(body.get("action") or "stop").strip().lower()
+    source = str(body.get("source") or "api").strip().lower()
+    if source.startswith("ai"):
+        return jsonify({"success": False, "error": "IA en lecture seule: commande directe interdite"}), 403
     if action not in INVT_ACTIONS:
         return jsonify({"success": False, "error": f"Action INVT inconnue: {action}"}), 400
-    ok, error = apply_control("invt", action, source="api")
+    ok, error = apply_control("invt", action, source=source)
     status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "USR-G781 non connecté" else 400))
-    return jsonify({"success": ok, "device": "invt", "action": action, "error": error}), status_code
+    queued = bool(ok and G781_MODE in HTTP_PUSH_MODES)
+    executed = bool(ok and not queued)
+    return jsonify({
+        "success": ok,
+        "device": "invt",
+        "action": action,
+        "error": error,
+        "queued": queued,
+        "executed": executed,
+        "pending_ack": queued,
+        "command_status": "queued" if queued else ("executed" if executed else "rejected"),
+        "message": "Commande mise en file, attente ACK agent" if queued else ("Commande executee" if executed else error),
+    }), status_code
 
 
 @app.route("/api/param/read", methods=["POST"])
@@ -1206,6 +1549,8 @@ def param_write():
     if not ALLOW_PARAM_WRITE:
         return jsonify({"success": False, "error": "Écriture paramètres désactivée côté serveur"}), 403
     body = request.get_json(silent=True) or {}
+    if str(body.get("source") or "").strip().lower().startswith("ai"):
+        return jsonify({"success": False, "error": "IA en lecture seule: écriture paramètre interdite"}), 403
     addr = parse_int(body.get("addr"), 1)
     reg = parse_int(body.get("reg"), 0)
     value = parse_int(body.get("value"), 0)
@@ -1295,7 +1640,7 @@ def api_app_state():
             else:
                 app_state[key] = value
         app_state_revision += 1
-        app_state_updated_at = ""
+        app_state_updated_at = now_iso()
         save_app_state_to_disk()
     add_event("info", f"État partagé synchronisé: revision {app_state_revision}")
     return jsonify({"success": True, "revision": app_state_revision, "updated_at": app_state_updated_at, "state": app_state})
@@ -1307,6 +1652,32 @@ def api_events():
     return jsonify({"events": list(events)[:limit]})
 
 
+@app.route("/api/history")
+def api_history():
+    limit = min(parse_int(request.args.get("limit"), 100), HISTORY_MAX_ITEMS)
+    kind = str(request.args.get("kind") or "").strip()
+    items = list(history)
+    if kind:
+        items = [item for item in items if item.get("kind") == kind]
+    return jsonify({"history": items[:limit], "count": len(items), "max": HISTORY_MAX_ITEMS})
+
+
+@app.route("/api/ai/diagnose", methods=["POST"])
+def ai_diagnose():
+    body = request.get_json(silent=True) or {}
+    question = str(body.get("question") or body.get("message") or "").strip()
+    diagnostic = build_ai_diagnostic(question)
+    add_history(
+        "ai_diagnostic",
+        force_save=True,
+        question=question,
+        risk_level=diagnostic["risk_level"],
+        findings=diagnostic["findings"][:5],
+        recommendations=diagnostic["recommendations"][:5],
+    )
+    return jsonify({"success": True, **diagnostic})
+
+
 @app.route("/api/g781/push", methods=["POST"])
 def g781_push():
     body = request.get_json(silent=True) or {}
@@ -1315,26 +1686,106 @@ def g781_push():
         for key in ("invt", "salmson", "wilo", "coffret4"):
             item = payload.get(key) if isinstance(payload, dict) else None
             if isinstance(item, dict):
-                cache[key].update(item)
+                cache[key] = dict(item)
                 if "last_seen" not in item:
                     cache[key]["last_seen"] = now_iso()
+        if isinstance(body.get("rainbird"), dict):
+            rainbird_state.update(body["rainbird"])
         cache["connected"] = True
         cache["mode"] = G781_MODE
         cache["g781_ip"] = str(body.get("agent_id") or request.headers.get("X-Forwarded-For") or request.remote_addr or "agent local")
         cache["last_update"] = time.time()
         cleanup_pending_commands()
         queued = len(pending_commands)
+        snapshot = {
+            "agent_id": cache["g781_ip"],
+            "devices": {key: dict(cache[key]) for key in ("invt", "salmson", "wilo", "coffret4")},
+            "rainbird": dict(rainbird_state),
+        }
+    add_history("measurement", **snapshot)
     add_event("info", "Push G781 reçu")
     return jsonify({"success": True, "commands_pending": queued, "server_time": local_now().isoformat()})
 
 
 @app.route("/api/g781/commands")
 def g781_commands():
+    agent_id = request.headers.get("X-Agent-ID") or request.args.get("agent_id") or request.headers.get("User-Agent") or "agent local"
     with lock:
         cleanup_pending_commands()
-        commands = list(pending_commands)
-        pending_commands.clear()
+        current = time.time()
+        commands = []
+        for cmd in pending_commands:
+            status = str(cmd.get("status") or "queued")
+            last_fetch_at = float(cmd.get("last_fetch_at") or 0)
+            can_send = status == "queued"
+            if status == "sent" and command_can_retry(cmd) and current - last_fetch_at >= G781_COMMAND_ACK_TIMEOUT_SEC:
+                can_send = True
+            if not can_send:
+                continue
+            cmd["status"] = "sent"
+            cmd["last_fetch_at"] = current
+            cmd["fetched_at"] = now_iso()
+            cmd["agent_id"] = agent_id
+            cmd["attempts"] = int(cmd.get("attempts", 0)) + 1
+            commands.append(command_snapshot(cmd))
+        if commands:
+            add_history("command_sent", agent_id=agent_id, commands=commands, force_save=True)
     return jsonify({"success": True, "commands": commands, "count": len(commands), "server_time": local_now().isoformat()})
+
+
+@app.route("/api/g781/ack", methods=["POST"])
+def g781_ack():
+    body = request.get_json(silent=True) or {}
+    command_id = str(body.get("id") or body.get("command_id") or "").strip()
+    agent_id = str(body.get("agent_id") or request.headers.get("X-Agent-ID") or request.headers.get("User-Agent") or "agent local")
+    if not command_id:
+        return jsonify({"success": False, "error": "id commande manquant"}), 400
+    with lock:
+        matched = None
+        kept = []
+        for cmd in pending_commands:
+            if str(cmd.get("id")) == command_id:
+                matched = cmd
+                continue
+            kept.append(cmd)
+        pending_commands.clear()
+        pending_commands.extend(kept)
+    ack = {
+        "id": command_id,
+        "ts": now_iso(),
+        "agent_id": agent_id,
+        "ok": bool(body.get("ok", body.get("success", False))),
+        "error": str(body.get("error") or ""),
+        "result": body.get("result") if isinstance(body.get("result"), dict) else {},
+        "command": command_snapshot(matched) if matched else None,
+    }
+    if ack["command"]:
+        ack["type"] = ack["command"].get("type")
+        ack["device"] = ack["command"].get("device")
+        ack["action"] = ack["command"].get("action")
+        if ack["ok"] and ack["type"] == "rainbird":
+            if ack["action"] == "start":
+                rainbird_state["active_zones"] = [ack["command"].get("zone")]
+            elif ack["action"] == "stop":
+                rainbird_state["active_zones"] = []
+            rainbird_state["last_cmd"] = f"ACK {ack['action']} OK"
+    recent_command_acks.appendleft(ack)
+    add_history("command_ack", force_save=True, **ack)
+    if ack["command"]:
+        history_kind = "command_executed" if ack["ok"] else "command_failed"
+        add_history(
+            history_kind,
+            force_save=True,
+            mode="http_push",
+            agent_id=agent_id,
+            device=ack.get("device"),
+            action=ack.get("action"),
+            error=ack["error"],
+            command_id=command_id,
+            result=ack["result"],
+        )
+    add_event("info" if ack["ok"] else "warning", f"ACK agent commande {command_id}: {'OK' if ack['ok'] else ack['error'] or 'ECHEC'}")
+    return jsonify({"success": True, "known": matched is not None, "ack": ack})
 
 
 @app.route("/api/rainbird/config")
@@ -1358,6 +1809,8 @@ def rainbird_config():
 def rainbird_setip():
     global rainbird_ip
     body = request.get_json(silent=True) or {}
+    if str(body.get("source") or "").strip().lower().startswith("ai"):
+        return jsonify({"success": False, "error": "IA en lecture seule: configuration Rain Bird interdite"}), 403
     ip = str(body.get("ip") or "").strip()
     if not ip:
         return jsonify({"success": False, "error": "IP manquante"}), 400
@@ -1370,6 +1823,8 @@ def rainbird_setip():
 @app.route("/api/rainbird/start", methods=["POST"])
 def rainbird_start():
     body = request.get_json(silent=True) or {}
+    if str(body.get("source") or "").strip().lower().startswith("ai"):
+        return jsonify({"success": False, "error": "IA en lecture seule: commande Rain Bird interdite"}), 403
     zone = parse_int(body.get("zone"), 1)
     duration = parse_int(body.get("duration"), 10)
     ok, info = rainbird_start_zone(zone, duration)
@@ -1381,6 +1836,8 @@ def rainbird_start():
 @app.route("/api/rainbird/stop", methods=["POST"])
 def rainbird_stop():
     body = request.get_json(silent=True) or {}
+    if str(body.get("source") or "").strip().lower().startswith("ai"):
+        return jsonify({"success": False, "error": "IA en lecture seule: commande Rain Bird interdite"}), 403
     zone = body.get("zone")
     zone = parse_int(zone, 0) if zone not in {None, ""} else None
     ok, info = rainbird_stop_zone(zone)
@@ -1448,6 +1905,7 @@ def icons(filename):
     return send_from_directory(APP_DIR / "icons", filename)
 
 
+load_history_from_disk()
 load_app_state_from_disk()
 load_planning_from_disk()
 start_background_threads()

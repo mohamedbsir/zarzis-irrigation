@@ -730,7 +730,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="login-logo">🌱</div>
     <div class="login-title">Zarzis Pro</div>
     <p class="login-sub">SUPERVISION IRRIGATION · MODE EXPLOITATION SÉCURISÉ</p>
-    <input type="password" class="login-input" id="login-pw" placeholder="••••••" maxlength="8" onkeydown="if(event.key==='Enter')checkLogin()">
+    <input type="password" class="login-input" id="login-pw" placeholder="••••••" maxlength="32" onkeydown="if(event.key==='Enter')checkLogin()">
     <button class="login-btn" onclick="checkLogin()">ENTRER</button>
     <div class="login-error" id="login-err">❌ Mot de passe incorrect</div>
   </div>
@@ -763,6 +763,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
   <div class="nav-tab" onclick="switchTab('planning')">📅 Planning</div>
   <div class="nav-tab" onclick="switchTab('fertigation')">🧪 Fertigation</div>
   <div class="nav-tab" onclick="switchTab('historique')">📋 Historique</div>
+  <div class="nav-tab" onclick="switchTab('assistant')">🤖 Assistant IA</div>
   <div class="nav-tab" onclick="switchTab('parametres')">🔧 Paramètres</div>
   <div class="nav-tab" onclick="switchTab('connexion')">⚙️ Connexion</div>
 </div>
@@ -2108,6 +2109,35 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 </main>
 </div>
 
+<div class="tab-content" id="tab-assistant">
+<main>
+  <div class="card card-full">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🤖 Assistant IA Zarzis</div>
+        <div class="card-subtitle">Lecture seule · diagnostic · propositions sans commande directe</div>
+      </div>
+      <span class="badge badge-info">AUCUNE ÉCRITURE</span>
+    </div>
+    <div class="alert-panel alert-warn" style="margin-bottom:12px">
+      L'assistant analyse les mesures, défauts, événements et plannings. Il ne démarre pas, n'arrête pas et n'écrit jamais de registre.
+    </div>
+    <textarea id="ai-question" class="conn-input wide" rows="4" style="width:100%;resize:vertical" placeholder="Exemple : pourquoi Wilo ne démarre pas ? ou prépare un planning pour demain matin"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-green" onclick="askAi()">ANALYSER</button>
+      <button class="btn btn-ghost" onclick="askAi('Diagnostic global sécurité et communication')">DIAGNOSTIC GLOBAL</button>
+      <button class="btn btn-ghost" onclick="askAi('Prépare un planning irrigation prudent pour demain matin')">BROUILLON PLANNING</button>
+      <button class="btn btn-red" onclick="clearAiOutput()">EFFACER</button>
+    </div>
+  </div>
+
+  <div class="card card-full">
+    <div class="card-header"><div class="card-title">📎 Réponse assistant</div></div>
+    <div class="log-panel" id="ai-output"></div>
+  </div>
+</main>
+</div>
+
 <!-- ============ TAB: PARAMÈTRES ============ -->
 <div class="tab-content" id="tab-parametres">
 <main>
@@ -2929,6 +2959,10 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="conn-group">
         <div class="conn-label">Token API</div>
         <input type="password" class="conn-input wide" id="api-token" placeholder="API_TOKEN Render">
+        <label style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase">
+          <input type="checkbox" id="remember-token" style="accent-color:var(--green)">
+          Mémoriser sur cet appareil
+        </label>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
@@ -3023,7 +3057,8 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 <script>
 // ============ CONFIG ============
 let apiUrl = localStorage.getItem('zarzis_api') || 'https://zarzis-irrigation-1.onrender.com';
-let apiToken = localStorage.getItem('zarzis_api_token') || '';
+let apiToken = sessionStorage.getItem('zarzis_api_token_session') || localStorage.getItem('zarzis_api_token_remembered') || '';
+localStorage.removeItem('zarzis_api_token');
 let connected = false;
 let simInterval = null;
 let fetchInterval = null;
@@ -3043,6 +3078,8 @@ const ENABLE_PLANNING_UI = false;
 let lastStopAt = { forage: 0, wilo: 0 };
 let maintenanceMode = false;
 let activeAlarms = {};
+let seenCommandAckIds = new Set();
+let commandAckNotifyAfter = Date.now() - 30000;
 
 function apiHeaders(extra={}) {
   const headers = {'Content-Type':'application/json', ...extra};
@@ -3254,8 +3291,10 @@ function applyFeatureFlags() {
 function initApp() {
   const cloudInput = document.getElementById('cloud-url');
   const tokenInput = document.getElementById('api-token');
+  const rememberInput = document.getElementById('remember-token');
   if(cloudInput) cloudInput.value = apiUrl;
   if(tokenInput) tokenInput.value = apiToken;
+  if(rememberInput) rememberInput.checked = !!localStorage.getItem('zarzis_api_token_remembered');
   applyFeatureFlags();
   initSolarBar();
   initExploitationModule();
@@ -3355,7 +3394,13 @@ function addLog(msg, type='info') {
   const now = new Date().toLocaleTimeString('fr-FR');
   const entry = document.createElement('div');
   entry.className = 'log-entry';
-  entry.innerHTML = `<span class="log-time">${now}</span><span class="log-${type}">${msg}</span>`;
+  const timeEl = document.createElement('span');
+  timeEl.className = 'log-time';
+  timeEl.textContent = now;
+  const msgEl = document.createElement('span');
+  msgEl.className = `log-${type}`;
+  msgEl.textContent = String(msg);
+  entry.append(timeEl, msgEl);
   panel.insertBefore(entry, panel.firstChild);
   while(panel.children.length > 100) panel.removeChild(panel.lastChild);
 
@@ -3363,15 +3408,70 @@ function addLog(msg, type='info') {
     const alog = document.getElementById('alert-log');
     const ae = document.createElement('div');
     ae.className = 'log-entry';
-    ae.innerHTML = `<span class="log-time">${now}</span><span class="log-${type}">${msg}</span>`;
+    const at = document.createElement('span');
+    at.className = 'log-time';
+    at.textContent = now;
+    const am = document.createElement('span');
+    am.className = `log-${type}`;
+    am.textContent = String(msg);
+    ae.append(at, am);
     alog.insertBefore(ae, alog.firstChild);
   }
 }
 
 function clearLog() {
-  document.getElementById('log-panel').innerHTML = '';
-  document.getElementById('alert-log').innerHTML = '';
+  document.getElementById('log-panel').textContent = '';
+  document.getElementById('alert-log').textContent = '';
   toast('🗑️ Journal effacé', 'info');
+}
+
+function appendAiLine(text, type='info') {
+  const panel = document.getElementById('ai-output');
+  if(!panel) return;
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const timeEl = document.createElement('span');
+  timeEl.className = 'log-time';
+  timeEl.textContent = new Date().toLocaleTimeString('fr-FR');
+  const msgEl = document.createElement('span');
+  msgEl.className = `log-${type}`;
+  msgEl.textContent = String(text);
+  entry.append(timeEl, msgEl);
+  panel.insertBefore(entry, panel.firstChild);
+}
+
+function clearAiOutput() {
+  const panel = document.getElementById('ai-output');
+  if(panel) panel.textContent = '';
+}
+
+function renderAiList(title, items, type='info') {
+  if(!items || !items.length) return;
+  appendAiLine(title, type);
+  items.forEach(item => appendAiLine(`- ${item}`, type));
+}
+
+async function askAi(preset='') {
+  const input = document.getElementById('ai-question');
+  const question = preset || input?.value.trim() || 'Diagnostic global Zarzis';
+  if(input && preset) input.value = preset;
+  if(!connected) {
+    appendAiLine('Connecte le cloud avant diagnostic IA pour lire les vraies mesures.', 'warn');
+    toast('Assistant IA: cloud non connecté', 'warn');
+    return;
+  }
+  appendAiLine(`Question: ${question}`, 'cmd');
+  try {
+    const data = await postApiJson('/api/ai/diagnose', {question}, 12000);
+    appendAiLine(`${data.summary} Niveau: ${data.risk_level}`, data.risk_level === 'danger' ? 'err' : data.risk_level === 'warning' ? 'warn' : 'ok');
+    renderAiList('Constats', data.findings, data.risk_level === 'danger' ? 'err' : 'info');
+    renderAiList('Recommandations', data.recommendations, 'warn');
+    renderAiList('Brouillon planning', data.planning_suggestion, 'ok');
+    addLog('Assistant IA: diagnostic généré en lecture seule', 'info');
+  } catch(e) {
+    appendAiLine(`Erreur assistant IA: ${e.message}`, 'err');
+    toast('Assistant IA indisponible', 'err');
+  }
 }
 
 // ============ SOLAR BAR ============
@@ -5762,7 +5862,10 @@ function connectCloud() {
   apiToken = document.getElementById('api-token')?.value.trim() || '';
   apiUrl = url.startsWith('http') ? url : `https://${url}`;
   localStorage.setItem('zarzis_api', apiUrl);
-  localStorage.setItem('zarzis_api_token', apiToken);
+  sessionStorage.setItem('zarzis_api_token_session', apiToken);
+  localStorage.removeItem('zarzis_api_token');
+  if(document.getElementById('remember-token')?.checked) localStorage.setItem('zarzis_api_token_remembered', apiToken);
+  else localStorage.removeItem('zarzis_api_token_remembered');
   updateConnStatus('CONNEXION...', 'badge-warn');
   addLog(`Connexion serveur cloud → ${apiUrl}`, 'info');
 
@@ -5771,6 +5874,8 @@ function connectCloud() {
     .then(d => {
       if(d.status==='ok') {
         connected = true;
+        commandAckNotifyAfter = Date.now() - 5000;
+        seenCommandAckIds.clear();
         clearAlarm('COM');
         updateConnStatus('CONNECTÉ ✅', 'badge-on');
         toast('✅ Connecté au serveur cloud', 'ok');
@@ -5797,6 +5902,12 @@ function connectCloud() {
 function disconnectCloud() {
   if(fetchInterval){clearInterval(fetchInterval);fetchInterval=null;}
   connected = false;
+  sessionStorage.removeItem('zarzis_api_token_session');
+  if(!document.getElementById('remember-token')?.checked) {
+    apiToken = '';
+    const tokenInput = document.getElementById('api-token');
+    if(tokenInput) tokenInput.value = '';
+  }
   stopSharedStateSync();
   updateConnStatus('DÉCONNECTÉ', 'badge-off');
   toast('🔌 Déconnecté', 'warn');
@@ -5820,10 +5931,43 @@ function connectG781() {
   .catch(e => addLog(`❌ Erreur G781: ${e.message}`, 'err'));
 }
 
+function handleCommandAcks(acks) {
+  if(!Array.isArray(acks)) return;
+  acks.forEach(ack => {
+    if(!ack || !ack.id || seenCommandAckIds.has(ack.id)) return;
+    seenCommandAckIds.add(ack.id);
+    if(seenCommandAckIds.size > 120) seenCommandAckIds = new Set([...seenCommandAckIds].slice(-60));
+    const ackMs = Date.parse(ack.ts || '');
+    if(ackMs && ackMs < commandAckNotifyAfter) return;
+    const cmd = ack.command || {};
+    const device = ack.device || cmd.device || ack.type || cmd.type || 'commande';
+    const action = ack.action || cmd.action || '';
+    if(ack.ok) {
+      if((ack.type === 'rainbird' || cmd.type === 'rainbird') && typeof setRainBirdZoneLocal === 'function') {
+        if(action === 'start' && cmd.zone) {
+          const duration = parseInt(cmd.duration || 0);
+          setRainBirdZoneLocal(parseInt(cmd.zone), true, duration > 0 ? duration * 60 : 0);
+          if(duration > 0 && typeof startRbCountdown === 'function') startRbCountdown(parseInt(cmd.zone), duration * 60);
+          if(typeof updateRbStats === 'function') updateRbStats();
+        } else if(action === 'stop' && typeof setAllRainBirdZonesClosed === 'function') {
+          setAllRainBirdZonesClosed();
+        }
+      }
+      addLog(`ACK agent OK: ${device} ${action}`.trim(), 'ok');
+      toast(`Execution confirmee: ${device}`, 'ok');
+    } else {
+      const err = ack.error || ack.result?.error || 'execution refusee par l agent';
+      addLog(`ACK agent ECHEC: ${device} ${action} - ${err}`.trim(), 'err');
+      toast(`Commande non executee: ${device}`, 'err');
+    }
+  });
+}
+
 function fetchRealData() {
   fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
+      handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
       const invt = d.invt || {};
       const salmson = d.salmson || {};
       const wilo = d.wilo || {};
@@ -5886,7 +6030,13 @@ sendModbusCmd = async function(pump, action) {
     return {success:true, simulation:true};
   }
   const data = await postApiJson('/api/control', {pump, device:pump, action});
-  addLog(`Modbus accepte: ${pump} ${action}`, 'ok');
+  if(data.queued) {
+    addLog(`Commande mise en file: ${pump} ${action} - attente ACK agent`, 'warn');
+  } else if(data.executed) {
+    addLog(`Commande executee: ${pump} ${action}`, 'ok');
+  } else {
+    addLog(`Commande acceptee: ${pump} ${action}`, 'ok');
+  }
   return data;
 };
 
@@ -5909,9 +6059,14 @@ controlInverter = async function(action) {
   }
 
   try {
-    await postApiJson('/api/inverter', {action});
-    toast('Commande INVT acceptee', action === 'stop' ? 'warn' : 'ok');
-    addLog(`INVT ${action} accepte par le serveur`, action === 'stop' ? 'warn' : 'ok');
+    const data = await postApiJson('/api/inverter', {action});
+    if(data.queued) {
+      toast('INVT en attente agent', 'warn');
+      addLog(`INVT ${action} mis en file - attente ACK agent`, 'warn');
+    } else {
+      toast('Commande INVT executee', action === 'stop' ? 'warn' : 'ok');
+      addLog(`INVT ${action} execute par le serveur`, action === 'stop' ? 'warn' : 'ok');
+    }
     fetchRealData();
   } catch(e) {
     toast('Commande INVT refusee', 'err');
@@ -5937,9 +6092,13 @@ controlPump = async function(pump, action) {
   }
 
   try {
-    await sendModbusCmd(pump, action);
+    const data = await sendModbusCmd(pump, action);
     if(action === 'off') recordPumpStop(pump);
-    toast(`Commande ${pump} ${action.toUpperCase()} acceptee`, action === 'on' ? 'ok' : 'warn');
+    if(data.queued) {
+      toast(`Commande ${pump} en attente agent`, 'warn');
+    } else {
+      toast(`Commande ${pump} ${action.toUpperCase()} executee`, action === 'on' ? 'ok' : 'warn');
+    }
     fetchRealData();
   } catch(e) {
     toast('Commande refusee', 'err');
@@ -5980,6 +6139,11 @@ rbStartZone = async function(num) {
   try {
     const data = await postApiJson('/api/rainbird/start', {zone:num, duration});
     const acceptedDuration = parseInt(data.duration || duration);
+    if(data.queued) {
+      toast(`Zone ${num} en attente agent`, 'warn');
+      addLog(`Zone ${num} ${acceptedDuration}min mise en file - attente ACK agent`, 'warn');
+      return;
+    }
     setRainBirdZoneLocal(num, true, acceptedDuration * 60);
     startRbCountdown(num, acceptedDuration * 60);
     updateRbStats();
@@ -6001,10 +6165,10 @@ rbStopZone = async function(num) {
   }
 
   try {
-    await postApiJson('/api/rainbird/stop', {zone:num});
+    const data = await postApiJson('/api/rainbird/stop', {zone:num});
     setAllRainBirdZonesClosed();
-    toast('Rain Bird arret accepte', 'warn');
-    addLog('Rain Bird arret accepte par le serveur', 'warn');
+    toast(data.queued ? 'Rain Bird arret en attente agent' : 'Rain Bird arret execute', 'warn');
+    addLog(data.queued ? 'Rain Bird arret mis en file - attente ACK agent' : 'Rain Bird arret execute', 'warn');
   } catch(e) {
     toast('Arret Rain Bird refuse', 'err');
     addLog(`Erreur arret Rain Bird: ${e.message}`, 'err');
@@ -6020,10 +6184,10 @@ rbStopAll = async function() {
   }
 
   try {
-    await postApiJson('/api/rainbird/stop', {});
+    const data = await postApiJson('/api/rainbird/stop', {});
     setAllRainBirdZonesClosed();
-    toast('Toutes zones fermees', 'warn');
-    addLog('Arret toutes zones accepte par le serveur', 'warn');
+    toast(data.queued ? 'Arret toutes zones en attente agent' : 'Toutes zones fermees', 'warn');
+    addLog(data.queued ? 'Arret toutes zones mis en file - attente ACK agent' : 'Arret toutes zones execute', 'warn');
   } catch(e) {
     toast('Arret Rain Bird refuse', 'err');
     addLog(`Erreur arret toutes zones: ${e.message}`, 'err');

@@ -55,6 +55,9 @@ G781_HOST=
 G781_PORT=502
 G781_HTTP_PUSH_STALE_SEC=45
 G781_COMMAND_TTL_SEC=300
+G781_COMMAND_ACK_TIMEOUT_SEC=45
+HISTORY_MAX_ITEMS=2000
+HISTORY_SAVE_MIN_INTERVAL_SEC=30
 API_TOKEN=mot_de_passe_long
 UPDATE_SEC=5
 CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
@@ -101,6 +104,7 @@ Rain Bird est optionnel. Ne pas mettre de clé Rain Bird directement dans le cod
 RAINBIRD_STICK_ID=
 RAINBIRD_SERIAL=
 RAINBIRD_KEYCODE=
+RAINBIRD_IP=
 RAINBIRD_WIFI=
 RAINBIRD_ZONES=1,2,3,4,5,6
 RAINBIRD_MAX_DURATION_MIN=240
@@ -137,11 +141,20 @@ POST /api/planning
 GET  /api/events
 POST /api/g781/push
 GET  /api/g781/commands
+POST /api/g781/ack
+GET  /api/history
+POST /api/ai/diagnose
 ```
 
 Les commandes `POST` demandent `API_TOKEN` si la variable existe sur Render. Dans le dashboard, renseigner ce token dans l'onglet Connexion. Le token doit passer par l'en-tete `Authorization: Bearer ...` ou `X-API-Token`, jamais dans l'URL.
 
+L'assistant IA est volontairement en lecture seule. Il analyse `/api/status`, `/api/events`, `/api/history` et prépare des recommandations ou brouillons de planning, mais il ne doit jamais appeler `/api/control`, `/api/inverter`, `/api/param/write` ni une commande Rain Bird.
+
 ## Commande start/stop
+
+En mode `http_push`, `success=true` signifie que la commande est acceptee par le serveur. Si la reponse contient `queued=true`, la commande est seulement mise en file et reste en attente de l'ACK de l'agent local. L'execution reelle est confirmee ensuite via `/api/g781/ack`, puis remontee dans `/api/status` avec `last_command_ack` et `recent_command_acks`.
+
+Les demarrages sont en mode fail-closed : si l'agent est absent, si les mesures sont trop anciennes, ou si un registre critique manque (`fault_code` INVT, defaut/flotteur Salmson, defaut/etat/pression Wilo), le demarrage est refuse. Les arrets restent autorises autant que possible.
 
 ```json
 POST /api/control
@@ -197,6 +210,10 @@ Cette version ajoute :
 - planning cloud present mais desactive par defaut avec `ENABLE_PLANNING=false`
 - mode `http_push` actif par defaut pour eviter le blocage NAT operateur
 - agent local `zarzis_edge_agent.py` pour pousser mesures et recuperer commandes
+- accuse de reception agent via `/api/g781/ack` pour tracer commandes executees ou refusees
+- historique persistant `history_zarzis.json` pour mesures, commandes, ACK et diagnostics IA
+- Rain Bird route via l'agent local en mode `http_push`
+- assistant IA lecture seule pour diagnostic, surveillance et propositions sans commande directe
 - synchronisation planning bloquee tant que `ENABLE_PLANNING=false`
 - mode simulation backend via `G781_MODE=simulation` pour tester avant réception du matériel
 - protection API sur tous les endpoints `/api/*` sauf `/api/ping` quand `API_TOKEN` existe

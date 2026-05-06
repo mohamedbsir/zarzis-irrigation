@@ -1,5 +1,10 @@
 _backup_*/
 planning_zarzis.json
 app_state_zarzis.json
+history_zarzis.json
+agent.env
+.env
+*.env
+*.log
 __pycache__/
 *.pyc

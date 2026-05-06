@@ -22,6 +22,12 @@ services:
         value: "45"
       - key: G781_COMMAND_TTL_SEC
         value: "300"
+      - key: G781_COMMAND_ACK_TIMEOUT_SEC
+        value: "45"
+      - key: HISTORY_MAX_ITEMS
+        value: "2000"
+      - key: HISTORY_SAVE_MIN_INTERVAL_SEC
+        value: "30"
       - key: UPDATE_SEC
         value: "5"
       - key: PLANNING_POLL_SEC
@@ -107,6 +113,8 @@ services:
       - key: RAINBIRD_KEYCODE
         value: ""
       - key: RAINBIRD_WIFI
+        value: ""
+      - key: RAINBIRD_IP
         value: ""
       - key: RAINBIRD_ZONES
         value: "1,2,3,4,5,6"

@@ -44,6 +44,15 @@ def env_float(name: str, default: float) -> float:
     return float(str(value).strip().replace(",", "."))
 
 
+def parse_int(value, default=0) -> int:
+    if value is None or value == "":
+        return default
+    if isinstance(value, int):
+        return value
+    text = str(value).strip()
+    return int(text, 16) if text.lower().startswith("0x") else int(float(text))
+
+
 CLOUD_URL = os.environ.get("CLOUD_URL", "https://zarzis-irrigation-1.onrender.com").rstrip("/")
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 AGENT_ID = os.environ.get("AGENT_ID", "zarzis-edge-agent")
@@ -53,6 +62,7 @@ DR302_PORT = env_int("DR302_PORT", env_int("G781_PORT", 502))
 POLL_SEC = max(2, env_int("EDGE_POLL_SEC", 5))
 EDGE_ALLOW_START = env_bool("EDGE_ALLOW_START", False)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
+SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
 INVT_NOMINAL_KW = env_float("INVT_NOMINAL_KW", 5.5)
 
 ADDR_INVT = env_int("ADDR_INVT", 1)
@@ -96,8 +106,16 @@ WILO_REGS = {
     "error_code": env_int("WILO_REG_ERROR_CODE", 138),
 }
 
+RAINBIRD_IP = os.environ.get("RAINBIRD_IP", "").strip()
+RAINBIRD_STICK_ID = os.environ.get("RAINBIRD_STICK_ID", "").strip()
+RAINBIRD_KEYCODE = os.environ.get("RAINBIRD_KEYCODE", "").strip()
+RAINBIRD_MAX_DURATION_MIN = max(1, env_int("RAINBIRD_MAX_DURATION_MIN", 240))
+rainbird_state = {"connected": False, "active_zones": [], "ip": RAINBIRD_IP, "last_cmd": ""}
+
 
 client: ModbusTcpClient | None = None
+last_status_snapshot: dict = {}
+last_status_at = 0.0
 
 
 def now_iso() -> str:
@@ -109,7 +127,7 @@ def log(message: str) -> None:
 
 
 def headers() -> dict[str, str]:
-    result = {"Content-Type": "application/json", "User-Agent": AGENT_ID}
+    result = {"Content-Type": "application/json", "User-Agent": AGENT_ID, "X-Agent-ID": AGENT_ID}
     if API_TOKEN:
         result["Authorization"] = f"Bearer {API_TOKEN}"
     return result
@@ -255,9 +273,126 @@ def read_coffret4() -> dict:
     return {"status": "NON CONFIGURE", "last_seen": now_iso()}
 
 
-def execute_command(cmd: dict) -> None:
+def rainbird_request(command: str, params: dict | None = None) -> tuple[bool, dict]:
+    if not RAINBIRD_IP:
+        return False, {"error": "RAINBIRD_IP non configure sur l'agent"}
+    if not RAINBIRD_STICK_ID or not RAINBIRD_KEYCODE:
+        return False, {"error": "RAINBIRD_STICK_ID/RAINBIRD_KEYCODE manquants"}
+    payload = {"id": RAINBIRD_STICK_ID, "command": command}
+    if params:
+        payload.update(params)
+    req = urllib.request.Request(
+        f"http://{RAINBIRD_IP}/stick",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Basic {RAINBIRD_KEYCODE[:32]}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        rainbird_state["connected"] = True
+        return True, {"raw": data}
+    except Exception as exc:
+        rainbird_state["connected"] = False
+        return False, {"error": f"Rain Bird indisponible: {exc}"}
+
+
+def execute_rainbird_command(cmd: dict) -> dict:
+    action = str(cmd.get("action") or "").lower()
+    if action == "start":
+        zone = parse_int(cmd.get("zone"), 1)
+        duration = max(1, min(parse_int(cmd.get("duration"), 10), RAINBIRD_MAX_DURATION_MIN))
+        ok, info = rainbird_request("ZoneStartRequest", {"zone": zone, "duration": duration})
+        if ok:
+            rainbird_state["active_zones"] = [zone]
+            rainbird_state["last_cmd"] = f"START Zone {zone} {duration}min"
+        return {"ok": ok, "type": "rainbird", "action": action, "zone": zone, "duration": duration, **info}
+    if action == "stop":
+        zone = cmd.get("zone")
+        ok, info = rainbird_request("StopIrrigationRequest")
+        if ok:
+            rainbird_state["active_zones"] = []
+            rainbird_state["last_cmd"] = f"STOP {'zone ' + str(zone) if zone else 'tout'}"
+        return {"ok": ok, "type": "rainbird", "action": action, "zone": zone, **info}
+    return {"ok": False, "error": f"Action Rain Bird inconnue: {action}"}
+
+
+def command_targets(device: str) -> list[str]:
+    if device == "forage":
+        return ["invt", "salmson"]
+    if device == "all":
+        return ["invt", "salmson", "wilo"]
+    if device in {"invt", "salmson", "wilo"}:
+        return [device]
+    return [device]
+
+
+def safe_int(value, default: int | None = None) -> int | None:
+    try:
+        if value is None or value == "":
+            return default
+        return int(float(value))
+    except Exception:
+        return default
+
+
+def reading_unavailable(data: dict) -> bool:
+    status = str(data.get("status") or "").lower()
+    error_text = str(data.get("error_text") or "").lower()
+    markers = ("deconnect", "non lu", "aucune lecture", "indisponible")
+    return not data or any(marker in status or marker in error_text for marker in markers)
+
+
+def local_start_blockers(target: str, data: dict) -> list[str]:
+    blockers: list[str] = []
+    if reading_unavailable(data):
+        return [f"{target}: lecture critique absente"]
+
+    if target == "invt":
+        if "fault_code" not in data:
+            blockers.append("INVT: registre defaut non lu")
+        elif safe_int(data.get("fault_code"), 0):
+            blockers.append(data.get("error_text") or f"Defaut INVT {data.get('fault_code')}")
+
+    elif target == "salmson":
+        if "error_code" not in data:
+            blockers.append("Salmson: registre defaut non lu")
+        elif safe_int(data.get("error_code"), 0):
+            blockers.append(data.get("error_text") or f"Defaut Salmson {data.get('error_code')}")
+        if "float_low" not in data:
+            blockers.append("Salmson: flotteur manque d'eau non lu")
+        elif safe_int(data.get("float_low")) != SALMSON_FLOAT_LOW_OK_VALUE:
+            blockers.append("Manque d'eau Salmson")
+
+    elif target == "wilo":
+        missing = [name for name in ("error_code", "switch_state", "pressure") if name not in data]
+        if missing:
+            blockers.append("Wilo: registre critique non lu (" + ", ".join(missing) + ")")
+        elif safe_int(data.get("error_code"), 0):
+            blockers.append(data.get("error_text") or f"Defaut Wilo {data.get('error_code')}")
+
+    return blockers
+
+
+def local_command_blockers(device: str, action: str) -> list[str]:
+    if action not in {"on", "forward", "reverse"}:
+        return []
+    if time.time() - last_status_at > max(POLL_SEC * 3, 15):
+        return ["Mesures locales trop anciennes"]
+    devices = last_status_snapshot.get("devices") if isinstance(last_status_snapshot, dict) else {}
+    blockers: list[str] = []
+    for target in command_targets(device):
+        blockers.extend(local_start_blockers(target, devices.get(target, {}) if isinstance(devices, dict) else {}))
+    return blockers
+
+
+def execute_command(cmd: dict) -> dict:
+    if cmd.get("type") == "rainbird":
+        result = execute_rainbird_command(cmd)
+        log(f"Commande Rain Bird executee={result.get('ok')}: {result.get('action')}")
+        return result
     if cmd.get("type") != "control":
-        return
+        return {"ok": False, "error": f"Type commande inconnu: {cmd.get('type')}"}
     device = str(cmd.get("device") or "").lower()
     action = str(cmd.get("action") or "").lower()
     if action == "start":
@@ -266,8 +401,14 @@ def execute_command(cmd: dict) -> None:
         action = "off"
     is_start = action in {"on", "forward", "reverse"}
     if is_start and not EDGE_ALLOW_START:
-        log(f"Commande bloquee par EDGE_ALLOW_START=false: {device} {action}")
-        return
+        error = f"Commande bloquee par EDGE_ALLOW_START=false: {device} {action}"
+        log(error)
+        return {"ok": False, "type": "control", "device": device, "action": action, "error": error}
+    blockers = local_command_blockers(device, action)
+    if blockers:
+        error = "Commande bloquee fail-closed: " + " / ".join(blockers)
+        log(error)
+        return {"ok": False, "type": "control", "device": device, "action": action, "error": error}
 
     relay_value = 1 if is_start else 0
     invt_value = INVT_ACTIONS.get(action, INVT_ACTIONS["on"] if is_start else INVT_ACTIONS["off"])
@@ -283,10 +424,13 @@ def execute_command(cmd: dict) -> None:
         else:
             log("Commande Salmson ignoree: SALMSON_COMMAND_ENABLED=false")
 
+    error = None if ok else "Ecriture Modbus echouee"
     log(f"Commande executee={ok}: {device} {action}")
+    return {"ok": ok, "type": "control", "device": device, "action": action, "error": error}
 
 
 def push_status() -> None:
+    global last_status_snapshot, last_status_at
     payload = {
         "agent_id": AGENT_ID,
         "site_time": now_iso(),
@@ -296,15 +440,41 @@ def push_status() -> None:
             "wilo": read_wilo(),
             "coffret4": read_coffret4(),
         },
+        "rainbird": rainbird_state,
     }
+    last_status_snapshot = payload
+    last_status_at = time.time()
     response = post_json("/api/g781/push", payload)
     log(f"Push OK, commandes en attente: {response.get('commands_pending', 0)}")
+
+
+def acknowledge_command(cmd: dict, result: dict) -> None:
+    command_id = cmd.get("id")
+    if not command_id:
+        return
+    payload = {
+        "id": command_id,
+        "agent_id": AGENT_ID,
+        "ok": bool(result.get("ok")),
+        "error": result.get("error") or "",
+        "result": result,
+    }
+    post_json("/api/g781/ack", payload, timeout=10)
 
 
 def fetch_and_execute_commands() -> None:
     response = get_json("/api/g781/commands")
     for cmd in response.get("commands", []):
-        execute_command(cmd)
+        try:
+            result = execute_command(cmd)
+        except Exception as exc:
+            result = {"ok": False, "error": f"Erreur execution agent: {exc}"}
+            log(result["error"])
+        try:
+            acknowledge_command(cmd, result)
+            log(f"ACK commande {cmd.get('id')} envoye: {result.get('ok')}")
+        except Exception as exc:
+            log(f"ACK impossible commande {cmd.get('id')}: {exc}")
 
 
 def main() -> None:
