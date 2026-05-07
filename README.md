@@ -18,16 +18,18 @@ Pompes / coffrets / capteurs
         -> RS485 Modbus RTU
 USR-DR302
         -> Ethernet Modbus TCP
-USR-G781-E
-        -> 4G
-Agent local Zarzis
+Routeur 4G/Wi-Fi existant du site
+        -> Ethernet LAN
+Agent local Zarzis sur Raspberry Pi
         -> HTTPS sortant
 Render API + Dashboard
 ```
 
-Important : le mode choisi est maintenant `http_push`. Il fonctionne meme si la SIM 4G est derriere NAT, car l'agent local sort vers Render en HTTPS. Tu n'as donc pas besoin de payer une IP publique/APN prive au depart.
+Decision mai 2026 : le USR-G781-E est annule. Le routeur 4G/Wi-Fi deja present sur site fournit Internet et le LAN. Le DR302 et le Raspberry Pi sont branches en Ethernet sur ce routeur. Si le routeur n'a pas deux ports LAN libres, ajouter un switch 5 ports non manage.
 
-Le mode `direct_tcp` reste une option seulement si le G781-E est joignable depuis Render via un reseau prive, par exemple APN prive ou VPN industriel.
+Important : le mode choisi reste `http_push`. Il fonctionne meme si la 4G est derriere NAT, car l'agent local sort vers Render en HTTPS. Tu n'as donc pas besoin de payer une IP publique/APN prive au depart.
+
+Le mode `direct_tcp` reste une option seulement si le DR302 est joignable depuis Render via un reseau prive, par exemple APN prive ou VPN industriel.
 
 ## Agent local HTTP PUSH
 
@@ -81,6 +83,13 @@ INVT_REG_POWER_PCT=0x3006
 INVT_REG_FAULT_CODE=0x5000
 SALMSON_FLOAT_LOW_OK_VALUE=1
 SALMSON_COMMAND_ENABLED=false
+SALMSON_CMD_REG=14
+SALMSON_REG_LEVEL_CM=25
+SALMSON_REG_PUMP1_MODE=40
+SALMSON_REG_PUMP2_MODE=41
+SALMSON_REG_SWITCH_STATE=61
+SALMSON_REG_ERROR_CODE=138
+SALMSON_REG_FLOAT_STATE=197
 WILO_CMD_REG=14
 WILO_REG_PRESSURE=25
 WILO_REG_FLOW=-1
@@ -94,7 +103,9 @@ ADDR_WILO=3
 ADDR_COFFRET4=4
 ```
 
-Ne pas exposer le port Modbus TCP directement sur Internet. En `http_push`, Render ne contacte jamais le DR302/G781 en direct : seul l'agent local parle au Modbus.
+Les noms `G781_*` sont conserves dans le code pour compatibilite historique. Avec l'architecture mai 2026, ils signifient simplement "mode de liaison terrain"; aucun USR-G781-E n'est necessaire.
+
+Ne pas exposer le port Modbus TCP directement sur Internet. En `http_push`, Render ne contacte jamais le DR302 en direct : seul l'agent local parle au Modbus sur le LAN du routeur 4G existant.
 
 Tant que les registres réels ne sont pas validés avec le matériel, garder `MODBUS_REGISTERS_VALIDATED=false`. Les commandes `off` restent possibles, mais les démarrages réels sont bloqués. Après mapping et essai local, passer `MODBUS_REGISTERS_VALIDATED=true` dans Render.
 
@@ -139,12 +150,14 @@ POST /api/param/write  (maintenance seulement, desactive par defaut)
 GET  /api/planning
 POST /api/planning
 GET  /api/events
-POST /api/g781/push
-GET  /api/g781/commands
-POST /api/g781/ack
+POST /api/edge/push
+GET  /api/edge/commands
+POST /api/edge/ack
 GET  /api/history
 POST /api/ai/diagnose
 ```
+
+Les anciennes routes `/api/g781/*` restent disponibles comme alias de compatibilite, mais l'agent local utilise maintenant `/api/edge/*`.
 
 Les commandes `POST` demandent `API_TOKEN` si la variable existe sur Render. Dans le dashboard, renseigner ce token dans l'onglet Connexion. Le token doit passer par l'en-tete `Authorization: Bearer ...` ou `X-API-Token`, jamais dans l'URL.
 
@@ -152,7 +165,7 @@ L'assistant IA est volontairement en lecture seule. Il analyse `/api/status`, `/
 
 ## Commande start/stop
 
-En mode `http_push`, `success=true` signifie que la commande est acceptee par le serveur. Si la reponse contient `queued=true`, la commande est seulement mise en file et reste en attente de l'ACK de l'agent local. L'execution reelle est confirmee ensuite via `/api/g781/ack`, puis remontee dans `/api/status` avec `last_command_ack` et `recent_command_acks`.
+En mode `http_push`, `success=true` signifie que la commande est acceptee par le serveur. Si la reponse contient `queued=true`, la commande est seulement mise en file et reste en attente de l'ACK de l'agent local. L'execution reelle est confirmee ensuite via `/api/edge/ack`, puis remontee dans `/api/status` avec `last_command_ack` et `recent_command_acks`.
 
 Les demarrages sont en mode fail-closed : si l'agent est absent, si les mesures sont trop anciennes, ou si un registre critique manque (`fault_code` INVT, defaut/flotteur Salmson, defaut/etat/pression Wilo), le demarrage est refuse. Les arrets restent autorises autant que possible.
 
@@ -210,7 +223,7 @@ Cette version ajoute :
 - planning cloud present mais desactive par defaut avec `ENABLE_PLANNING=false`
 - mode `http_push` actif par defaut pour eviter le blocage NAT operateur
 - agent local `zarzis_edge_agent.py` pour pousser mesures et recuperer commandes
-- accuse de reception agent via `/api/g781/ack` pour tracer commandes executees ou refusees
+- accuse de reception agent via `/api/edge/ack` pour tracer commandes executees ou refusees
 - historique persistant `history_zarzis.json` pour mesures, commandes, ACK et diagnostics IA
 - Rain Bird route via l'agent local en mode `http_push`
 - assistant IA lecture seule pour diagnostic, surveillance et propositions sans commande directe
@@ -248,7 +261,7 @@ Synchronisation multi-appareils :
 - Utiliser `http_push` par defaut avec agent local.
 - Utiliser `direct_tcp` seulement via VPN, APN prive ou reseau prive equivalent.
 - Un VPN grand public pour naviguer anonymement ne suffit pas. Il faut que Render/la passerelle et le site Zarzis soient dans le meme reseau prive.
-- Garder `ALLOW_REMOTE_G781_CONNECT=false` en production. En `http_push`, `G781_HOST` reste vide cote Render; en `direct_tcp`, il serait fixe cote serveur, jamais depuis le navigateur.
+- Garder `ALLOW_REMOTE_G781_CONNECT=false` en production. En `http_push`, `G781_HOST` reste vide cote Render; en `direct_tcp`, il serait fixe cote serveur, jamais depuis le navigateur. Le nom de variable est historique.
 - Garder `ENABLE_PLANNING=false` si le dashboard doit rester en lecture/commande manuelle seulement.
 - Garder `ALLOW_PARAM_WRITE=false` en production. L'activer seulement pour une maintenance courte et controlee.
 - Le token API passe seulement par `Authorization: Bearer ...` ou `X-API-Token`. Ne jamais le mettre dans l'URL.
@@ -261,9 +274,10 @@ Avant le premier demarrage reel :
 1. Garder `MODBUS_REGISTERS_VALIDATED=false` dans Render.
 2. Avec qModMaster ou Modbus Poll, lire un appareil a la fois en RS485 local.
 3. Confirmer INVT : commande `0x2000`, marche `1`, arret `5`, lectures `0x3000` a `0x3006`.
-4. Confirmer Wilo EC-B : 40015/40026/40041/40042/40062/40139-40140.
-5. Confirmer le sens du flotteur Salmson : si `0 = eau presente`, mettre `SALMSON_FLOAT_LOW_OK_VALUE=0`; si `1 = eau presente`, garder `1`.
-6. Laisser `SALMSON_COMMAND_ENABLED=false` tant que la table EC-L complete n'est pas validee.
-7. Corriger les variables Render (`INVT_OFF_VALUE`, `SALMSON_CMD_REG`, `WILO_CMD_REG`, `*_REG_*`) si le test terrain donne d'autres valeurs.
-8. Faire un essai manuel local on/off avec les securites locales actives.
-9. Seulement apres validation, passer `MODBUS_REGISTERS_VALIDATED=true` et `EDGE_ALLOW_START=true`.
+4. Confirmer Wilo EC-B : 40015/40026/40041/40042/40062/40139-40140. D'apres la notice 43587401, les menus Wilo d'usine sont 2.02=19200, 2.03=10, 2.04=even, 2.05=1 : regler le coffret sur 9600 / adresse 3 / parite none si le bus DR302 reste en 9600 8N1.
+5. Confirmer Salmson EC-L / EC-Lift : 40015 commande, 40026 niveau, 40041/40042 modes pompes, 40062 etat coffret, 40139-40140 defauts, 40198 flotteurs. La fiche EC-Lift fournie confirme l'interface Modbus mais pas la table complete; la table utilisee vient de la Fieldbuslist Modbus EC Wilo.
+6. Confirmer le sens terrain du manque d'eau : le code mappe le bit dry-run de 40198 vers `float_low`; si le test reel indique une logique differente, ajuster `SALMSON_FLOAT_LOW_OK_VALUE`.
+7. Laisser `SALMSON_COMMAND_ENABLED=false` jusqu'au test qModMaster, meme si `SALMSON_CMD_REG=14` est maintenant renseigne.
+8. Corriger les variables Render (`INVT_OFF_VALUE`, `SALMSON_CMD_REG`, `WILO_CMD_REG`, `*_REG_*`) si le test terrain donne d'autres valeurs.
+9. Faire un essai manuel local on/off avec les securites locales actives.
+10. Seulement apres validation, passer `MODBUS_REGISTERS_VALIDATED=true` et `EDGE_ALLOW_START=true`.

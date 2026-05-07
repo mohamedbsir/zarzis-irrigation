@@ -2983,7 +2983,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         <div class="conn-label">Port DR302 local</div>
         <input type="number" class="conn-input narrow" id="g781-port" value="502" readonly>
       </div>
-      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectG781()">Verifier HTTP PUSH</button>
+      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectG781()">Verifier agent</button>
     </div>
 
     <div class="divider"></div>
@@ -5559,9 +5559,10 @@ function updateINVT(vdc, freq, power, amp, vac, solar, error) {
   } else { clearAlarm('INVT'); err.classList.remove('show'); }
 }
 
-function updateSalmson(amp, floatBas, floatHaut, pumpOn, error) {
-  const cur = pumpOn ? amp : 0;
-  document.getElementById('s-amp').innerHTML = `${cur}<span class="metric-unit">A</span>`;
+function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
+  const hasAmp = Number.isFinite(Number(amp)) && Number(amp) > 0;
+  const cur = pumpOn && hasAmp ? Number(amp) : 0;
+  document.getElementById('s-amp').innerHTML = hasAmp ? `${cur}<span class="metric-unit">A</span>` : `--<span class="metric-unit">A</span>`;
   const pct = Math.min(100, cur/6*100);
   const bar = document.getElementById('s-amp-bar');
   bar.style.width = pct+'%';
@@ -5574,7 +5575,7 @@ function updateSalmson(amp, floatBas, floatHaut, pumpOn, error) {
   document.getElementById('f-bas-badge').textContent = floatBas?'OK':'MANQUE EAU';
   document.getElementById('f-bas-badge').className = 'badge '+(floatBas?'badge-on':'badge-off');
   document.getElementById('f-bas-icon').textContent = floatBas?'🟢':'⛔';
-  document.getElementById('f-haut-badge').textContent = (typeof floatHaut==='number'?floatHaut+'%':'---');
+  document.getElementById('f-haut-badge').textContent = Number.isFinite(Number(levelCm)) ? `${Number(levelCm)} cm` : '---';
   document.getElementById('f-haut-badge').className = 'badge badge-info';
   document.getElementById('f-haut-icon').textContent = '🌊';
 
@@ -5879,7 +5880,7 @@ function connectCloud() {
         clearAlarm('COM');
         updateConnStatus('CONNECTÉ ✅', 'badge-on');
         toast('✅ Connecté au serveur cloud', 'ok');
-        addLog(`✅ Serveur cloud connecté — G781: ${d.connected?'✅ CONNECTÉ':'⏳ ATTENTE'}`, 'ok');
+        addLog(`✅ Serveur cloud connecté — agent: ${d.connected?'✅ CONNECTÉ':'⏳ ATTENTE'}`, 'ok');
         if(d.storage && !d.storage.persistent) addLog('⚠️ Stockage Render non persistant pour l’instant. OK pour tests, à passer sur disque Render avant usage long terme.', 'warn');
         if(d.auth_required && !apiToken) addLog('⚠️ API_TOKEN requis pour les commandes. Renseignez le token Render dans Connexion.', 'warn');
         if(simInterval){clearInterval(simInterval);simInterval=null;}
@@ -5926,9 +5927,9 @@ function connectG781() {
   .then(r=>r.json())
   .then(d => {
     if(d.success) { toast('✅ HTTP PUSH prêt', 'ok'); addLog(`✅ Mode ${d.mode} prêt — agent: ${d.host || ip || 'en attente push'}`, 'ok'); }
-    else { toast('❌ Échec G781', 'err'); addLog(`❌ Échec G781: ${d.error}`, 'err'); }
+    else { toast('❌ Agent indisponible', 'err'); addLog(`❌ Agent indisponible: ${d.error}`, 'err'); }
   })
-  .catch(e => addLog(`❌ Erreur G781: ${e.message}`, 'err'));
+  .catch(e => addLog(`❌ Erreur agent: ${e.message}`, 'err'));
 }
 
 function handleCommandAcks(acks) {
@@ -5976,7 +5977,8 @@ function fetchRealData() {
       if(d.mode === 'http_push' && !d.connected) updateConnStatus('AGENT ATTENTE', 'badge-warn');
       else updateConnStatus('CONNECTÉ ✅', 'badge-on');
       updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
-      updateSalmson(salmson.current_a||0, salmson.float_low===1, salmson.float_high===1, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
+      const salmsonWaterOk = typeof salmson.dry_run === 'boolean' ? !salmson.dry_run : salmson.float_low===1;
+      updateSalmson(salmson.current_a, salmsonWaterOk, salmson.level_cm, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
       updateWilo(wilo.pressure||0, wilo.flow||0, wilo.running||false);
       updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
       addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
@@ -6195,7 +6197,7 @@ rbStopAll = async function() {
 };
 
 connectG781 = async function() {
-  addLog('Connexion G781 via cible serveur Render', 'info');
+  addLog('Verification agent local via serveur Render', 'info');
   try {
     const data = await postApiJson('/api/connect', {}, 10000);
     const ipEl = document.getElementById('g781-ip');
@@ -6203,15 +6205,15 @@ connectG781 = async function() {
     if(ipEl) ipEl.value = data.host || data.ip || '';
     if(portEl) portEl.value = data.port || 502;
     if(data.success) {
-      toast('USR-G781 connecte', 'ok');
-      addLog(`USR-G781 connecte: ${data.host || data.ip}:${data.port}`, 'ok');
+      toast('Agent local pret', 'ok');
+      addLog(`Agent local pret: ${data.host || data.ip || 'http_push'}`, 'ok');
     } else {
-      toast('Echec G781', 'err');
-      addLog(`Echec G781: ${data.error || 'connexion refusee'}`, 'err');
+      toast('Agent indisponible', 'err');
+      addLog(`Agent indisponible: ${data.error || 'connexion refusee'}`, 'err');
     }
   } catch(e) {
-    toast('Echec G781', 'err');
-    addLog(`Erreur G781: ${e.message}`, 'err');
+    toast('Agent indisponible', 'err');
+    addLog(`Erreur agent: ${e.message}`, 'err');
   }
 };
 

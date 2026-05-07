@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zarzis-irrigation-v8';
+const CACHE_NAME = 'zarzis-irrigation-v8.3';
 const APP_SHELL = [
   './',
   './index.html',

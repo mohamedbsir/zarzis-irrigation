@@ -2,7 +2,7 @@
 """
 Agent local Zarzis pour le mode http_push.
 
-Il tourne sur le site (PC local, mini PC ou Raspberry Pi), lit le DR302/G781 en
+Il tourne sur le site (PC local, mini PC ou Raspberry Pi), lit le DR302 en
 Modbus TCP sur le reseau local, pousse les mesures vers Render en HTTPS, puis
 recupere les commandes en attente.
 
@@ -87,13 +87,16 @@ INVT_REGS = {
     "fault_code": env_int("INVT_REG_FAULT_CODE", 0x5000),
 }
 
-SALMSON_CMD = env_int("SALMSON_CMD_REG", 0x0100)
+# Salmson EC-L / EC-Lift (profil Wilo-Control EC-L, Fieldbuslist Modbus EC).
+# Adresses zero-based: 40015 => 14, 40026 => 25, 40198 => 197.
+SALMSON_CMD = env_int("SALMSON_CMD_REG", 14)
 SALMSON_REGS = {
-    "pump_state": env_int("SALMSON_REG_PUMP_STATE", 0x0001),
-    "current_a": env_int("SALMSON_REG_CURRENT_A", 0x0010),
-    "error_code": env_int("SALMSON_REG_ERROR_CODE", 0x0020),
-    "float_low": env_int("SALMSON_REG_FLOAT_LOW", 0x0030),
-    "float_high": env_int("SALMSON_REG_FLOAT_HIGH", 0x0031),
+    "level_cm": env_int("SALMSON_REG_LEVEL_CM", 25),
+    "pump1_mode": env_int("SALMSON_REG_PUMP1_MODE", 40),
+    "pump2_mode": env_int("SALMSON_REG_PUMP2_MODE", 41),
+    "switch_state": env_int("SALMSON_REG_SWITCH_STATE", 61),
+    "error_code": env_int("SALMSON_REG_ERROR_CODE", 138),
+    "float_state": env_int("SALMSON_REG_FLOAT_STATE", 197),
 }
 
 WILO_CMD = env_int("WILO_CMD_REG", 14)
@@ -230,21 +233,62 @@ def read_invt() -> dict:
     return data
 
 
+def decode_salmson_error_bitmap(bits: int) -> str:
+    names = {
+        0: "Defaut capteur",
+        3: "Protection thermique pompe 1",
+        4: "Protection thermique pompe 2",
+        5: "Alarme pompe 1",
+        6: "Alarme pompe 2",
+        11: "Marche a sec",
+        12: "Niveau haut",
+        16: "Priorite off",
+        17: "Redondance",
+        19: "Communication esclave",
+        20: "Defaut alimentation",
+        21: "Fuite detectee",
+        22: "Extern off",
+        23: "Plausibilite",
+    }
+    active = [label for bit, label in names.items() if bits & (1 << bit)]
+    return " / ".join(active) if active else f"Defaut Salmson {bits}"
+
+
+def enrich_salmson_data(data: dict) -> dict:
+    switch_state = int(data.get("switch_state") or 0)
+    running = bool(switch_state & ((1 << 0) | (1 << 8) | (1 << 9)))
+    data["pump_state"] = 1 if running else 0
+    data["running"] = running
+    data["running_source"] = "Salmson EC-L switch_box_state"
+    if "float_state" in data:
+        float_state = int(data.get("float_state") or 0)
+        dry_run = bool(float_state & (1 << 0))
+        high_water = bool(float_state & (1 << 4))
+        data["dry_run"] = dry_run
+        data["high_water"] = high_water
+        data["float_low"] = 0 if dry_run else SALMSON_FLOAT_LOW_OK_VALUE
+        data["float_high"] = 1 if high_water else 0
+    data["current_a"] = data.get("current_a", 0)
+    return data
+
+
 def read_salmson() -> dict:
     data: dict[str, float | int | bool | str | None] = {}
     for name, reg in SALMSON_REGS.items():
-        values = read_regs(ADDR_SALMSON, reg)
+        if reg < 0:
+            continue
+        count = 2 if name == "error_code" else 1
+        values = read_regs(ADDR_SALMSON, reg, count=count)
         if not values:
             continue
-        raw = values[0]
-        data[name] = round(raw / 10, 1) if name == "current_a" else raw
+        raw = values[0] if count == 1 else (values[0] | (values[1] << 16))
+        data[name] = raw
     if not data:
         return unavailable("Salmson")
     error = int(data.get("error_code") or 0)
-    running = int(data.get("pump_state") or 0) == 1
-    data["running"] = running
-    data["status"] = "ERREUR" if error else ("EN MARCHE" if running else "ARRET")
-    data["error_text"] = f"Defaut Salmson {error}" if error else None
+    enrich_salmson_data(data)
+    data["status"] = "ERREUR" if error else ("EN MARCHE" if data["running"] else "ARRET")
+    data["error_text"] = decode_salmson_error_bitmap(error) if error else None
     data["last_seen"] = now_iso()
     return data
 
@@ -444,7 +488,7 @@ def push_status() -> None:
     }
     last_status_snapshot = payload
     last_status_at = time.time()
-    response = post_json("/api/g781/push", payload)
+    response = post_json("/api/edge/push", payload)
     log(f"Push OK, commandes en attente: {response.get('commands_pending', 0)}")
 
 
@@ -459,11 +503,11 @@ def acknowledge_command(cmd: dict, result: dict) -> None:
         "error": result.get("error") or "",
         "result": result,
     }
-    post_json("/api/g781/ack", payload, timeout=10)
+    post_json("/api/edge/ack", payload, timeout=10)
 
 
 def fetch_and_execute_commands() -> None:
-    response = get_json("/api/g781/commands")
+    response = get_json("/api/edge/commands")
     for cmd in response.get("commands", []):
         try:
             result = execute_command(cmd)

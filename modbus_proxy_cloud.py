@@ -15,6 +15,7 @@ import os
 import re
 import threading
 import time
+import unicodedata
 import uuid
 from collections import deque
 from datetime import datetime, timezone
@@ -48,7 +49,7 @@ def env_float(name: str, default: float) -> float:
 
 
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.06-zarzis-http-push-v8"
+APP_VERSION = "2026.05.07-zarzis-http-push-v8.3"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
@@ -134,15 +135,17 @@ INVT_ACTIONS = {
     "stop": env_int("INVT_OFF_VALUE", 5),
 }
 
-# Registres Salmson.
+# Registres Salmson EC-L / EC-Lift (profil Wilo-Control EC-L, Fieldbuslist Modbus EC).
+# Les adresses sont zero-based: 40015 => 14, 40026 => 25, 40198 => 197.
 SALMSON_REGS = {
-    "pump_state": env_int("SALMSON_REG_PUMP_STATE", 0x0001),
-    "current_a": env_int("SALMSON_REG_CURRENT_A", 0x0010),
-    "error_code": env_int("SALMSON_REG_ERROR_CODE", 0x0020),
-    "float_low": env_int("SALMSON_REG_FLOAT_LOW", 0x0030),
-    "float_high": env_int("SALMSON_REG_FLOAT_HIGH", 0x0031),
+    "level_cm": env_int("SALMSON_REG_LEVEL_CM", 25),
+    "pump1_mode": env_int("SALMSON_REG_PUMP1_MODE", 40),
+    "pump2_mode": env_int("SALMSON_REG_PUMP2_MODE", 41),
+    "switch_state": env_int("SALMSON_REG_SWITCH_STATE", 61),
+    "error_code": env_int("SALMSON_REG_ERROR_CODE", 138),
+    "float_state": env_int("SALMSON_REG_FLOAT_STATE", 197),
 }
-SALMSON_CMD = env_int("SALMSON_CMD_REG", 0x0100)
+SALMSON_CMD = env_int("SALMSON_CMD_REG", 14)
 
 # Registres Wilo Control EC-B Booster (notice 43587401).
 # Les adresses sont zero-based: 40015 => 14, 40026 => 25.
@@ -185,7 +188,7 @@ cache = {
     "coffret4": {"status": "DÉCONNECTÉ", "error_text": "Aucune lecture Modbus valide"},
     "connected": False,
     "last_update": 0,
-    "g781_ip": G781_HOST or "En attente...",
+    "g781_ip": G781_HOST or "En attente agent local...",
     "mode": G781_MODE,
 }
 
@@ -379,12 +382,12 @@ def connect(host: str | None = None, port: int | None = None) -> bool:
             cache["connected"] = http_push_is_fresh()
             cache["g781_ip"] = "HTTP PUSH - en attente agent local"
             cache["mode"] = G781_MODE
-            add_event("info", "Mode HTTP PUSH actif: aucune IP publique G781 necessaire")
+            add_event("info", "Mode HTTP PUSH actif: aucune IP publique entrante necessaire")
             return True
 
         if not host:
             cache["connected"] = False
-            cache["g781_ip"] = "En attente G781_HOST"
+            cache["g781_ip"] = "En attente cible Modbus TCP"
             return False
 
         try:
@@ -545,9 +548,10 @@ def device_reading_unavailable(data: dict) -> bool:
     error_text = str(data.get("error_text") or "").lower()
     if not data:
         return True
-    if any(marker in status or marker in error_text for marker in ("connect", "non lu", "aucune lecture", "indisponible")):
+    text = f"{status} {error_text}"
+    normalized = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    if any(marker in normalized for marker in ("deconnect", "non lu", "aucune lecture", "indisponible")):
         return True
-    unavailable_markers = ("deconnect", "dã‰connect", "non lu", "aucune lecture", "indisponible")
     return False
 
 
@@ -563,7 +567,7 @@ def start_freshness_blocker() -> str | None:
     if last_update <= 0 or time.time() - last_update > max_age:
         return "Mesures Modbus trop anciennes"
     if not client_is_open():
-        return "USR-G781 non connecte"
+        return "Cible Modbus TCP non connectee"
     return None
 
 
@@ -626,6 +630,45 @@ def decode_salmson(code: int) -> str:
     }.get(code, f"Erreur Salmson {code}")
 
 
+def decode_salmson_error_bitmap(bits: int) -> str:
+    names = {
+        0: "Defaut capteur",
+        3: "Protection thermique pompe 1",
+        4: "Protection thermique pompe 2",
+        5: "Alarme pompe 1",
+        6: "Alarme pompe 2",
+        11: "Marche a sec",
+        12: "Niveau haut",
+        16: "Priorite off",
+        17: "Redondance",
+        19: "Communication esclave",
+        20: "Defaut alimentation",
+        21: "Fuite detectee",
+        22: "Extern off",
+        23: "Plausibilite",
+    }
+    active = [label for bit, label in names.items() if bits & (1 << bit)]
+    return " / ".join(active) if active else f"Erreur Salmson {bits}"
+
+
+def enrich_salmson_data(data: dict) -> dict:
+    switch_state = int(data.get("switch_state", 0) or 0)
+    running = bool(switch_state & ((1 << 0) | (1 << 8) | (1 << 9)))
+    data["pump_state"] = 1 if running else 0
+    data["running"] = running
+    data["running_source"] = "Salmson EC-L switch_box_state"
+    if "float_state" in data:
+        float_state = int(data.get("float_state", 0) or 0)
+        dry_run = bool(float_state & (1 << 0))
+        high_water = bool(float_state & (1 << 4))
+        data["dry_run"] = dry_run
+        data["high_water"] = high_water
+        data["float_low"] = 0 if dry_run else SALMSON_FLOAT_LOW_OK_VALUE
+        data["float_high"] = 1 if high_water else 0
+    data["current_a"] = data.get("current_a", 0)
+    return data
+
+
 def decode_wilo_error_bitmap(bits: int) -> str:
     names = {
         0: "Defaut capteur",
@@ -672,16 +715,19 @@ def get_invt() -> dict:
 def get_salmson() -> dict:
     data = {}
     for name, reg in SALMSON_REGS.items():
-        value = read_reg(ADDR_SALMSON, reg)
+        if reg < 0:
+            continue
+        count = 2 if name == "error_code" else 1
+        value = read_reg(ADDR_SALMSON, reg, count=count)
         if value is None:
             continue
-        raw = value[0]
-        data[name] = round(raw / 10, 1) if name == "current_a" else raw
+        raw = value[0] if count == 1 else (value[0] | (value[1] << 16))
+        data[name] = raw
     if not data:
         return unavailable_state()
-    data["running"] = data.get("pump_state", 0) == 1
-    error = data.get("error_code", 0)
-    data["error_text"] = decode_salmson(error) if error else None
+    enrich_salmson_data(data)
+    error = int(data.get("error_code", 0) or 0)
+    data["error_text"] = decode_salmson_error_bitmap(error) if error else None
     data["status"] = "ERREUR" if error else ("EN MARCHE" if data["running"] else "ARRÊTÉE")
     data["last_seen"] = now_iso()
     return data
@@ -748,7 +794,7 @@ def update_loop() -> None:
                 continue
 
             if not current_host:
-                set_disconnected("En attente de G781_HOST")
+                set_disconnected("En attente de la cible Modbus TCP")
                 time.sleep(UPDATE_SEC)
                 continue
 
@@ -930,7 +976,7 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
 
     with lock:
         if not client_is_open():
-            return False, "USR-G781 non connecté"
+            return False, "Cible Modbus TCP non connectee"
 
         value = 1 if action in {"on", "forward", "reverse"} else 0
         invt_value = INVT_ACTIONS.get(action, INVT_ACTIONS["on"] if value else INVT_ACTIONS["off"])
@@ -1391,6 +1437,7 @@ def ping():
             "mode": G781_MODE,
             "connected": connected,
             "g781_ip": cache["g781_ip"],
+            "edge_agent": cache["g781_ip"],
             "auth_required": bool(API_TOKEN),
             "server_time": local_now().isoformat(),
             "timezone": LOCAL_TZ_NAME,
@@ -1415,6 +1462,7 @@ def status():
                 "connected": connected,
                 "last_update": cache["last_update"],
                 "g781_ip": cache["g781_ip"],
+                "edge_agent": cache["g781_ip"],
                 "mode": cache["mode"],
                 "server_time": local_now().isoformat(),
                 "timezone": LOCAL_TZ_NAME,
@@ -1458,12 +1506,12 @@ def api_connect():
         host = G781_HOST
         port = G781_PORT
     if not host and G781_MODE not in SIMULATION_MODES and G781_MODE not in HTTP_PUSH_MODES:
-        return jsonify({"success": False, "error": "G781_HOST non configure cote serveur"}), 400
+        return jsonify({"success": False, "error": "Cible Modbus TCP non configuree cote serveur"}), 400
     ok = connect(host, port)
     return jsonify(
         {
             "success": ok,
-            "error": None if ok else "Connexion G781 echouee",
+            "error": None if ok else "Connexion Modbus TCP echouee",
             "host": host,
             "ip": host,
             "port": port,
@@ -1484,7 +1532,7 @@ def control():
     if not device or not action:
         return jsonify({"success": False, "error": "device/pump et action requis"}), 400
     ok, error = apply_control(device, action, source=source)
-    status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "USR-G781 non connecté" else 400))
+    status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "Cible Modbus TCP non connectee" else 400))
     queued = bool(ok and G781_MODE in HTTP_PUSH_MODES)
     executed = bool(ok and not queued)
     return jsonify({
@@ -1511,7 +1559,7 @@ def inverter():
     if action not in INVT_ACTIONS:
         return jsonify({"success": False, "error": f"Action INVT inconnue: {action}"}), 400
     ok, error = apply_control("invt", action, source=source)
-    status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "USR-G781 non connecté" else 400))
+    status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "Cible Modbus TCP non connectee" else 400))
     queued = bool(ok and G781_MODE in HTTP_PUSH_MODES)
     executed = bool(ok and not queued)
     return jsonify({
@@ -1536,7 +1584,7 @@ def param_read():
     if G781_MODE in HTTP_PUSH_MODES:
         return jsonify({"success": False, "error": "Lecture registre brute indisponible en HTTP PUSH: utiliser l'agent local ou qModMaster sur site"}), 409
     if not client_is_open():
-        return jsonify({"success": False, "error": "USR-G781 non connecté"}), 503
+        return jsonify({"success": False, "error": "Cible Modbus TCP non connectee"}), 503
     with lock:
         values = read_reg(addr, reg, count)
     if values is not None:
@@ -1557,7 +1605,7 @@ def param_write():
     if G781_MODE in HTTP_PUSH_MODES:
         return jsonify({"success": False, "error": "Ecriture registre brute indisponible en HTTP PUSH depuis le cloud"}), 409
     if not client_is_open():
-        return jsonify({"success": False, "error": "USR-G781 non connecté"}), 503
+        return jsonify({"success": False, "error": "Cible Modbus TCP non connectee"}), 503
     with lock:
         ok = write_reg(addr, reg, value)
     if ok:
@@ -1678,6 +1726,7 @@ def ai_diagnose():
     return jsonify({"success": True, **diagnostic})
 
 
+@app.route("/api/edge/push", methods=["POST"])
 @app.route("/api/g781/push", methods=["POST"])
 def g781_push():
     body = request.get_json(silent=True) or {}
@@ -1703,10 +1752,11 @@ def g781_push():
             "rainbird": dict(rainbird_state),
         }
     add_history("measurement", **snapshot)
-    add_event("info", "Push G781 reçu")
+    add_event("info", "Push agent local reçu")
     return jsonify({"success": True, "commands_pending": queued, "server_time": local_now().isoformat()})
 
 
+@app.route("/api/edge/commands")
 @app.route("/api/g781/commands")
 def g781_commands():
     agent_id = request.headers.get("X-Agent-ID") or request.args.get("agent_id") or request.headers.get("User-Agent") or "agent local"
@@ -1733,6 +1783,7 @@ def g781_commands():
     return jsonify({"success": True, "commands": commands, "count": len(commands), "server_time": local_now().isoformat()})
 
 
+@app.route("/api/edge/ack", methods=["POST"])
 @app.route("/api/g781/ack", methods=["POST"])
 def g781_ack():
     body = request.get_json(silent=True) or {}
@@ -1880,7 +1931,7 @@ def index():
     <h2>Zarzis Irrigation - Serveur Cloud</h2>
     <p>Version: <code>{APP_VERSION}</code></p>
     <p>API: <code>/api/ping</code>, <code>/api/status</code>, <code>/api/devices</code></p>
-    <p>Mode G781: <strong>{G781_MODE}</strong></p>
+    <p>Mode terrain: <strong>{G781_MODE}</strong></p>
     <p>Connecté: <strong>{"OUI" if cache["connected"] else "NON / en attente"}</strong></p>
     """
 
