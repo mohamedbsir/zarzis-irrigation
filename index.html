@@ -1492,7 +1492,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         <span style="font-size:18px">⚡</span>
         <div style="flex:1">
           <div style="font-family:var(--mono);font-size:11px;color:var(--green);font-weight:700">Tension DC</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim)" id="sec-voltage">P09.00 = 500V</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim)" id="sec-voltage">P15.37 = 240V</div>
         </div>
       </div>
     </div>
@@ -2279,28 +2279,28 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
       <div class="param-row">
         <div class="param-info">
-          <div class="param-name">Tension DC démarrage minimum</div>
-          <div class="param-desc">Seuil tension DC panneaux pour autoriser démarrage (recommandé: 500V)</div>
-          <div class="param-reg">P09.00 · Reg: 0x0900</div>
+          <div class="param-name">Seuil sous-tension PV (UV)</div>
+          <div class="param-desc">P15.37 — Tension DC minimale avant déclenchement UV. Valeur usine modèle -4 = 240V. Réduire prudemment si panneaux insuffisants.</div>
+          <div class="param-reg">P15.37 · Reg: 0x0F25 · Valeur usine modèle -4 : 240V</div>
         </div>
-        <div class="param-val-display" id="pv-invt-0900">--</div>
-        <input type="number" class="param-input" id="pi-invt-0900" value="500" min="200" max="800" step="1">
+        <div class="param-val-display" id="pv-invt-0F25">--</div>
+        <input type="number" class="param-input" id="pi-invt-0F25" value="240" min="70" max="400" step="5">
         <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">V</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x0900,'invt-0900',1,'V')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x0900,'invt-0900',1,'V')">✏️ ÉCRIRE</button>
+        <button class="param-btn-read" onclick="readParam('invt',1,0x0F25,'invt-0F25',1,'V')">📖 LIRE</button>
+        <button class="param-btn-write" onclick="writeParam('invt',1,0x0F25,'invt-0F25',1,'V')">✏️ ÉCRIRE</button>
       </div>
 
       <div class="param-row">
         <div class="param-info">
-          <div class="param-name">Tempo redémarrage après coupure</div>
-          <div class="param-desc">Attente avant redémarrage automatique (évite cycles A-LS)</div>
-          <div class="param-reg">P09.03 · Reg: 0x0903</div>
+          <div class="param-name">Délai redémarrage après alarme A-LS</div>
+          <div class="param-desc">P15.24 — Attente avant redémarrage après alarme faible luminosité. Usine : 300s. Augmenter si cycles A-LS trop fréquents le matin.</div>
+          <div class="param-reg">P15.24 · Reg: 0x0F18 · Valeur usine : 300 sec</div>
         </div>
-        <div class="param-val-display" id="pv-invt-0903">--</div>
-        <input type="number" class="param-input" id="pi-invt-0903" value="1800" min="0" max="3600" step="60">
+        <div class="param-val-display" id="pv-invt-0F18">--</div>
+        <input type="number" class="param-input" id="pi-invt-0F18" value="300" min="0" max="3600" step="60">
         <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x0903,'invt-0903',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x0903,'invt-0903',1,'sec')">✏️ ÉCRIRE</button>
+        <button class="param-btn-read" onclick="readParam('invt',1,0x0F18,'invt-0F18',1,'sec')">📖 LIRE</button>
+        <button class="param-btn-write" onclick="writeParam('invt',1,0x0F18,'invt-0F18',1,'sec')">✏️ ÉCRIRE</button>
       </div>
 
       <div class="param-row">
@@ -2397,9 +2397,9 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="param-section">
       <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">📡 Communication Modbus (Menu 2)</div>
       <div class="param-row"><div class="param-info"><div class="param-name">Modbus ON/OFF</div><div class="param-desc">2.01 — activation communication Modbus</div><div class="param-reg">Menu 2.01 · Reg provisoire: 0x0201</div></div><div class="param-val-display" id="pv-salm-0201">--</div><select class="param-input-select" id="pi-salm-0201"><option value="0">OFF</option><option value="1" selected>ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0201,'salm-0201',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0201,'salm-0201')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Vitesse Baud Rate</div><div class="param-desc">2.02 — 9600 / 19200 / 38400 / 76800</div><div class="param-reg">Menu 2.02 · Reg provisoire: 0x0202</div></div><div class="param-val-display" id="pv-salm-0202">--</div><select class="param-input-select" id="pi-salm-0202"><option value="0">9600</option><option value="1" selected>19200</option><option value="2">38400</option><option value="3">76800</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0202,'salm-0202',{0:'9600',1:'19200',2:'38400',3:'76800'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0202,'salm-0202')">✏️ ÉCRIRE</button></div>
+      <div class="param-row"><div class="param-info"><div class="param-name">Vitesse Baud Rate</div><div class="param-desc">2.02 — 9600 / 19200 / 38400 / 76800</div><div class="param-reg">Menu 2.02 · Reg provisoire: 0x0202</div></div><div class="param-val-display" id="pv-salm-0202">--</div><select class="param-input-select" id="pi-salm-0202"><option value="0" selected>9600</option><option value="1">19200</option><option value="2">38400</option><option value="3">76800</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0202,'salm-0202',{0:'9600',1:'19200',2:'38400',3:'76800'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0202,'salm-0202')">✏️ ÉCRIRE</button></div>
       <div class="param-row"><div class="param-info"><div class="param-name">Adresse Modbus</div><div class="param-desc">2.03 — adresse esclave RS485</div><div class="param-reg">Menu 2.03 · Reg provisoire: 0x0203</div></div><div class="param-val-display" id="pv-salm-0203">--</div><input type="number" class="param-input" id="pi-salm-0203" value="2" min="1" max="254"><span></span><button class="param-btn-read" onclick="readParam('salmson',2,0x0203,'salm-0203',1,'')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0203,'salm-0203',1,'')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Parité Modbus</div><div class="param-desc">2.04 — none / even / odd</div><div class="param-reg">Menu 2.04 · Reg provisoire: 0x0204</div></div><div class="param-val-display" id="pv-salm-0204">--</div><select class="param-input-select" id="pi-salm-0204"><option value="0">NONE</option><option value="1" selected>EVEN</option><option value="2">ODD</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0204,'salm-0204',{0:'NONE',1:'EVEN',2:'ODD'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0204,'salm-0204')">✏️ ÉCRIRE</button></div>
+      <div class="param-row"><div class="param-info"><div class="param-name">Parité Modbus</div><div class="param-desc">2.04 — none / even / odd</div><div class="param-reg">Menu 2.04 · Reg provisoire: 0x0204</div></div><div class="param-val-display" id="pv-salm-0204">--</div><select class="param-input-select" id="pi-salm-0204"><option value="0" selected>NONE</option><option value="1">EVEN</option><option value="2">ODD</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0204,'salm-0204',{0:'NONE',1:'EVEN',2:'ODD'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0204,'salm-0204')">✏️ ÉCRIRE</button></div>
       <div class="param-row"><div class="param-info"><div class="param-name">Bits d'arrêt</div><div class="param-desc">2.05 — nombre de bits d'arrêt</div><div class="param-reg">Menu 2.05 · Reg provisoire: 0x0205</div></div><div class="param-val-display" id="pv-salm-0205">--</div><select class="param-input-select" id="pi-salm-0205"><option value="1" selected>1</option><option value="2">2</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0205,'salm-0205',{1:'1',2:'2'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0205,'salm-0205')">✏️ ÉCRIRE</button></div>
     </div>
 
@@ -2887,7 +2887,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         </div>
         <div class="param-val-display" id="pv-wilo-0202">--</div>
         <select class="param-input-select" id="pi-wilo-0202">
-          <option value="0">9600</option> <option value="1" selected>19200</option> <option value="2">38400</option> <option value="3">76800</option>
+          <option value="0" selected>9600</option> <option value="1">19200</option> <option value="2">38400</option> <option value="3">76800</option>
         </select>
         <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0202,'wilo-0202',{0:'9600',1:'19200',2:'38400',3:'76800'})">📖 LIRE</button>
         <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0202,'wilo-0202')">✏️ ÉCRIRE</button>
@@ -2912,7 +2912,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         </div>
         <div class="param-val-display" id="pv-wilo-0204">--</div>
         <select class="param-input-select" id="pi-wilo-0204">
-          <option value="0">NONE</option> <option value="1" selected>EVEN</option> <option value="2">ODD</option>
+          <option value="0" selected>NONE</option> <option value="1">EVEN</option> <option value="2">ODD</option>
         </select>
         <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0204,'wilo-0204',{0:'NONE',1:'EVEN',2:'ODD'})">📖 LIRE</button>
         <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0204,'wilo-0204')">✏️ ÉCRIRE</button>
@@ -5412,8 +5412,8 @@ function readAllParams(device) {
     setTimeout(()=>readParam('invt',1,0x0201,'invt-0201',10,'A'),300);
     setTimeout(()=>readParam('invt',1,0x000B,'invt-000B',10,'sec'),600);
     setTimeout(()=>readParam('invt',1,0x000C,'invt-000C',10,'sec'),900);
-    setTimeout(()=>readParam('invt',1,0x0900,'invt-0900',1,'V'),1200);
-    setTimeout(()=>readParam('invt',1,0x0903,'invt-0903',1,'sec'),1500);
+    setTimeout(()=>readParam('invt',1,0x0F25,'invt-0F25',1,'V'),1200);
+    setTimeout(()=>readParam('invt',1,0x0F18,'invt-0F18',1,'sec'),1500);
     setTimeout(()=>readParam('invt',1,0x0E00,'invt-0E00',1,''),1800);
     document.getElementById('invt-param-status-badge').textContent = 'LU ✅';
     document.getElementById('invt-param-status-badge').className = 'badge badge-on';

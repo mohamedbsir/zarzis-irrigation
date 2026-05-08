@@ -57,8 +57,8 @@ CLOUD_URL = os.environ.get("CLOUD_URL", "https://zarzis-irrigation-1.onrender.co
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 AGENT_ID = os.environ.get("AGENT_ID", "zarzis-edge-agent")
 
-DR302_HOST = os.environ.get("DR302_HOST") or os.environ.get("G781_HOST", "192.168.8.10")
-DR302_PORT = env_int("DR302_PORT", env_int("G781_PORT", 502))
+DR302_HOST = os.environ.get("DR302_HOST", "192.168.1.10")
+DR302_PORT = env_int("DR302_PORT", 502)
 POLL_SEC = max(2, env_int("EDGE_POLL_SEC", 5))
 EDGE_ALLOW_START = env_bool("EDGE_ALLOW_START", False)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
