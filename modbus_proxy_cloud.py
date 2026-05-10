@@ -49,17 +49,13 @@ def env_float(name: str, default: float) -> float:
 
 
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.10-zarzis-http-push-v8.4-offline"
+APP_VERSION = "2026.05.07-zarzis-http-push-v8.3"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
 APP_STATE_FILE = Path(os.environ.get("APP_STATE_FILE", str(DATA_DIR / "app_state_zarzis.json")))
 HISTORY_FILE = Path(os.environ.get("HISTORY_FILE", str(DATA_DIR / "history_zarzis.json")))
 PERSISTENT_STORAGE_ENABLED = env_bool("PERSISTENT_STORAGE_ENABLED", False)
-try:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-except Exception:
-    pass
 
 G781_MODE = os.environ.get("G781_MODE", "http_push").strip().lower()
 G781_HOST = os.environ.get("G781_HOST") or os.environ.get("USR_G781_IP", "")
@@ -179,13 +175,6 @@ CORS(app, origins=CORS_ORIGINS, allow_headers=["Content-Type", "Authorization", 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
-try:
-    if PERSISTENT_STORAGE_ENABLED:
-        file_handler = logging.FileHandler(DATA_DIR / "zarzis_cloud.log", encoding="utf-8")
-        file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-        log.addHandler(file_handler)
-except Exception:
-    pass
 
 
 def unavailable_state(status: str = "DÉCONNECTÉ") -> dict:
@@ -1455,7 +1444,7 @@ def ping():
             "planning_enabled": ENABLE_PLANNING,
             "planning_count": len(planning),
             "http_push_stale_sec": G781_HTTP_PUSH_STALE_SEC if G781_MODE in HTTP_PUSH_MODES else None,
-            "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED, "history_file": str(HISTORY_FILE), "app_state_file": str(APP_STATE_FILE)},
+            "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED},
             "simulation": G781_MODE in SIMULATION_MODES,
         }
     )
@@ -1484,7 +1473,7 @@ def status():
                 "commands_status": command_counts,
                 "last_command_ack": recent_command_acks[0] if recent_command_acks else None,
                 "recent_command_acks": list(recent_command_acks)[:20],
-                "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED, "history_file": str(HISTORY_FILE), "app_state_file": str(APP_STATE_FILE)},
+                "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED},
                 "invt": cache["invt"],
                 "salmson": cache["salmson"],
                 "wilo": cache["wilo"],
@@ -1947,24 +1936,58 @@ def index():
     """
 
 
+def send_first_existing_asset(filenames: list[str], **kwargs):
+    """Sert le premier fichier existant.
+
+    Compatibilite speciale icones : GitHub a parfois cree des fichiers avec
+    accents (icône.svg, icône-192.png, icône-512.png) alors que la PWA pouvait
+    demander icon.svg ou /icons/icon-192.png. Cette fonction evite les 404.
+    """
+    for filename in filenames:
+        if (APP_DIR / filename).exists():
+            return send_from_directory(APP_DIR, filename, **kwargs)
+    # Laisse Flask produire un vrai 404 si aucun candidat n'existe.
+    return send_from_directory(APP_DIR, filenames[0], **kwargs)
+
+
 @app.route("/manifest.webmanifest")
 def manifest():
-    return send_from_directory(APP_DIR, "manifest.webmanifest")
+    return send_from_directory(APP_DIR, "manifest.webmanifest", mimetype="application/manifest+json")
 
 
 @app.route("/sw.js")
 def service_worker():
-    return send_from_directory(APP_DIR, "sw.js")
+    return send_from_directory(APP_DIR, "sw.js", mimetype="application/javascript")
 
 
 @app.route("/icon.svg")
+@app.route("/icône.svg")
 def icon():
-    return send_from_directory(APP_DIR, "icon.svg")
+    return send_first_existing_asset(["icône.svg", "icon.svg"], mimetype="image/svg+xml")
+
+
+@app.route("/icon-192.png")
+@app.route("/icône-192.png")
+def root_icon_192():
+    return send_first_existing_asset(["icône-192.png", "icon-192.png", "icons/icon-192.png"], mimetype="image/png")
+
+
+@app.route("/icon-512.png")
+@app.route("/icône-512.png")
+def root_icon_512():
+    return send_first_existing_asset(["icône-512.png", "icon-512.png", "icons/icon-512.png"], mimetype="image/png")
 
 
 @app.route("/icons/<path:filename>")
 def icons(filename):
-    return send_from_directory(APP_DIR / "icons", filename)
+    candidates = [f"icons/{filename}"]
+    if filename == "icon-192.png":
+        candidates += ["icône-192.png", "icon-192.png"]
+    elif filename == "icon-512.png":
+        candidates += ["icône-512.png", "icon-512.png"]
+    elif filename == "icon.svg":
+        candidates += ["icône.svg", "icon.svg"]
+    return send_first_existing_asset(candidates)
 
 
 load_history_from_disk()

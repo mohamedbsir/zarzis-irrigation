@@ -8,8 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Zarzis">
 <link rel="manifest" href="manifest.webmanifest" id="manifest-link">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icône-192.png">
+<link rel="icon" type="image/svg+xml" href="icône.svg">
 <title>Zarzis SunNode — Supervision Irrigation Solaire v7.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -3060,8 +3060,6 @@ let apiUrl = localStorage.getItem('zarzis_api') || 'https://zarzis-irrigation-1.
 let apiToken = sessionStorage.getItem('zarzis_api_token_session') || localStorage.getItem('zarzis_api_token_remembered') || '';
 localStorage.removeItem('zarzis_api_token');
 let connected = false;
-let appInitialized = false;
-let autoConnectStarted = false;
 let simInterval = null;
 let fetchInterval = null;
 let soundEnabled = localStorage.getItem('sound') !== 'off';
@@ -3103,68 +3101,6 @@ async function postApiJson(path, payload={}, timeout=5000) {
   try { data = await res.json(); } catch(e) {}
   if(!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
-}
-
-const OFFLINE_STATUS_KEY = 'zarzis_last_status_snapshot';
-const OFFLINE_HISTORY_KEY = 'zarzis_offline_history';
-
-function saveOfflineStatusSnapshot(data) {
-  try {
-    const snapshot = {...data, cached_at: new Date().toISOString()};
-    localStorage.setItem(OFFLINE_STATUS_KEY, JSON.stringify(snapshot));
-    const history = JSON.parse(localStorage.getItem(OFFLINE_HISTORY_KEY) || '[]');
-    history.unshift({
-      ts: snapshot.cached_at,
-      invt: snapshot.invt || {},
-      salmson: snapshot.salmson || {},
-      wilo: snapshot.wilo || {},
-      connected: !!snapshot.connected
-    });
-    localStorage.setItem(OFFLINE_HISTORY_KEY, JSON.stringify(history.slice(0, 500)));
-  } catch(e) {}
-}
-
-function loadOfflineStatusSnapshot() {
-  try { return JSON.parse(localStorage.getItem(OFFLINE_STATUS_KEY) || 'null'); } catch(e) { return null; }
-}
-
-function applyStatusSnapshot(d, fromCache=false) {
-  if(!d) return;
-  handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
-  const invt = d.invt || {};
-  const salmson = d.salmson || {};
-  const wilo = d.wilo || {};
-  const g781Input = document.getElementById('g781-ip');
-  if(g781Input) g781Input.value = d.g781_ip || d.edge_agent || '';
-  if(fromCache) updateConnStatus('HORS-LIGNE', 'badge-warn');
-  else if(d.mode === 'http_push' && !d.connected) updateConnStatus('AGENT ATTENTE', 'badge-warn');
-  else updateConnStatus('CONNECTÉ ✅', 'badge-on');
-  updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
-  const salmsonWaterOk = typeof salmson.dry_run === 'boolean' ? !salmson.dry_run : salmson.float_low===1;
-  updateSalmson(salmson.current_a, salmsonWaterOk, salmson.level_cm, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
-  updateWilo(wilo.pressure||0, wilo.flow||0, wilo.running||false);
-  updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
-  addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
-}
-
-function autoConnectCloudOnOpen() {
-  if(autoConnectStarted) return;
-  autoConnectStarted = true;
-  const cloudInput = document.getElementById('cloud-url');
-  const tokenInput = document.getElementById('api-token');
-  if(cloudInput) cloudInput.value = apiUrl;
-  if(tokenInput && apiToken) tokenInput.value = apiToken;
-  const cached = loadOfflineStatusSnapshot();
-  if(cached) {
-    applyStatusSnapshot(cached, true);
-    addLog('📦 Dernier état chargé depuis le cache hors-ligne', 'info');
-  }
-  if(apiUrl && navigator.onLine !== false) {
-    setTimeout(() => connectCloud(true), 350);
-  } else {
-    updateConnStatus('HORS-LIGNE', 'badge-warn');
-    addLog('📴 Application ouverte hors-ligne: lecture du dernier état local', 'warn');
-  }
 }
 
 // Zones irrigation — CONFIGURATION MODIFIABLE
@@ -3353,8 +3289,6 @@ function applyFeatureFlags() {
 }
 
 function initApp() {
-  if(appInitialized) return;
-  appInitialized = true;
   const cloudInput = document.getElementById('cloud-url');
   const tokenInput = document.getElementById('api-token');
   const rememberInput = document.getElementById('remember-token');
@@ -3377,7 +3311,6 @@ function initApp() {
   calcFert();
   simulateData();
   fetchWeather();
-  autoConnectCloudOnOpen();
 }
 
 // ============ CLOCK ============
@@ -3441,7 +3374,7 @@ function requestNotifPermission() {
 
 function sendNotif(title, body) {
   if(Notification.permission === 'granted') {
-    new Notification(`🌱 ${title}`, { body, icon: '' });
+    new Notification(`🌱 ${title}`, { body, icon: './icône-192.png' });
   }
 }
 
@@ -5911,7 +5844,7 @@ window.addEventListener('appinstalled', ()=>{
   if(typeof toast === 'function') toast('✅ Zarzis installé', 'ok');
 });
 
-window.addEventListener('online', ()=>{ if(typeof toast === 'function') toast('🌐 Connexion rétablie', 'ok'); if(appInitialized) connectCloud(true); });
+window.addEventListener('online', ()=>{ if(typeof toast === 'function') toast('🌐 Connexion rétablie', 'ok'); });
 window.addEventListener('offline', ()=>{ if(typeof toast === 'function') toast('📴 Mode hors-ligne', 'warn'); });
 
 document.addEventListener('DOMContentLoaded', registerServiceWorker);
@@ -5924,7 +5857,7 @@ function updateConnStatus(text, cls) {
   });
 }
 
-function connectCloud(auto=false) {
+function connectCloud() {
   const url = document.getElementById('cloud-url').value.trim();
   const interval = parseInt(document.getElementById('poll-interval').value)||5;
   apiToken = document.getElementById('api-token')?.value.trim() || '';
@@ -5935,7 +5868,7 @@ function connectCloud(auto=false) {
   if(document.getElementById('remember-token')?.checked) localStorage.setItem('zarzis_api_token_remembered', apiToken);
   else localStorage.removeItem('zarzis_api_token_remembered');
   updateConnStatus('CONNEXION...', 'badge-warn');
-  addLog(`${auto ? 'Connexion automatique' : 'Connexion serveur cloud'} → ${apiUrl}`, 'info');
+  addLog(`Connexion serveur cloud → ${apiUrl}`, 'info');
 
   fetch(`${apiUrl}/api/ping`, {headers: apiHeaders(), signal:AbortSignal.timeout(10000)})
     .then(r=>r.json())
@@ -5961,17 +5894,9 @@ function connectCloud(auto=false) {
     })
     .catch(e => {
       connected = false;
-      const cached = loadOfflineStatusSnapshot();
-      if(cached) {
-        applyStatusSnapshot(cached, true);
-        updateConnStatus('HORS-LIGNE', 'badge-warn');
-        if(!auto) toast('📴 Serveur inaccessible — dernier état affiché', 'warn');
-        addLog(`📴 Mode hors-ligne: dernier état local affiché (${e.message})`, 'warn');
-      } else {
-        updateConnStatus('ERREUR', 'badge-off');
-        if(!auto) toast('❌ Serveur inaccessible', 'err');
-        addLog(`❌ Erreur: ${e.message}`, 'err');
-      }
+      updateConnStatus('ERREUR', 'badge-off');
+      toast('❌ Serveur inaccessible', 'err');
+      addLog(`❌ Erreur: ${e.message}`, 'err');
     });
 }
 
@@ -6043,21 +5968,27 @@ function fetchRealData() {
   fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
-      saveOfflineStatusSnapshot(d);
-      clearAlarm('COM');
-      applyStatusSnapshot(d, false);
+      handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
+      const invt = d.invt || {};
+      const salmson = d.salmson || {};
+      const wilo = d.wilo || {};
+      const g781Input = document.getElementById('g781-ip');
+      if(g781Input) g781Input.value = d.g781_ip || '';
+      if(d.mode === 'http_push' && !d.connected) updateConnStatus('AGENT ATTENTE', 'badge-warn');
+      else updateConnStatus('CONNECTÉ ✅', 'badge-on');
+      updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
+      const salmsonWaterOk = typeof salmson.dry_run === 'boolean' ? !salmson.dry_run : salmson.float_low===1;
+      updateSalmson(salmson.current_a, salmsonWaterOk, salmson.level_cm, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
+      updateWilo(wilo.pressure||0, wilo.flow||0, wilo.running||false);
+      updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
+      addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
     })
-    .catch(e => {
-      setAlarm('COM', 'Perte communication serveur', false);
-      const cached = loadOfflineStatusSnapshot();
-      if(cached) applyStatusSnapshot(cached, true);
-      addLog(`⚠️ Erreur lecture: ${e.message}`, 'warn');
-    });
+    .catch(e => { setAlarm('COM', 'Perte communication serveur', false); addLog(`⚠️ Erreur lecture: ${e.message}`, 'warn'); });
 }
 
 function sendModbusCmd(pump, action) {
   addLog(`[CMD] ${pump} → ${action.toUpperCase()}`, 'cmd');
-  if(!connected) { toast('Commande bloquée hors-ligne', 'warn'); addLog('[SECURITE] Commande non envoyée: serveur hors-ligne', 'warn'); return; }
+  if(!connected) { addLog('[SIM] Commande simulée localement', 'info'); return; }
   fetch(`${apiUrl}/api/control`, {
     method:'POST', headers: apiHeaders(),
     body:JSON.stringify({pump, device:pump, action}), signal:AbortSignal.timeout(5000)

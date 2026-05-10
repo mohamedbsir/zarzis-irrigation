@@ -1,17 +1,21 @@
-const CACHE_NAME = 'zarzis-irrigation-v8.4-icons';
+const CACHE_NAME = 'zarzis-irrigation-v8.4-icon-paths';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icon.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icône.svg',
+  './icône-192.png',
+  './icône-512.png'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(cache => Promise.all(
+        APP_SHELL.map(url => cache.add(url).catch(err => {
+          console.warn('[SW] cache ignore:', url, err);
+        }))
+      ))
       .then(() => self.skipWaiting())
   );
 });
