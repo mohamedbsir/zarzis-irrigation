@@ -213,21 +213,14 @@ last_plan_runs: dict[str, float] = {}
 running_plan_ids: set[str] = set()
 last_command_at: dict[str, float] = {}
 last_off_at: dict[str, float] = {}
-last_rainbird_command_at = 0.0
+last_relay_command_at = 0.0
 
-
-# ============ RAIN BIRD CONFIG ============
-RAINBIRD_STICK_ID = os.environ.get("RAINBIRD_STICK_ID", "")
-RAINBIRD_SERIAL = os.environ.get("RAINBIRD_SERIAL", "")
-RAINBIRD_KEYCODE = os.environ.get("RAINBIRD_KEYCODE", "")
-RAINBIRD_WIFI = os.environ.get("RAINBIRD_WIFI", "")
-RAINBIRD_ZONES = []
-RAINBIRD_ENABLED = []
-RAINBIRD_PROGRAMS = {"1": "Arrosage", "2": "Fertilisation"}
-RAINBIRD_MAX_DURATION_MIN = max(1, env_int("RAINBIRD_MAX_DURATION_MIN", 240))
-RAINBIRD_MIN_INTERVAL_SEC = max(0, env_int("RAINBIRD_MIN_INTERVAL_SEC", 30))
-rainbird_ip = os.environ.get("RAINBIRD_IP", "")
-rainbird_state = {"connected": False, "active_zones": [], "ip": rainbird_ip, "last_cmd": ""}
+# ============ RELAY CONFIG ============
+RELAY_ENABLED = env_bool("RELAY_ENABLED", True)
+RELAY_MAX_DURATION_MIN = max(1, env_int("RELAY_MAX_DURATION_MIN", 120))
+RELAY_MIN_INTERVAL_SEC = max(0, env_int("RELAY_MIN_INTERVAL_SEC", 10))
+RELAY_ZONES = list(range(1, 7))  # 6 zones par défaut
+relay_state: dict = {"zones": {}, "active_zones": [], "last_cmd": ""}
 
 
 # ============ OUTILS ============
@@ -301,8 +294,6 @@ def parse_int_list(value, default=None) -> list[int]:
     return parsed
 
 
-RAINBIRD_ZONES = parse_int_list(os.environ.get("RAINBIRD_ZONES", "1,2,3,4,5,6"))
-RAINBIRD_ENABLED = parse_int_list(os.environ.get("RAINBIRD_ENABLED", "1,3"))
 
 
 def normalize_action(action: str) -> str:
@@ -516,7 +507,7 @@ def cleanup_pending_commands() -> None:
 
 
 def command_can_retry(command: dict) -> bool:
-    if str(command.get("type") or "") == "rainbird":
+    if str(command.get("type") or "") == "relay":
         return str(command.get("action") or "").lower() == "stop"
     return str(command.get("action") or "").lower() in {"off", "stop"}
 
@@ -1007,79 +998,47 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
 
 
 # ============ RAIN BIRD ============
-def rainbird_request(ip: str, command: str, params: dict | None = None):
-    if not RAINBIRD_STICK_ID or not RAINBIRD_KEYCODE:
-        add_event("warning", "Rain Bird non configuré: RAINBIRD_STICK_ID/RAINBIRD_KEYCODE manquants")
-        return None
-
-    import urllib.request
-
-    try:
-        payload = {"id": RAINBIRD_STICK_ID, "command": command}
-        if params:
-            payload.update(params)
-        req = urllib.request.Request(
-            f"http://{ip}/stick",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "Authorization": f"Basic {RAINBIRD_KEYCODE[:32]}"},
-        )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return json.loads(resp.read())
-    except Exception as exc:
-        add_event("warning", f"Rain Bird erreur: {exc}")
-        return None
-
-
-def rainbird_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
-    global last_rainbird_command_at
-    if zone not in RAINBIRD_ZONES:
-        return False, {"error": f"Zone {zone} invalide"}
+def relay_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
+    """Queue une commande démarrage électrovanne vers l'agent Raspberry."""
+    global last_relay_command_at
+    if zone not in RELAY_ZONES:
+        return False, {"error": f"Zone {zone} invalide — zones disponibles: {RELAY_ZONES}"}
     current = time.time()
-    if current - last_rainbird_command_at < RAINBIRD_MIN_INTERVAL_SEC:
-        remaining = int(RAINBIRD_MIN_INTERVAL_SEC - (current - last_rainbird_command_at)) + 1
-        return False, {"error": f"Commande Rain Bird trop rapprochee: attendre {remaining}s"}
-    duration = max(1, min(int(duration), RAINBIRD_MAX_DURATION_MIN))
-    rainbird_state["last_cmd"] = f"START Zone {zone} {duration}min"
+    if current - last_relay_command_at < RELAY_MIN_INTERVAL_SEC:
+        remaining = int(RELAY_MIN_INTERVAL_SEC - (current - last_relay_command_at)) + 1
+        return False, {"error": f"Commande trop rapprochée: attendre {remaining}s"}
+    duration = max(1, min(int(duration), RELAY_MAX_DURATION_MIN))
     if EDGE_MODE in HTTP_PUSH_MODES:
         if not http_push_is_fresh():
-            return False, {"error": "Agent local absent ou trop ancien: Rain Bird refusé"}
-        queue_command({"type": "rainbird", "action": "start", "zone": zone, "duration": duration})
-        rainbird_state["last_cmd"] = f"QUEUED START Zone {zone} {duration}min"
-        last_rainbird_command_at = current
+            return False, {"error": "Agent local absent ou trop ancien: commande zone refusée"}
+        queue_command({"type": "relay", "action": "start", "zone": zone, "duration": duration})
+        relay_state["last_cmd"] = f"QUEUED START Zone {zone} {duration}min"
+        last_relay_command_at = current
+        add_history("command_executed", force_save=True, type="relay", action="start", zone=zone, duration=duration, mode="http_push")
         return True, {"mode": "http_push", "queued": True, "zone": zone, "duration": duration}
-    if not rainbird_ip:
-        if EDGE_MODE in SIMULATION_MODES:
-            rainbird_state["active_zones"] = [zone]
-            last_rainbird_command_at = current
-            add_history("command_executed", force_save=True, type="rainbird", action="start", zone=zone, duration=duration, mode="simulation")
-            return True, {"mode": "simulation", "zone": zone, "duration": duration}
-        return False, {"error": "Rain Bird IP manquante: simulation refusée en mode réel"}
-    result = rainbird_request(rainbird_ip, "ZoneStartRequest", {"zone": zone, "duration": duration})
-    if result:
-        rainbird_state["active_zones"] = [zone]
-        rainbird_state["connected"] = True
-        last_rainbird_command_at = current
-        add_history("command_executed", force_save=True, type="rainbird", action="start", zone=zone, duration=duration, mode="direct")
-        return True, {"result": result, "zone": zone, "duration": duration}
-    add_history("command_failed", force_save=True, type="rainbird", action="start", zone=zone, duration=duration, error="Pas de réponse Rain Bird")
-    return False, {"error": "Pas de réponse Rain Bird"}
+    if EDGE_MODE in SIMULATION_MODES:
+        relay_state["active_zones"] = [zone]
+        relay_state["zones"][str(zone)] = True
+        relay_state["last_cmd"] = f"START Zone {zone} {duration}min"
+        last_relay_command_at = current
+        add_history("command_executed", force_save=True, type="relay", action="start", zone=zone, duration=duration, mode="simulation")
+        return True, {"mode": "simulation", "zone": zone, "duration": duration}
+    return False, {"error": "Mode direct_tcp non supporté pour les relais GPIO — utiliser http_push"}
 
 
-def rainbird_stop_zone(zone: int | None = None) -> tuple[bool, dict]:
-    rainbird_state["last_cmd"] = f"STOP {'zone ' + str(zone) if zone else 'tout'}"
-    rainbird_state["active_zones"] = []
+def relay_stop_zone(zone: int | None = None) -> tuple[bool, dict]:
+    """Queue une commande arrêt électrovanne vers l'agent Raspberry."""
     if EDGE_MODE in HTTP_PUSH_MODES:
-        queue_command({"type": "rainbird", "action": "stop", "zone": zone})
+        queue_command({"type": "relay", "action": "stop", "zone": zone})
+        relay_state["last_cmd"] = f"QUEUED STOP {'Zone ' + str(zone) if zone else 'TOUTES ZONES'}"
+        add_history("command_executed", force_save=True, type="relay", action="stop", zone=zone, mode="http_push")
         return True, {"mode": "http_push", "queued": True, "zone": zone}
-    if not rainbird_ip:
+    if EDGE_MODE in SIMULATION_MODES:
+        relay_state["active_zones"] = []
+        relay_state["zones"] = {}
+        relay_state["last_cmd"] = f"STOP {'Zone ' + str(zone) if zone else 'TOUTES'}"
         return True, {"mode": "simulation"}
-    result = rainbird_request(rainbird_ip, "StopIrrigationRequest")
-    if result:
-        rainbird_state["connected"] = True
-        add_history("command_executed", force_save=True, type="rainbird", action="stop", zone=zone, mode="direct")
-        return True, {"result": result}
-    add_history("command_failed", force_save=True, type="rainbird", action="stop", zone=zone, error="Pas de réponse Rain Bird")
-    return False, {"error": "Pas de réponse Rain Bird"}
+    return False, {"error": "Mode direct_tcp non supporté pour les relais GPIO"}
 
 
 # ============ PLANNING ============
@@ -1114,13 +1073,13 @@ def normalize_plan_item(item: dict, index: int = 0) -> dict:
         base.update({"device": device, "action": action})
         return base
 
-    if item_type == "rainbird_sequence":
+    if item_type == "relay_sequence":
         zones = parse_int_list(item.get("zones", []))
         if not zones:
-            raise ValueError("rainbird_sequence exige au moins une zone")
-        invalid = [z for z in zones if z not in RAINBIRD_ZONES]
+            raise ValueError("relay_sequence exige au moins une zone")
+        invalid = [z for z in zones if z not in RELAY_ZONES]
         if invalid:
-            raise ValueError(f"Zone Rain Bird invalide: {invalid[0]}")
+            raise ValueError(f"Zone relais invalide: {invalid[0]}")
         duration = max(1, min(parse_int(item.get("duration"), 20), 360))
         pause_min = max(0, min(parse_int(item.get("pause_min"), 2), 120))
         start_pumps = bool(item.get("start_pumps", True))
@@ -1252,7 +1211,7 @@ def is_plan_due(item: dict, now: datetime) -> bool:
     return now.strftime("%H:%M") == item.get("time")
 
 
-def execute_rainbird_sequence(item: dict) -> None:
+def execute_relay_sequence(item: dict) -> None:
     plan_id = item.get("id", "sequence")
     if plan_id in running_plan_ids:
         add_event("warning", f"Planning déjà en cours: {item.get('name') or plan_id}")
@@ -1273,13 +1232,13 @@ def execute_rainbird_sequence(item: dict) -> None:
         duration = int(item.get("duration", 20))
         pause_min = int(item.get("pause_min", 2))
         for idx, zone in enumerate(zones):
-            ok, info = rainbird_start_zone(int(zone), duration)
+            ok, info = relay_start_zone(int(zone), duration)
             if not ok:
-                add_event("error", f"Zone Rain Bird non lancée: {info.get('error')}")
+                add_event("error", f"Zone relais non lancée: {info.get('error')}")
                 break
             add_event("info", f"Zone {zone} lancée {duration} min", planning=plan_id)
             time.sleep(duration * 60)
-            rainbird_stop_zone(int(zone))
+            relay_stop_zone(int(zone))
             if idx < len(zones) - 1 and pause_min > 0:
                 time.sleep(pause_min * 60)
     finally:
@@ -1292,8 +1251,8 @@ def execute_rainbird_sequence(item: dict) -> None:
 
 
 def execute_plan_item(item: dict) -> None:
-    if item.get("type") == "rainbird_sequence":
-        execute_rainbird_sequence(item)
+    if item.get("type") == "relay_sequence":
+        execute_relay_sequence(item)
         return
     ok, error = apply_control(item["device"], item["action"], source=f"planning:{item.get('id')}")
     if ok:
@@ -1737,8 +1696,8 @@ def edge_push():
                 cache[key] = dict(item)
                 if "last_seen" not in item:
                     cache[key]["last_seen"] = now_iso()
-        if isinstance(body.get("rainbird"), dict):
-            rainbird_state.update(body["rainbird"])
+        if isinstance(body.get("relay"), dict):
+            relay_state.update(body["relay"])
         cache["connected"] = True
         cache["mode"] = EDGE_MODE
         cache["agent_ip"] = str(body.get("agent_id") or request.headers.get("X-Forwarded-For") or request.remote_addr or "agent local")
@@ -1748,7 +1707,7 @@ def edge_push():
         snapshot = {
             "agent_id": cache["agent_ip"],
             "devices": {key: dict(cache[key]) for key in ("invt", "salmson", "wilo", "coffret4")},
-            "rainbird": dict(rainbird_state),
+            "relay": dict(relay_state),
         }
     add_history("measurement", **snapshot)
     add_event("info", "Push agent local reçu")
@@ -1811,12 +1770,12 @@ def edge_ack():
         ack["type"] = ack["command"].get("type")
         ack["device"] = ack["command"].get("device")
         ack["action"] = ack["command"].get("action")
-        if ack["ok"] and ack["type"] == "rainbird":
+        if ack["ok"] and ack["type"] == "relay":
             if ack["action"] == "start":
-                rainbird_state["active_zones"] = [ack["command"].get("zone")]
+                relay_state["active_zones"] = [ack["command"].get("zone")]
             elif ack["action"] == "stop":
-                rainbird_state["active_zones"] = []
-            rainbird_state["last_cmd"] = f"ACK {ack['action']} OK"
+                relay_state["active_zones"] = []
+            relay_state["last_cmd"] = f"ACK {ack['action']} OK"
     recent_command_acks.appendleft(ack)
     add_history("command_ack", force_save=True, **ack)
     if ack["command"]:
@@ -1836,88 +1795,49 @@ def edge_ack():
     return jsonify({"success": True, "known": matched is not None, "ack": ack})
 
 
-@app.route("/api/rainbird/config")
-def rainbird_config():
-    return jsonify(
-        {
-            "configured": bool(RAINBIRD_STICK_ID and RAINBIRD_KEYCODE),
-            "serial": RAINBIRD_SERIAL,
-            "wifi": RAINBIRD_WIFI,
-            "zones": RAINBIRD_ZONES,
-            "enabled": RAINBIRD_ENABLED,
-            "programs": RAINBIRD_PROGRAMS,
-            "ip": rainbird_ip,
-            "connected": rainbird_state["connected"],
-            "active": rainbird_state["active_zones"],
-        }
-    )
+@app.route("/api/relay/config")
+def relay_config():
+    return jsonify({
+        "enabled": RELAY_ENABLED,
+        "zones": RELAY_ZONES,
+        "active_zones": relay_state.get("active_zones", []),
+        "zones_state": relay_state.get("zones", {}),
+        "last_cmd": relay_state.get("last_cmd", ""),
+        "max_duration_min": RELAY_MAX_DURATION_MIN,
+    })
 
 
-@app.route("/api/rainbird/setip", methods=["POST"])
-def rainbird_setip():
-    global rainbird_ip
+@app.route("/api/relay/start", methods=["POST"])
+def relay_start():
     body = request.get_json(silent=True) or {}
     if str(body.get("source") or "").strip().lower().startswith("ai"):
-        return jsonify({"success": False, "error": "IA en lecture seule: configuration Rain Bird interdite"}), 403
-    ip = str(body.get("ip") or "").strip()
-    if not ip:
-        return jsonify({"success": False, "error": "IP manquante"}), 400
-    rainbird_ip = ip
-    rainbird_state["ip"] = ip
-    add_event("info", f"Rain Bird IP définie: {ip}")
-    return jsonify({"success": True, "ip": ip})
-
-
-@app.route("/api/rainbird/start", methods=["POST"])
-def rainbird_start():
-    body = request.get_json(silent=True) or {}
-    if str(body.get("source") or "").strip().lower().startswith("ai"):
-        return jsonify({"success": False, "error": "IA en lecture seule: commande Rain Bird interdite"}), 403
+        return jsonify({"success": False, "error": "IA en lecture seule: commande zone interdite"}), 403
     zone = parse_int(body.get("zone"), 1)
-    duration = parse_int(body.get("duration"), 10)
-    ok, info = rainbird_start_zone(zone, duration)
-    if ok:
-        return jsonify({"success": True, **info})
-    return jsonify({"success": False, **info}), 503 if info.get("error") == "Pas de réponse Rain Bird" else 400
+    duration = parse_int(body.get("duration"), 20)
+    ok, info = relay_start_zone(zone, duration)
+    return jsonify({"success": ok, **info}), 200 if ok else 400
 
 
-@app.route("/api/rainbird/stop", methods=["POST"])
-def rainbird_stop():
+@app.route("/api/relay/stop", methods=["POST"])
+def relay_stop():
     body = request.get_json(silent=True) or {}
     if str(body.get("source") or "").strip().lower().startswith("ai"):
-        return jsonify({"success": False, "error": "IA en lecture seule: commande Rain Bird interdite"}), 403
-    zone = body.get("zone")
-    zone = parse_int(zone, 0) if zone not in {None, ""} else None
-    ok, info = rainbird_stop_zone(zone)
-    if ok:
-        return jsonify({"success": True, **info})
-    return jsonify({"success": False, **info}), 503
+        return jsonify({"success": False, "error": "IA en lecture seule: commande zone interdite"}), 403
+    zone_raw = body.get("zone")
+    zone = parse_int(zone_raw, 0) if zone_raw not in {None, ""} else None
+    ok, info = relay_stop_zone(zone)
+    return jsonify({"success": ok, **info}), 200 if ok else 400
 
 
-@app.route("/api/rainbird/status")
-def rainbird_status():
-    if not rainbird_ip:
-        return jsonify(
-            {
-                "connected": False,
-                "active_zones": rainbird_state["active_zones"],
-                "last_cmd": rainbird_state["last_cmd"],
-                "mode": "simulation",
-            }
-        )
-
-    result = rainbird_request(rainbird_ip, "CurrentIrrigationStateRequest")
-    if result:
-        rainbird_state["connected"] = True
-        return jsonify(
-            {
-                "connected": True,
-                "active_zones": rainbird_state["active_zones"],
-                "last_cmd": rainbird_state["last_cmd"],
-                "raw": result,
-            }
-        )
-    return jsonify({"connected": False, "active_zones": rainbird_state["active_zones"], "error": "Pas de réponse"})
+@app.route("/api/relay/status")
+def relay_status():
+    return jsonify({
+        "enabled": RELAY_ENABLED,
+        "active_zones": relay_state.get("active_zones", []),
+        "zones_state": relay_state.get("zones", {}),
+        "last_cmd": relay_state.get("last_cmd", ""),
+        "agent_connected": http_push_is_fresh(),
+    })
 
 
 @app.route("/")

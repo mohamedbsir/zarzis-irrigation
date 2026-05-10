@@ -1215,7 +1215,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="equipment-card"><h3 id="equip-forage-title">🔴 Salmson forage</h3><ul id="equip-forage-list"><li>Coffret conservé.</li><li>Sécurité manque d’eau raccordée sur bornes 21/22.</li><li>Pas de capteur niveau bas/haut dans le forage.</li><li>Commande marche/arrêt sous conditions de sécurité.</li></ul></div>
       <div class="equipment-card"><h3 id="equip-wilo-title">💧 Wilo surpresseur</h3><ul id="equip-wilo-list"><li>Capteur pression déjà présent.</li><li>Capteur débit à ajouter pour m³/h et volume cumulé.</li><li>Paramètres Wilo affichés dans le module Paramètres.</li><li>Surveillance pression mini/maxi et marche sans débit.</li></ul></div>
       <div class="equipment-card"><h3 id="equip-res-title">🌊 Réservoir principal 10 000 L</h3><ul id="equip-res-list"><li>Capteur niveau d’eau à ajouter.</li><li>Seuils bas / très bas / plein.</li><li>Alarme niveau bas bloquante pour le surpresseur.</li><li>Suivi volume estimé en litres.</li></ul></div>
-      <div class="equipment-card"><h3>🌿 Rain Bird</h3><ul><li>Accès natif via programmateur + module WiFi LNK/LNK2 si compatible.</li><li>Intégration directe possible surtout via passerelle type Home Assistant.</li><li>Le dashboard peut superviser et lancer des zones via API backend.</li><li>Le programme interne Rain Bird reste à confirmer selon module exact.</li></ul></div>
+      <div class="equipment-card"><h3>🌿 Relais GPIO</h3><ul><li>Accès natif via programmateur + module WiFi LNK/LNK2 si compatible.</li><li>Intégration directe possible surtout via passerelle type Home Assistant.</li><li>Le dashboard peut superviser et lancer des zones via API backend.</li><li>Le programme interne Relais GPIO reste à confirmer selon module exact.</li></ul></div>
     </div>
   </div>
 
@@ -1509,7 +1509,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
   <div class="card card-full">
     <div class="card-header">
       <div>
-        <div class="card-title">🌧️ Rain Bird ESP-TM2v3</div>
+        <div class="card-title">🌧️ Électrovannes — Carte Relais GPIO</div>
         <div class="card-subtitle" id="rb-card-subtitle">Configuration côté serveur · zones exploitation · Module LNK</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -1521,10 +1521,10 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
     <!-- IP Connexion -->
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📡 Connexion Rain Bird local</div>
+      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📡 Agent Raspberry — Carte Relais</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <div>
-          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:4px">IP locale du Rain Bird</div>
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:4px">Pins GPIO (défaut: 17,27,22,23,24,25)</div>
           <input type="text" id="rb-ip" placeholder="192.168.1.50" style="background:var(--bg);border:1px solid var(--border);color:var(--green);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:6px;width:160px;outline:none">
         </div>
         <button class="btn btn-green" onclick="rbConnect()">CONNECTER</button>
@@ -1535,7 +1535,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
     <!-- PROGRAMMES RAIN BIRD INTERNES (MODIFIABLES) -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">📋 Programmes Rain Bird (3 max)</div>
+      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">📋 Séquences irrigation automatique</div>
       <button onclick="resetRbPrograms()" style="font-size:9px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-family:var(--mono);cursor:pointer">↺ Reset</button>
     </div>
     <div id="rb-programs-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:14px"></div>
@@ -3213,7 +3213,7 @@ function syncIrrigationZonesFromExploitation(silent=true) {
   return true;
 }
 
-// Programmes Rain Bird modifiables (3 programmes max)
+// Programmes Relais GPIO modifiables (3 programmes max)
 const DEFAULT_RB_PROGRAMS = [
   { id:1, name:'Arrosage', icon:'💧', zones:[1,2,3,4,5,6], duration:20, type:'arrosage' },
   { id:2, name:'Fertilisation', icon:'🧪', zones:[1,3,5], duration:30, type:'fertigation' },
@@ -3628,7 +3628,7 @@ function addChartPoint(vdc, power, pressure) {
 // ============ RAIN BIRD CONTROL ============
 function initZones() {
   syncIrrigationZonesFromExploitation(true);
-  // Init Rain Bird zones grid
+  // Init Relais GPIO zones grid
   const grid = document.getElementById('rb-zones-grid');
   const subtitle = document.getElementById('rb-card-subtitle');
   if(subtitle) subtitle.textContent = `Configuration côté serveur · ${zoneConfig.length} zones exploitation · Module LNK`;
@@ -3703,12 +3703,12 @@ function setDuration(min) {
 
 function rbConnect() {
   const ip = document.getElementById('rb-ip').value.trim();
-  if(!ip) { toast('⚠️ Entrez l\'IP du Rain Bird', 'warn'); return; }
+  if(!ip) { toast('⚠️ Entrez l\'IP du Relais GPIO', 'warn'); return; }
   const msgEl = document.getElementById('rb-conn-msg');
   msgEl.textContent = '🔄 Connexion en cours...';
   msgEl.style.color = 'var(--yellow)';
 
-  fetch(`${apiUrl}/api/rainbird/setip`, {
+  fetch(`${apiUrl}/api/relay/config`, {
     method:'POST', headers: apiHeaders(),
     body:JSON.stringify({ip}), signal:AbortSignal.timeout(5000)
   })
@@ -3719,8 +3719,8 @@ function rbConnect() {
       msgEl.style.color = 'var(--green)';
       document.getElementById('rb-badge').textContent = 'CONNECTÉ';
       document.getElementById('rb-badge').className = 'badge badge-on';
-      toast(`✅ Rain Bird IP: ${ip}`, 'ok');
-      addLog(`🌧️ Rain Bird connecté: ${ip}`, 'ok');
+      toast(`✅ Relais Zone: ${ip}`, 'ok');
+      addLog(`💧 Zones Relais connecté: ${ip}`, 'ok');
     }
   })
   .catch(e => {
@@ -3728,7 +3728,7 @@ function rbConnect() {
     msgEl.style.color = 'var(--yellow)';
     document.getElementById('rb-badge').textContent = 'SIMULATION';
     document.getElementById('rb-badge').className = 'badge badge-warn';
-    addLog(`Rain Bird mode simulation`, 'warn');
+    addLog(`Relais mode simulation`, 'warn');
   });
 }
 
@@ -3736,18 +3736,18 @@ function rbTestPing() {
   const ip = document.getElementById('rb-ip').value.trim();
   if(!ip) { toast('⚠️ Entrez d\'abord l\'IP', 'warn'); return; }
   toast(`🔍 Ping ${ip}...`, 'info');
-  fetch(`${apiUrl}/api/rainbird/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
+  fetch(`${apiUrl}/api/relay/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
-      if(d.connected) toast(`✅ Rain Bird répond !`, 'ok');
-      else toast(`⏳ Rain Bird: ${d.error || 'pas de réponse'}`, 'warn');
+      if(d.connected) toast(`✅ Relais répond !`, 'ok');
+      else toast(`⏳ Relais GPIO: ${d.error || 'pas de réponse'}`, 'warn');
     })
     .catch(() => toast('⚠️ Mode simulation', 'warn'));
 }
 
 function rbRefreshStatus() {
   toast('🔄 Actualisation...', 'info');
-  fetch(`${apiUrl}/api/rainbird/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
+  fetch(`${apiUrl}/api/relay/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
       const badge = document.getElementById('rb-badge');
@@ -3769,7 +3769,7 @@ function rbStartZone(num) {
   startRbCountdown(num, duration*60);
   updateRbStats();
 
-  fetch(`${apiUrl}/api/rainbird/start`, {
+  fetch(`${apiUrl}/api/relay/start`, {
     method:'POST', headers: apiHeaders(),
     body:JSON.stringify({zone:num, duration}), signal:AbortSignal.timeout(5000)
   })
@@ -3787,7 +3787,7 @@ function rbStartZone(num) {
 }
 
 function rbStopZone(num) {
-  fetch(`${apiUrl}/api/rainbird/stop`, {
+  fetch(`${apiUrl}/api/relay/stop`, {
     method:'POST', headers: apiHeaders(),
     body:JSON.stringify({zone:num}), signal:AbortSignal.timeout(5000)
   }).catch(()=>{});
@@ -3805,7 +3805,7 @@ function rbAllOn() {
 }
 
 function rbStopAll() {
-  fetch(`${apiUrl}/api/rainbird/stop`, {
+  fetch(`${apiUrl}/api/relay/stop`, {
     method:'POST', headers: apiHeaders(),
     body:JSON.stringify({}), signal:AbortSignal.timeout(5000)
   }).catch(()=>{});
@@ -4218,7 +4218,7 @@ function addMinutesHHMM(time, minutes) {
 function programToCloudPlan(program) {
   return {
     id: 'rb-seq-' + program.id,
-    type: 'rainbird_sequence',
+    type: 'relay_sequence',
     name: program.name || 'Programme irrigation',
     time: program.time,
     days: program.days || [],
@@ -5162,7 +5162,7 @@ function runScenario(scenario) {
       }, 30000);
       break;
     case 'purge':
-      if(!confirm('Purger le réseau ?\n→ Ouvre toutes les zones Rain Bird\n→ Pendant 5 minutes')) return;
+      if(!confirm('Purger le réseau ?\n→ Ouvre toutes les zones Relais GPIO\n→ Pendant 5 minutes')) return;
       toast('🌊 Purge réseau (5 min)', 'info');
       addLog('🌊 Purge réseau démarrée', 'info');
       if(typeof rbAllOn === 'function') rbAllOn();
@@ -6017,7 +6017,7 @@ function handleCommandAcks(acks) {
     const device = ack.device || cmd.device || ack.type || cmd.type || 'commande';
     const action = ack.action || cmd.action || '';
     if(ack.ok) {
-      if((ack.type === 'rainbird' || cmd.type === 'rainbird') && typeof setRainBirdZoneLocal === 'function') {
+      if((ack.type === 'relay' || cmd.type === 'relay') && typeof setRelayZoneLocal === 'function') {
         if(action === 'start' && cmd.zone) {
           const duration = parseInt(cmd.duration || 0);
           setRainBirdZoneLocal(parseInt(cmd.zone), true, duration > 0 ? duration * 60 : 0);
@@ -6212,7 +6212,7 @@ rbStartZone = async function(num) {
   }
 
   try {
-    const data = await postApiJson('/api/rainbird/start', {zone:num, duration});
+    const data = await postApiJson('/api/relay/start', {zone:num, duration});
     const acceptedDuration = parseInt(data.duration || duration);
     if(data.queued) {
       toast(`Zone ${num} en attente agent`, 'warn');
@@ -6225,8 +6225,8 @@ rbStartZone = async function(num) {
     toast(`Zone ${num} ouverte - ${acceptedDuration} min`, 'ok');
     addLog(`Zone ${num} ${acceptedDuration}min acceptee par le serveur`, 'ok');
   } catch(e) {
-    toast('Commande Rain Bird refusee', 'err');
-    addLog(`Erreur Rain Bird zone ${num}: ${e.message}`, 'err');
+    toast('Commande Relais refusee', 'err');
+    addLog(`Erreur Relais GPIO zone ${num}: ${e.message}`, 'err');
   }
 };
 
@@ -6240,13 +6240,13 @@ rbStopZone = async function(num) {
   }
 
   try {
-    const data = await postApiJson('/api/rainbird/stop', {zone:num});
+    const data = await postApiJson('/api/relay/stop', {zone:num});
     setAllRainBirdZonesClosed();
-    toast(data.queued ? 'Rain Bird arret en attente agent' : 'Rain Bird arret execute', 'warn');
-    addLog(data.queued ? 'Rain Bird arret mis en file - attente ACK agent' : 'Rain Bird arret execute', 'warn');
+    toast(data.queued ? 'Relais arrêt en attente agent' : 'Relais arrêt execute', 'warn');
+    addLog(data.queued ? 'Relais arrêt mis en file - attente ACK agent' : 'Relais arrêt execute', 'warn');
   } catch(e) {
-    toast('Arret Rain Bird refuse', 'err');
-    addLog(`Erreur arret Rain Bird: ${e.message}`, 'err');
+    toast('Arret Relais refuse', 'err');
+    addLog(`Erreur arrêt relais: ${e.message}`, 'err');
   }
 };
 
@@ -6259,12 +6259,12 @@ rbStopAll = async function() {
   }
 
   try {
-    const data = await postApiJson('/api/rainbird/stop', {});
+    const data = await postApiJson('/api/relay/stop', {});
     setAllRainBirdZonesClosed();
     toast(data.queued ? 'Arret toutes zones en attente agent' : 'Toutes zones fermees', 'warn');
     addLog(data.queued ? 'Arret toutes zones mis en file - attente ACK agent' : 'Arret toutes zones execute', 'warn');
   } catch(e) {
-    toast('Arret Rain Bird refuse', 'err');
+    toast('Arret Relais refuse', 'err');
     addLog(`Erreur arret toutes zones: ${e.message}`, 'err');
   }
 };
@@ -6549,7 +6549,7 @@ function buildDefaultRbProgramsForCurrentZones() {
 }
 
 function resetRbPrograms() {
-  if(!confirm('Réinitialiser les 3 programmes Rain Bird ?')) return;
+  if(!confirm('Réinitialiser les 3 programmes Relais GPIO ?')) return;
   rbPrograms = buildDefaultRbProgramsForCurrentZones();
   saveRbPrograms();
   renderRbPrograms();

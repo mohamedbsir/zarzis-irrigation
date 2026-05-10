@@ -116,11 +116,32 @@ WILO_REGS = {
     "error_code": env_int("WILO_REG_ERROR_CODE", 138),
 }
 
-RAINBIRD_IP = os.environ.get("RAINBIRD_IP", "").strip()
-RAINBIRD_STICK_ID = os.environ.get("RAINBIRD_STICK_ID", "").strip()
-RAINBIRD_KEYCODE = os.environ.get("RAINBIRD_KEYCODE", "").strip()
-RAINBIRD_MAX_DURATION_MIN = max(1, env_int("RAINBIRD_MAX_DURATION_MIN", 240))
-rainbird_state = {"connected": False, "active_zones": [], "ip": RAINBIRD_IP, "last_cmd": ""}
+RELAY_ENABLED = env_bool("RELAY_ENABLED", True)
+RELAY_ACTIVE_LOW = env_bool("RELAY_ACTIVE_LOW", True)  # RUNCCI-YUN = actif bas par défaut
+RELAY_MAX_DURATION_MIN = max(1, env_int("RELAY_MAX_DURATION_MIN", 120))
+RELAY_ZONE_PINS = {
+    1: env_int("RELAY_ZONE_1_PIN", 17),
+    2: env_int("RELAY_ZONE_2_PIN", 27),
+    3: env_int("RELAY_ZONE_3_PIN", 22),
+    4: env_int("RELAY_ZONE_4_PIN", 23),
+    5: env_int("RELAY_ZONE_5_PIN", 24),
+    6: env_int("RELAY_ZONE_6_PIN", 25),
+}
+relay_state: dict = {"zones": {}, "active_zones": [], "last_cmd": ""}
+
+# Initialisation GPIO — silencieuse si pas sur Raspberry
+RELAY_GPIO_AVAILABLE = False
+try:
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    for _zone, _pin in RELAY_ZONE_PINS.items():
+        GPIO.setup(_pin, GPIO.OUT)
+        GPIO.output(_pin, GPIO.HIGH if RELAY_ACTIVE_LOW else GPIO.LOW)  # tout OFF au démarrage
+    RELAY_GPIO_AVAILABLE = True
+    log(f"GPIO relais initialisé — {len(RELAY_ZONE_PINS)} zones, actif_bas={RELAY_ACTIVE_LOW}")
+except Exception as _exc:
+    log(f"GPIO non disponible (normal hors Raspberry): {_exc}")
 
 
 client: ModbusTcpClient | None = None
@@ -331,48 +352,62 @@ def read_coffret4() -> dict:
     return {"status": "NON CONFIGURE", "last_seen": now_iso()}
 
 
-def rainbird_request(command: str, params: dict | None = None) -> tuple[bool, dict]:
-    if not RAINBIRD_IP:
-        return False, {"error": "RAINBIRD_IP non configure sur l'agent"}
-    if not RAINBIRD_STICK_ID or not RAINBIRD_KEYCODE:
-        return False, {"error": "RAINBIRD_STICK_ID/RAINBIRD_KEYCODE manquants"}
-    payload = {"id": RAINBIRD_STICK_ID, "command": command}
-    if params:
-        payload.update(params)
-    req = urllib.request.Request(
-        f"http://{RAINBIRD_IP}/stick",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Basic {RAINBIRD_KEYCODE[:32]}"},
-        method="POST",
-    )
+def relay_set_zone(zone: int, active: bool) -> bool:
+    """Active ou désactive un relais GPIO pour une zone électrovanne."""
+    if not RELAY_ENABLED or zone not in RELAY_ZONE_PINS:
+        return False
+    pin = RELAY_ZONE_PINS[zone]
+    relay_state["zones"][str(zone)] = active
+    if active and zone not in relay_state["active_zones"]:
+        relay_state["active_zones"].append(zone)
+    elif not active and zone in relay_state["active_zones"]:
+        relay_state["active_zones"].remove(zone)
+    if not RELAY_GPIO_AVAILABLE:
+        log(f"[SIMULATION GPIO] Zone {zone} pin GPIO{pin} → {'ON' if active else 'OFF'}")
+        return True
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        rainbird_state["connected"] = True
-        return True, {"raw": data}
+        level = GPIO.LOW if (active and RELAY_ACTIVE_LOW) or (not active and not RELAY_ACTIVE_LOW) else GPIO.HIGH
+        GPIO.output(pin, level)
+        log(f"Relais zone {zone} pin GPIO{pin} → {'ON' if active else 'OFF'}")
+        return True
     except Exception as exc:
-        rainbird_state["connected"] = False
-        return False, {"error": f"Rain Bird indisponible: {exc}"}
+        log(f"Erreur GPIO zone {zone} pin {pin}: {exc}")
+        return False
 
 
-def execute_rainbird_command(cmd: dict) -> dict:
+def relay_stop_all() -> bool:
+    results = [relay_set_zone(z, False) for z in RELAY_ZONE_PINS]
+    relay_state["active_zones"] = []
+    relay_state["last_cmd"] = "STOP TOUTES ZONES"
+    return all(results)
+
+
+def execute_relay_command(cmd: dict) -> dict:
     action = str(cmd.get("action") or "").lower()
-    if action == "start":
-        zone = parse_int(cmd.get("zone"), 1)
-        duration = max(1, min(parse_int(cmd.get("duration"), 10), RAINBIRD_MAX_DURATION_MIN))
-        ok, info = rainbird_request("ZoneStartRequest", {"zone": zone, "duration": duration})
+    zone_raw = cmd.get("zone")
+    zone = int(zone_raw) if zone_raw not in (None, "") else None
+    duration = max(1, min(int(cmd.get("duration") or 20), RELAY_MAX_DURATION_MIN))
+    if action == "start" and zone:
+        if zone not in RELAY_ZONE_PINS:
+            return {"ok": False, "type": "relay", "error": f"Zone {zone} invalide — zones disponibles: {list(RELAY_ZONE_PINS.keys())}"}
+        ok = relay_set_zone(zone, True)
+        relay_state["last_cmd"] = f"START Zone {zone} {duration}min"
         if ok:
-            rainbird_state["active_zones"] = [zone]
-            rainbird_state["last_cmd"] = f"START Zone {zone} {duration}min"
-        return {"ok": ok, "type": "rainbird", "action": action, "zone": zone, "duration": duration, **info}
+            import threading
+            def _auto_stop(z: int, d: int) -> None:
+                time.sleep(d * 60)
+                relay_set_zone(z, False)
+                log(f"Auto-arrêt zone {z} après {d}min")
+            threading.Thread(target=_auto_stop, args=(zone, duration), daemon=True, name=f"relay-auto-stop-z{zone}").start()
+        return {"ok": ok, "type": "relay", "action": "start", "zone": zone, "duration": duration}
     if action == "stop":
-        zone = cmd.get("zone")
-        ok, info = rainbird_request("StopIrrigationRequest")
-        if ok:
-            rainbird_state["active_zones"] = []
-            rainbird_state["last_cmd"] = f"STOP {'zone ' + str(zone) if zone else 'tout'}"
-        return {"ok": ok, "type": "rainbird", "action": action, "zone": zone, **info}
-    return {"ok": False, "error": f"Action Rain Bird inconnue: {action}"}
+        if zone:
+            ok = relay_set_zone(zone, False)
+            relay_state["last_cmd"] = f"STOP Zone {zone}"
+            return {"ok": ok, "type": "relay", "action": "stop", "zone": zone}
+        ok = relay_stop_all()
+        return {"ok": ok, "type": "relay", "action": "stop", "zone": None}
+    return {"ok": False, "type": "relay", "error": f"Action relais inconnue: {action}"}
 
 
 def command_targets(device: str) -> list[str]:
@@ -445,9 +480,9 @@ def local_command_blockers(device: str, action: str) -> list[str]:
 
 
 def execute_command(cmd: dict) -> dict:
-    if cmd.get("type") == "rainbird":
-        result = execute_rainbird_command(cmd)
-        log(f"Commande Rain Bird executee={result.get('ok')}: {result.get('action')}")
+    if cmd.get("type") == "relay":
+        result = execute_relay_command(cmd)
+        log(f"Commande relais executee={result.get('ok')}: zone={result.get('zone')} action={result.get('action')}")
         return result
     if cmd.get("type") != "control":
         return {"ok": False, "error": f"Type commande inconnu: {cmd.get('type')}"}
@@ -571,7 +606,7 @@ def build_status_payload() -> dict:
             "wilo": read_wilo(),
             "coffret4": read_coffret4(),
         },
-        "rainbird": rainbird_state,
+        "relay": relay_state,
     }
 
 

@@ -120,21 +120,31 @@ services:
         value: "3"
       - key: ADDR_COFFRET4
         value: "4"
-      - key: RAINBIRD_STICK_ID
+      - key: RELAY_ENABLED
+        value: "true"
+      - key: RELAY_ACTIVE_LOW
+        value: "true"
+      - key: RELAY_MAX_DURATION_MIN
+        value: "120"
+      - key: RELAY_MIN_INTERVAL_SEC
+        value: "10"
+      - key: RELAY_ZONE_1_PIN
+        value: "17"
+      - key: RELAY_ZONE_2_PIN
+        value: "27"
+      - key: RELAY_ZONE_3_PIN
+        value: "22"
+      - key: RELAY_ZONE_4_PIN
+        value: "23"
+      - key: RELAY_ZONE_5_PIN
+        value: "24"
+      - key: RELAY_ZONE_6_PIN
+        value: "25"
+      - key: TELEGRAM_BOT_TOKEN
         value: ""
-      - key: RAINBIRD_SERIAL
+      - key: TELEGRAM_CHAT_ID
         value: ""
-      - key: RAINBIRD_KEYCODE
-        value: ""
-      - key: RAINBIRD_WIFI
-        value: ""
-      - key: RAINBIRD_IP
-        value: ""
-      - key: RAINBIRD_ZONES
-        value: "1,2,3,4,5,6"
-      - key: RAINBIRD_MAX_DURATION_MIN
-        value: "240"
-      - key: RAINBIRD_MIN_INTERVAL_SEC
-        value: "30"
+      - key: TELEGRAM_NOTIFY_LEVELS
+        value: "error,warning"
       - key: API_TOKEN
         generateValue: true
