@@ -61,7 +61,7 @@ AGENT_ID = os.environ.get("AGENT_ID", "zarzis-edge-agent")
 
 DR302_HOST = os.environ.get("DR302_HOST", "192.168.1.10")
 DR302_PORT = env_int("DR302_PORT", 502)
-POLL_SEC = max(2, env_int("EDGE_POLL_SEC", 5))
+POLL_SEC = max(1, env_int("EDGE_POLL_SEC", 5))
 DATA_DIR = Path(os.environ.get("EDGE_DATA_DIR", os.environ.get("DATA_DIR", str(Path.home() / "zarzis-data"))))
 LOG_DIR = Path(os.environ.get("EDGE_LOG_DIR", str(DATA_DIR / "logs")))
 OFFLINE_DB = Path(os.environ.get("EDGE_OFFLINE_DB", str(DATA_DIR / "edge_offline_queue.sqlite3")))
@@ -683,11 +683,9 @@ def main() -> None:
             consecutive_errors += 1
             log(f"Erreur agent: {exc} (echec consecutif #{consecutive_errors})")
 
-        # ===== BACKOFF EXPONENTIEL =====
-        # Après 3 erreurs consécutives, on espace progressivement les tentatives
-        # pour ne pas saturer le réseau ou Render
-        if consecutive_errors >= 3:
-            backoff = min(POLL_SEC * (2 ** min(consecutive_errors - 2, 5)), 60)
+        # Backoff uniquement après 10 erreurs consécutives, max 10s
+        if consecutive_errors >= 10:
+            backoff = min(POLL_SEC * 2, 10)
             log(f"Backoff actif: attente {backoff}s avant nouveau cycle")
             time.sleep(backoff)
         else:
