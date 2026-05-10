@@ -137,11 +137,11 @@ try:
     GPIO.setwarnings(False)
     for _zone, _pin in RELAY_ZONE_PINS.items():
         GPIO.setup(_pin, GPIO.OUT)
-        GPIO.output(_pin, GPIO.HIGH if RELAY_ACTIVE_LOW else GPIO.LOW)  # tout OFF au démarrage
+        GPIO.output(_pin, GPIO.HIGH if RELAY_ACTIVE_LOW else GPIO.LOW)
     RELAY_GPIO_AVAILABLE = True
-    log(f"GPIO relais initialisé — {len(RELAY_ZONE_PINS)} zones, actif_bas={RELAY_ACTIVE_LOW}")
+    print(f"[RELAY] GPIO initialisé — {len(RELAY_ZONE_PINS)} zones, actif_bas={RELAY_ACTIVE_LOW}")
 except Exception as _exc:
-    log(f"GPIO non disponible (normal hors Raspberry): {_exc}")
+    print(f"[RELAY] GPIO non disponible (normal hors Raspberry): {_exc}")
 
 
 client: ModbusTcpClient | None = None
