@@ -12,17 +12,17 @@ services:
     #   sizeGB: 1
     # Puis mets DATA_DIR=/var/data et PERSISTENT_STORAGE_ENABLED=true.
     envVars:
-      - key: G781_MODE
+      - key: EDGE_MODE
         value: http_push
-      - key: G781_HOST
+      - key: EDGE_HOST
         value: ""
-      - key: G781_PORT
+      - key: EDGE_PORT
         value: "502"
-      - key: G781_HTTP_PUSH_STALE_SEC
+      - key: EDGE_PUSH_STALE_SEC
         value: "45"
-      - key: G781_COMMAND_TTL_SEC
+      - key: EDGE_COMMAND_TTL_SEC
         value: "300"
-      - key: G781_COMMAND_ACK_TIMEOUT_SEC
+      - key: EDGE_ACK_TIMEOUT_SEC
         value: "45"
       - key: HISTORY_MAX_ITEMS
         value: "2000"
@@ -50,7 +50,7 @@ services:
         value: "30"
       - key: COMMAND_RESTART_DELAY_SEC
         value: "60"
-      - key: ALLOW_REMOTE_G781_CONNECT
+      - key: ALLOW_REMOTE_CONNECT
         value: "false"
       - key: INVT_CMD_REG
         value: "0x2000"
@@ -136,11 +136,5 @@ services:
         value: "240"
       - key: RAINBIRD_MIN_INTERVAL_SEC
         value: "30"
-      - key: TELEGRAM_BOT_TOKEN
-        value: ""
-      - key: TELEGRAM_CHAT_ID
-        value: ""
-      - key: TELEGRAM_NOTIFY_LEVELS
-        value: "error,warning"
       - key: API_TOKEN
         generateValue: true

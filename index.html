@@ -2977,13 +2977,13 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div class="conn-row">
       <div class="conn-group">
         <div class="conn-label">Dernier agent vu par Render</div>
-        <input type="text" class="conn-input" id="g781-ip" placeholder="en attente push agent" style="width:220px" readonly>
+        <input type="text" class="conn-input" id="agent-ip" placeholder="en attente push agent" style="width:220px" readonly>
       </div>
       <div class="conn-group">
         <div class="conn-label">Port DR302 local</div>
-        <input type="number" class="conn-input narrow" id="g781-port" value="502" readonly>
+        <input type="number" class="conn-input narrow" id="agent-port" value="502" readonly>
       </div>
-      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectG781()">Verifier agent</button>
+      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectAgent()">Verifier agent</button>
     </div>
 
     <div class="divider"></div>
@@ -3311,31 +3311,6 @@ function initApp() {
   calcFert();
   simulateData();
   fetchWeather();
-
-  // ============ AUTO-CONNEXION CLOUD ============
-  // Si un token est mémorisé ET qu'une URL cloud est définie → connexion automatique
-  const savedToken = localStorage.getItem('zarzis_api_token_remembered');
-  if(savedToken && apiUrl && apiUrl.startsWith('http')) {
-    addLog('🔄 Reconnexion automatique au cloud...', 'info');
-    setTimeout(() => connectCloud(), 800);
-  }
-
-  // ============ WATCHDOG RECONNEXION ============
-  // Toutes les 30s, si déconnecté et token mémorisé → retry
-  setInterval(() => {
-    if(!connected && localStorage.getItem('zarzis_api_token_remembered') && apiUrl) {
-      addLog('🔁 Watchdog: tentative de reconnexion...', 'info');
-      connectCloud();
-    }
-  }, 30000);
-
-  // ============ EVENTS ONLINE/OFFLINE ============
-  // Quand le réseau revient → reconnexion immédiate
-  window.addEventListener('online', () => {
-    if(!connected && localStorage.getItem('zarzis_api_token_remembered')) {
-      setTimeout(() => connectCloud(), 1500);
-    }
-  });
 }
 
 // ============ CLOCK ============
@@ -5941,9 +5916,9 @@ function disconnectCloud() {
   simulateData();
 }
 
-function connectG781() {
-  const ip = document.getElementById('g781-ip').value;
-  const port = document.getElementById('g781-port').value;
+function connectAgent() {
+  const ip = document.getElementById('agent-ip').value;
+  const port = document.getElementById('agent-port').value;
   addLog('Verification HTTP PUSH cote serveur', 'info');
   fetch(`${apiUrl}/api/connect`, {
     method:'POST', headers: apiHeaders(),
@@ -5997,8 +5972,8 @@ function fetchRealData() {
       const invt = d.invt || {};
       const salmson = d.salmson || {};
       const wilo = d.wilo || {};
-      const g781Input = document.getElementById('g781-ip');
-      if(g781Input) g781Input.value = d.g781_ip || '';
+      const agentInput = document.getElementById('agent-ip');
+      if(agentInput) agentInput.value = d.agent_ip || d.edge_agent || '';
       if(d.mode === 'http_push' && !d.connected) updateConnStatus('AGENT ATTENTE', 'badge-warn');
       else updateConnStatus('CONNECTÉ ✅', 'badge-on');
       updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
@@ -6221,12 +6196,12 @@ rbStopAll = async function() {
   }
 };
 
-connectG781 = async function() {
+connectAgent = async function() {
   addLog('Verification agent local via serveur Render', 'info');
   try {
     const data = await postApiJson('/api/connect', {}, 10000);
-    const ipEl = document.getElementById('g781-ip');
-    const portEl = document.getElementById('g781-port');
+    const ipEl = document.getElementById('agent-ip');
+    const portEl = document.getElementById('agent-port');
     if(ipEl) ipEl.value = data.host || data.ip || '';
     if(portEl) portEl.value = data.port || 502;
     if(data.success) {

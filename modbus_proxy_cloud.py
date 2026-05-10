@@ -16,7 +16,6 @@ import re
 import threading
 import time
 import unicodedata
-import urllib.request
 import uuid
 from collections import deque
 from datetime import datetime, timezone
@@ -50,7 +49,7 @@ def env_float(name: str, default: float) -> float:
 
 
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.07-zarzis-http-push-v8.3"
+APP_VERSION = "2026.05.10-zarzis-http-push-v8.5"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
@@ -58,23 +57,14 @@ APP_STATE_FILE = Path(os.environ.get("APP_STATE_FILE", str(DATA_DIR / "app_state
 HISTORY_FILE = Path(os.environ.get("HISTORY_FILE", str(DATA_DIR / "history_zarzis.json")))
 PERSISTENT_STORAGE_ENABLED = env_bool("PERSISTENT_STORAGE_ENABLED", False)
 
-G781_MODE = os.environ.get("G781_MODE", "http_push").strip().lower()
-G781_HOST = os.environ.get("G781_HOST") or os.environ.get("USR_G781_IP", "")
-G781_PORT = int(os.environ.get("G781_PORT") or os.environ.get("USR_G781_PORT", "502"))
+EDGE_MODE = os.environ.get("EDGE_MODE", "http_push").strip().lower()
+EDGE_HOST = os.environ.get("EDGE_HOST", "")
+EDGE_PORT = int(os.environ.get("EDGE_PORT", "502"))
 SERVER_PORT = int(os.environ.get("PORT", "8080"))
 UPDATE_SEC = max(2, int(os.environ.get("UPDATE_SEC", "5")))
 PLANNING_POLL_SEC = max(5, int(os.environ.get("PLANNING_POLL_SEC", "10")))
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "*").split(",") if origin.strip()] or ["*"]
-
-# ============ NOTIFICATIONS TELEGRAM ============
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-TELEGRAM_NOTIFY_LEVELS = {
-    level.strip().lower()
-    for level in os.environ.get("TELEGRAM_NOTIFY_LEVELS", "error").split(",")
-    if level.strip()
-}
 LOCAL_TZ_NAME = os.environ.get("LOCAL_TZ", "Africa/Tunis").strip() or "Africa/Tunis"
 try:
     LOCAL_TZ = ZoneInfo(LOCAL_TZ_NAME)
@@ -86,12 +76,12 @@ SERVER_SAFETY_ENABLED = os.environ.get("SERVER_SAFETY_ENABLED", "true").strip().
 ALLOW_PARAM_WRITE = os.environ.get("ALLOW_PARAM_WRITE", "false").strip().lower() not in {"0", "false", "no", "off"}
 MODBUS_REGISTERS_VALIDATED = os.environ.get("MODBUS_REGISTERS_VALIDATED", "false").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_PLANNING = env_bool("ENABLE_PLANNING", False)
-ALLOW_REMOTE_G781_CONNECT = env_bool("ALLOW_REMOTE_G781_CONNECT", False)
+ALLOW_REMOTE_CONNECT = env_bool("ALLOW_REMOTE_CONNECT", False)
 COMMAND_MIN_INTERVAL_SEC = max(0, int(os.environ.get("COMMAND_MIN_INTERVAL_SEC", "30")))
 COMMAND_RESTART_DELAY_SEC = max(0, int(os.environ.get("COMMAND_RESTART_DELAY_SEC", "60")))
-G781_HTTP_PUSH_STALE_SEC = max(10, env_int("G781_HTTP_PUSH_STALE_SEC", 45))
-G781_COMMAND_TTL_SEC = max(30, env_int("G781_COMMAND_TTL_SEC", 300))
-G781_COMMAND_ACK_TIMEOUT_SEC = max(10, env_int("G781_COMMAND_ACK_TIMEOUT_SEC", 45))
+EDGE_PUSH_STALE_SEC = max(10, env_int("EDGE_PUSH_STALE_SEC", 45))
+EDGE_COMMAND_TTL_SEC = max(30, env_int("EDGE_COMMAND_TTL_SEC", 300))
+EDGE_ACK_TIMEOUT_SEC = max(10, env_int("EDGE_ACK_TIMEOUT_SEC", 45))
 HISTORY_MAX_ITEMS = max(100, env_int("HISTORY_MAX_ITEMS", 2000))
 HISTORY_SAVE_MIN_INTERVAL_SEC = max(5, env_int("HISTORY_SAVE_MIN_INTERVAL_SEC", 30))
 SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
@@ -198,13 +188,13 @@ cache = {
     "coffret4": {"status": "DÉCONNECTÉ", "error_text": "Aucune lecture Modbus valide"},
     "connected": False,
     "last_update": 0,
-    "g781_ip": G781_HOST or "En attente agent local...",
-    "mode": G781_MODE,
+    "agent_ip": EDGE_HOST or "En attente agent local...",
+    "mode": EDGE_MODE,
 }
 
 client: ModbusTcpClient | None = None
-current_host = G781_HOST
-current_port = G781_PORT
+current_host = EDGE_HOST
+current_port = EDGE_PORT
 lock = threading.RLock()
 thread_started = False
 scheduler_started = False
@@ -261,45 +251,6 @@ def add_event(level: str, message: str, **data) -> None:
         log.warning(message)
     else:
         log.info(message)
-    # Notification Telegram pour les événements critiques
-    if level in {"error", "warning"} and TELEGRAM_NOTIFY_LEVELS:
-        if level in TELEGRAM_NOTIFY_LEVELS:
-            send_telegram_notification(level, message, data)
-
-
-def send_telegram_notification(level: str, message: str, data: dict = None) -> None:
-    """Envoie une notification Telegram pour les alarmes critiques.
-
-    Configuration via variables Render :
-    - TELEGRAM_BOT_TOKEN : token du bot (créé via @BotFather)
-    - TELEGRAM_CHAT_ID : ID du chat ou du groupe destinataire
-    - TELEGRAM_NOTIFY_LEVELS : niveaux à notifier, ex "error,warning"
-    """
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        return
-    try:
-        emoji = "🚨" if level == "error" else "⚠️"
-        text = f"{emoji} *Zarzis* — {level.upper()}\n{message}"
-        if data:
-            extra = " ".join(f"{k}={v}" for k, v in data.items() if k not in {"ts", "level", "message"})
-            if extra:
-                text += f"\n`{extra}`"
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": text,
-            "parse_mode": "Markdown",
-            "disable_notification": level != "error",
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        urllib.request.urlopen(req, timeout=5).read()
-    except Exception as exc:
-        log.warning(f"Notification Telegram échouée: {exc}")
 
 
 def token_from_request() -> str:
@@ -377,16 +328,16 @@ def add_minutes(time_text: str, minutes: int) -> str:
 
 
 def http_push_is_fresh() -> bool:
-    if G781_MODE not in HTTP_PUSH_MODES:
+    if EDGE_MODE not in HTTP_PUSH_MODES:
         return False
     last_update = float(cache.get("last_update") or 0)
-    return last_update > 0 and (time.time() - last_update) <= G781_HTTP_PUSH_STALE_SEC
+    return last_update > 0 and (time.time() - last_update) <= EDGE_PUSH_STALE_SEC
 
 
 def client_is_open() -> bool:
-    if G781_MODE in SIMULATION_MODES:
+    if EDGE_MODE in SIMULATION_MODES:
         return True
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         return http_push_is_fresh()
     if client is None:
         return False
@@ -421,22 +372,22 @@ def connect(host: str | None = None, port: int | None = None) -> bool:
     current_port = port
 
     with lock:
-        if G781_MODE in SIMULATION_MODES:
+        if EDGE_MODE in SIMULATION_MODES:
             cache["connected"] = True
-            cache["g781_ip"] = f"SIMULATION {host or 'locale'}"
+            cache["agent_ip"] = f"SIMULATION {host or 'locale'}"
             add_event("info", "Mode simulation backend actif")
             return True
 
-        if G781_MODE in HTTP_PUSH_MODES:
+        if EDGE_MODE in HTTP_PUSH_MODES:
             cache["connected"] = http_push_is_fresh()
-            cache["g781_ip"] = "HTTP PUSH - en attente agent local"
-            cache["mode"] = G781_MODE
+            cache["agent_ip"] = "HTTP PUSH - en attente agent local"
+            cache["mode"] = EDGE_MODE
             add_event("info", "Mode HTTP PUSH actif: aucune IP publique entrante necessaire")
             return True
 
         if not host:
             cache["connected"] = False
-            cache["g781_ip"] = "En attente cible Modbus TCP"
+            cache["agent_ip"] = "En attente cible Modbus TCP"
             return False
 
         try:
@@ -448,7 +399,7 @@ def connect(host: str | None = None, port: int | None = None) -> bool:
             client = ModbusTcpClient(host, port=port, timeout=5)
             ok = bool(client.connect())
             cache["connected"] = ok
-            cache["g781_ip"] = f"{host}:{port}"
+            cache["agent_ip"] = f"{host}:{port}"
             if ok:
                 add_event("info", f"Connexion Modbus OK: {host}:{port}")
             else:
@@ -461,9 +412,9 @@ def connect(host: str | None = None, port: int | None = None) -> bool:
 
 
 def read_reg(addr: int, reg: int, count: int = 1):
-    if G781_MODE in SIMULATION_MODES:
+    if EDGE_MODE in SIMULATION_MODES:
         return [0] * count
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         return None
     if not client_is_open():
         return None
@@ -480,10 +431,10 @@ def read_reg(addr: int, reg: int, count: int = 1):
 
 
 def write_reg(addr: int, reg: int, value: int) -> bool:
-    if G781_MODE in SIMULATION_MODES:
+    if EDGE_MODE in SIMULATION_MODES:
         add_event("info", f"[SIMULATION] Écriture addr={addr} reg={hex(reg)} val={value}")
         return True
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         return False
     if not client_is_open():
         return False
@@ -536,7 +487,7 @@ def queue_command(command: dict) -> dict:
         "id": f"cmd-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}",
         "ts": now_iso(),
         "created_at": time.time(),
-        "expires_at": time.time() + G781_COMMAND_TTL_SEC,
+        "expires_at": time.time() + EDGE_COMMAND_TTL_SEC,
         "status": "queued",
         "attempts": 0,
         "last_fetch_at": 0,
@@ -605,9 +556,9 @@ def device_reading_unavailable(data: dict) -> bool:
 
 
 def start_freshness_blocker() -> str | None:
-    if G781_MODE in SIMULATION_MODES:
+    if EDGE_MODE in SIMULATION_MODES:
         return None
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         if not http_push_is_fresh():
             return "Agent local absent ou mesures trop anciennes"
         return None
@@ -833,12 +784,12 @@ def refresh_modbus_cache() -> None:
 def update_loop() -> None:
     while True:
         try:
-            if G781_MODE in SIMULATION_MODES:
+            if EDGE_MODE in SIMULATION_MODES:
                 refresh_modbus_cache()
                 time.sleep(UPDATE_SEC)
                 continue
 
-            if G781_MODE not in TCP_MODES:
+            if EDGE_MODE not in TCP_MODES:
                 time.sleep(UPDATE_SEC)
                 continue
 
@@ -914,7 +865,7 @@ def command_rate_limit_error(device: str, action: str) -> str | None:
 def registers_validation_error(action: str) -> str | None:
     if MODBUS_REGISTERS_VALIDATED or action not in {"on", "forward", "reverse"}:
         return None
-    if G781_MODE in SIMULATION_MODES:
+    if EDGE_MODE in SIMULATION_MODES:
         return None
     return "Registres Modbus non validés: définir MODBUS_REGISTERS_VALIDATED=true après mapping matériel"
 
@@ -1001,14 +952,14 @@ def apply_control(device: str, action: str, source: str = "manual") -> tuple[boo
         add_history("command_rejected", force_save=True, device=device, action=action, source=source, error=rate_error)
         return False, rate_error
 
-    if G781_MODE in SIMULATION_MODES:
+    if EDGE_MODE in SIMULATION_MODES:
         set_simulated_device_state(device, action)
         record_control_success(device, action)
         add_history("command_executed", force_save=True, device=device, action=action, source=source, mode="simulation")
         add_event("info", f"[SIMULATION] Commande OK: {device} {action}", source=source)
         return True, None
 
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         if action in {"on", "forward", "reverse"} and not http_push_is_fresh():
             error = "Agent local absent ou trop ancien: démarrage refusé"
             add_history("command_rejected", force_save=True, device=device, action=action, source=source, error=error)
@@ -1089,7 +1040,7 @@ def rainbird_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
         return False, {"error": f"Commande Rain Bird trop rapprochee: attendre {remaining}s"}
     duration = max(1, min(int(duration), RAINBIRD_MAX_DURATION_MIN))
     rainbird_state["last_cmd"] = f"START Zone {zone} {duration}min"
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         if not http_push_is_fresh():
             return False, {"error": "Agent local absent ou trop ancien: Rain Bird refusé"}
         queue_command({"type": "rainbird", "action": "start", "zone": zone, "duration": duration})
@@ -1097,7 +1048,7 @@ def rainbird_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
         last_rainbird_command_at = current
         return True, {"mode": "http_push", "queued": True, "zone": zone, "duration": duration}
     if not rainbird_ip:
-        if G781_MODE in SIMULATION_MODES:
+        if EDGE_MODE in SIMULATION_MODES:
             rainbird_state["active_zones"] = [zone]
             last_rainbird_command_at = current
             add_history("command_executed", force_save=True, type="rainbird", action="start", zone=zone, duration=duration, mode="simulation")
@@ -1117,7 +1068,7 @@ def rainbird_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
 def rainbird_stop_zone(zone: int | None = None) -> tuple[bool, dict]:
     rainbird_state["last_cmd"] = f"STOP {'zone ' + str(zone) if zone else 'tout'}"
     rainbird_state["active_zones"] = []
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         queue_command({"type": "rainbird", "action": "stop", "zone": zone})
         return True, {"mode": "http_push", "queued": True, "zone": zone}
     if not rainbird_ip:
@@ -1430,7 +1381,7 @@ def build_ai_diagnostic(question: str) -> dict:
             "events": list(events)[:8],
         }
 
-    if G781_MODE in HTTP_PUSH_MODES and not http_push_is_fresh():
+    if EDGE_MODE in HTTP_PUSH_MODES and not http_push_is_fresh():
         findings.append("Agent local absent ou données trop anciennes.")
         blocked.append("Aucun démarrage ne doit être proposé tant que l'agent n'est pas frais.")
     if not connected:
@@ -1483,18 +1434,18 @@ def ping():
         {
             "status": "ok",
             "version": APP_VERSION,
-            "mode": G781_MODE,
+            "mode": EDGE_MODE,
             "connected": connected,
-            "g781_ip": cache["g781_ip"],
-            "edge_agent": cache["g781_ip"],
+            "agent_ip": cache["agent_ip"],
+            "edge_agent": cache["agent_ip"],
             "auth_required": bool(API_TOKEN),
             "server_time": local_now().isoformat(),
             "timezone": LOCAL_TZ_NAME,
             "planning_enabled": ENABLE_PLANNING,
             "planning_count": len(planning),
-            "http_push_stale_sec": G781_HTTP_PUSH_STALE_SEC if G781_MODE in HTTP_PUSH_MODES else None,
+            "http_push_stale_sec": EDGE_PUSH_STALE_SEC if EDGE_MODE in HTTP_PUSH_MODES else None,
             "storage": {"data_dir": str(DATA_DIR), "persistent": PERSISTENT_STORAGE_ENABLED},
-            "simulation": G781_MODE in SIMULATION_MODES,
+            "simulation": EDGE_MODE in SIMULATION_MODES,
         }
     )
 
@@ -1503,21 +1454,21 @@ def ping():
 def status():
     with lock:
         connected = client_is_open()
-        if G781_MODE in HTTP_PUSH_MODES:
+        if EDGE_MODE in HTTP_PUSH_MODES:
             cache["connected"] = connected
         command_counts = command_status_counts()
         return jsonify(
             {
                 "connected": connected,
                 "last_update": cache["last_update"],
-                "g781_ip": cache["g781_ip"],
-                "edge_agent": cache["g781_ip"],
+                "agent_ip": cache["agent_ip"],
+                "edge_agent": cache["agent_ip"],
                 "mode": cache["mode"],
                 "server_time": local_now().isoformat(),
                 "timezone": LOCAL_TZ_NAME,
                 "planning_enabled": ENABLE_PLANNING,
                 "planning_count": len(planning),
-                "http_push_stale_sec": G781_HTTP_PUSH_STALE_SEC if G781_MODE in HTTP_PUSH_MODES else None,
+                "http_push_stale_sec": EDGE_PUSH_STALE_SEC if EDGE_MODE in HTTP_PUSH_MODES else None,
                 "commands_pending": len(pending_commands),
                 "commands_status": command_counts,
                 "last_command_ack": recent_command_acks[0] if recent_command_acks else None,
@@ -1548,13 +1499,13 @@ def devices():
 @app.route("/api/connect", methods=["POST"])
 def api_connect():
     body = request.get_json(silent=True) or {}
-    if ALLOW_REMOTE_G781_CONNECT:
+    if ALLOW_REMOTE_CONNECT:
         host = str(body.get("host") or body.get("ip") or "").strip()
-        port = parse_int(body.get("port"), G781_PORT)
+        port = parse_int(body.get("port"), EDGE_PORT)
     else:
-        host = G781_HOST
-        port = G781_PORT
-    if not host and G781_MODE not in SIMULATION_MODES and G781_MODE not in HTTP_PUSH_MODES:
+        host = EDGE_HOST
+        port = EDGE_PORT
+    if not host and EDGE_MODE not in SIMULATION_MODES and EDGE_MODE not in HTTP_PUSH_MODES:
         return jsonify({"success": False, "error": "Cible Modbus TCP non configuree cote serveur"}), 400
     ok = connect(host, port)
     return jsonify(
@@ -1564,8 +1515,8 @@ def api_connect():
             "host": host,
             "ip": host,
             "port": port,
-            "mode": G781_MODE,
-            "remote_target_allowed": ALLOW_REMOTE_G781_CONNECT,
+            "mode": EDGE_MODE,
+            "remote_target_allowed": ALLOW_REMOTE_CONNECT,
         }
     ), 200 if ok else 503
 
@@ -1582,7 +1533,7 @@ def control():
         return jsonify({"success": False, "error": "device/pump et action requis"}), 400
     ok, error = apply_control(device, action, source=source)
     status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "Cible Modbus TCP non connectee" else 400))
-    queued = bool(ok and G781_MODE in HTTP_PUSH_MODES)
+    queued = bool(ok and EDGE_MODE in HTTP_PUSH_MODES)
     executed = bool(ok and not queued)
     return jsonify({
         "success": ok,
@@ -1609,7 +1560,7 @@ def inverter():
         return jsonify({"success": False, "error": f"Action INVT inconnue: {action}"}), 400
     ok, error = apply_control("invt", action, source=source)
     status_code = 200 if ok else (429 if error and ("attendre" in error or "trop" in error) else (503 if error == "Cible Modbus TCP non connectee" else 400))
-    queued = bool(ok and G781_MODE in HTTP_PUSH_MODES)
+    queued = bool(ok and EDGE_MODE in HTTP_PUSH_MODES)
     executed = bool(ok and not queued)
     return jsonify({
         "success": ok,
@@ -1630,7 +1581,7 @@ def param_read():
     addr = parse_int(body.get("addr"), 1)
     reg = parse_int(body.get("reg"), 0)
     count = min(max(parse_int(body.get("count"), 1), 1), 64)
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         return jsonify({"success": False, "error": "Lecture registre brute indisponible en HTTP PUSH: utiliser l'agent local ou qModMaster sur site"}), 409
     if not client_is_open():
         return jsonify({"success": False, "error": "Cible Modbus TCP non connectee"}), 503
@@ -1651,7 +1602,7 @@ def param_write():
     addr = parse_int(body.get("addr"), 1)
     reg = parse_int(body.get("reg"), 0)
     value = parse_int(body.get("value"), 0)
-    if G781_MODE in HTTP_PUSH_MODES:
+    if EDGE_MODE in HTTP_PUSH_MODES:
         return jsonify({"success": False, "error": "Ecriture registre brute indisponible en HTTP PUSH depuis le cloud"}), 409
     if not client_is_open():
         return jsonify({"success": False, "error": "Cible Modbus TCP non connectee"}), 503
@@ -1776,8 +1727,7 @@ def ai_diagnose():
 
 
 @app.route("/api/edge/push", methods=["POST"])
-@app.route("/api/g781/push", methods=["POST"])
-def g781_push():
+def edge_push():
     body = request.get_json(silent=True) or {}
     with lock:
         payload = body.get("devices") if isinstance(body.get("devices"), dict) else body
@@ -1790,13 +1740,13 @@ def g781_push():
         if isinstance(body.get("rainbird"), dict):
             rainbird_state.update(body["rainbird"])
         cache["connected"] = True
-        cache["mode"] = G781_MODE
-        cache["g781_ip"] = str(body.get("agent_id") or request.headers.get("X-Forwarded-For") or request.remote_addr or "agent local")
+        cache["mode"] = EDGE_MODE
+        cache["agent_ip"] = str(body.get("agent_id") or request.headers.get("X-Forwarded-For") or request.remote_addr or "agent local")
         cache["last_update"] = time.time()
         cleanup_pending_commands()
         queued = len(pending_commands)
         snapshot = {
-            "agent_id": cache["g781_ip"],
+            "agent_id": cache["agent_ip"],
             "devices": {key: dict(cache[key]) for key in ("invt", "salmson", "wilo", "coffret4")},
             "rainbird": dict(rainbird_state),
         }
@@ -1806,8 +1756,7 @@ def g781_push():
 
 
 @app.route("/api/edge/commands")
-@app.route("/api/g781/commands")
-def g781_commands():
+def edge_commands():
     agent_id = request.headers.get("X-Agent-ID") or request.args.get("agent_id") or request.headers.get("User-Agent") or "agent local"
     with lock:
         cleanup_pending_commands()
@@ -1817,7 +1766,7 @@ def g781_commands():
             status = str(cmd.get("status") or "queued")
             last_fetch_at = float(cmd.get("last_fetch_at") or 0)
             can_send = status == "queued"
-            if status == "sent" and command_can_retry(cmd) and current - last_fetch_at >= G781_COMMAND_ACK_TIMEOUT_SEC:
+            if status == "sent" and command_can_retry(cmd) and current - last_fetch_at >= EDGE_ACK_TIMEOUT_SEC:
                 can_send = True
             if not can_send:
                 continue
@@ -1833,8 +1782,7 @@ def g781_commands():
 
 
 @app.route("/api/edge/ack", methods=["POST"])
-@app.route("/api/g781/ack", methods=["POST"])
-def g781_ack():
+def edge_ack():
     body = request.get_json(silent=True) or {}
     command_id = str(body.get("id") or body.get("command_id") or "").strip()
     agent_id = str(body.get("agent_id") or request.headers.get("X-Agent-ID") or request.headers.get("User-Agent") or "agent local")
@@ -1980,7 +1928,7 @@ def index():
     <h2>Zarzis Irrigation - Serveur Cloud</h2>
     <p>Version: <code>{APP_VERSION}</code></p>
     <p>API: <code>/api/ping</code>, <code>/api/status</code>, <code>/api/devices</code></p>
-    <p>Mode terrain: <strong>{G781_MODE}</strong></p>
+    <p>Mode terrain: <strong>{EDGE_MODE}</strong></p>
     <p>Connecté: <strong>{"OUI" if cache["connected"] else "NON / en attente"}</strong></p>
     """
 
