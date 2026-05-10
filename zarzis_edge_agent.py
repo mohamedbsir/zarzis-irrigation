@@ -15,10 +15,12 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
 
 from pymodbus.client import ModbusTcpClient
 
@@ -60,6 +62,11 @@ AGENT_ID = os.environ.get("AGENT_ID", "zarzis-edge-agent")
 DR302_HOST = os.environ.get("DR302_HOST", "192.168.1.10")
 DR302_PORT = env_int("DR302_PORT", 502)
 POLL_SEC = max(2, env_int("EDGE_POLL_SEC", 5))
+DATA_DIR = Path(os.environ.get("EDGE_DATA_DIR", os.environ.get("DATA_DIR", str(Path.home() / "zarzis-data"))))
+LOG_DIR = Path(os.environ.get("EDGE_LOG_DIR", str(DATA_DIR / "logs")))
+OFFLINE_DB = Path(os.environ.get("EDGE_OFFLINE_DB", str(DATA_DIR / "edge_offline_queue.sqlite3")))
+OFFLINE_BUFFER_ENABLED = env_bool("EDGE_OFFLINE_BUFFER_ENABLED", True)
+OFFLINE_MAX_ITEMS = max(100, env_int("EDGE_OFFLINE_MAX_ITEMS", 10000))
 EDGE_ALLOW_START = env_bool("EDGE_ALLOW_START", False)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
 SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
@@ -126,7 +133,14 @@ def now_iso() -> str:
 
 
 def log(message: str) -> None:
-    print(f"{now_iso()} {message}", flush=True)
+    line = f"{now_iso()} {message}"
+    print(line, flush=True)
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        with (LOG_DIR / "zarzis_edge_agent.log").open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    except Exception:
+        pass
 
 
 def headers() -> dict[str, str]:
@@ -473,9 +487,82 @@ def execute_command(cmd: dict) -> dict:
     return {"ok": ok, "type": "control", "device": device, "action": action, "error": error}
 
 
-def push_status() -> None:
-    global last_status_snapshot, last_status_at
-    payload = {
+def init_offline_db() -> None:
+    if not OFFLINE_BUFFER_ENABLED:
+        return
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(OFFLINE_DB) as db:
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS status_queue ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "created_at TEXT NOT NULL, "
+            "payload TEXT NOT NULL, "
+            "sent_at TEXT)"
+        )
+        db.execute("CREATE INDEX IF NOT EXISTS idx_status_queue_sent ON status_queue(sent_at, id)")
+        db.commit()
+
+
+def trim_offline_queue() -> None:
+    if not OFFLINE_BUFFER_ENABLED:
+        return
+    try:
+        with sqlite3.connect(OFFLINE_DB) as db:
+            db.execute(
+                "DELETE FROM status_queue WHERE id NOT IN "
+                "(SELECT id FROM status_queue ORDER BY id DESC LIMIT ?)",
+                (OFFLINE_MAX_ITEMS,),
+            )
+            db.commit()
+    except Exception as exc:
+        log(f"Buffer offline trim impossible: {exc}")
+
+
+def enqueue_status_payload(payload: dict) -> None:
+    if not OFFLINE_BUFFER_ENABLED:
+        return
+    try:
+        init_offline_db()
+        with sqlite3.connect(OFFLINE_DB) as db:
+            db.execute(
+                "INSERT INTO status_queue(created_at, payload, sent_at) VALUES (?, ?, NULL)",
+                (now_iso(), json.dumps(payload, ensure_ascii=False)),
+            )
+            db.commit()
+        trim_offline_queue()
+    except Exception as exc:
+        log(f"Buffer offline ecriture impossible: {exc}")
+
+
+def mark_status_payload_sent(row_id: int) -> None:
+    try:
+        with sqlite3.connect(OFFLINE_DB) as db:
+            db.execute("UPDATE status_queue SET sent_at=? WHERE id=?", (now_iso(), row_id))
+            db.commit()
+    except Exception as exc:
+        log(f"Buffer offline ACK impossible: {exc}")
+
+
+def flush_status_queue(limit: int = 20) -> dict | None:
+    if not OFFLINE_BUFFER_ENABLED:
+        return None
+    init_offline_db()
+    last_response = None
+    with sqlite3.connect(OFFLINE_DB) as db:
+        rows = db.execute(
+            "SELECT id, payload FROM status_queue WHERE sent_at IS NULL ORDER BY id ASC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    for row_id, payload_text in rows:
+        payload = json.loads(payload_text)
+        response = post_json("/api/edge/push", payload)
+        mark_status_payload_sent(int(row_id))
+        last_response = response
+    return last_response
+
+
+def build_status_payload() -> dict:
+    return {
         "agent_id": AGENT_ID,
         "site_time": now_iso(),
         "devices": {
@@ -486,10 +573,20 @@ def push_status() -> None:
         },
         "rainbird": rainbird_state,
     }
+
+
+def push_status() -> None:
+    global last_status_snapshot, last_status_at
+    payload = build_status_payload()
     last_status_snapshot = payload
     last_status_at = time.time()
-    response = post_json("/api/edge/push", payload)
-    log(f"Push OK, commandes en attente: {response.get('commands_pending', 0)}")
+    if OFFLINE_BUFFER_ENABLED:
+        enqueue_status_payload(payload)
+        response = flush_status_queue() or {}
+        log(f"Push OK + buffer offline vidange, commandes en attente: {response.get('commands_pending', 0)}")
+    else:
+        response = post_json("/api/edge/push", payload)
+        log(f"Push OK, commandes en attente: {response.get('commands_pending', 0)}")
 
 
 def acknowledge_command(cmd: dict, result: dict) -> None:
@@ -522,7 +619,8 @@ def fetch_and_execute_commands() -> None:
 
 
 def main() -> None:
-    log(f"Agent local demarre: cloud={CLOUD_URL}, dr302={DR302_HOST}:{DR302_PORT}, allow_start={EDGE_ALLOW_START}")
+    init_offline_db()
+    log(f"Agent local demarre: cloud={CLOUD_URL}, dr302={DR302_HOST}:{DR302_PORT}, allow_start={EDGE_ALLOW_START}, buffer_offline={OFFLINE_BUFFER_ENABLED}, data_dir={DATA_DIR}")
     while True:
         try:
             push_status()

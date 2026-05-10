@@ -2,15 +2,13 @@ services:
   - type: web
     name: zarzis-irrigation-1
     env: python
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn modbus_proxy_cloud:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
-    # Quand tu passes au stockage Render payant, ajoute un disque persistant ici :
-    # disk:
-    #   name: zarzis-data
-    #   mountPath: /var/data
-    #   sizeGB: 1
-    # Puis mets DATA_DIR=/var/data et PERSISTENT_STORAGE_ENABLED=true.
+    disk:
+      name: zarzis-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: G781_MODE
         value: http_push
@@ -35,7 +33,9 @@ services:
       - key: ENABLE_PLANNING
         value: "false"
       - key: PERSISTENT_STORAGE_ENABLED
-        value: "false"
+        value: "true"
+      - key: DATA_DIR
+        value: /var/data
       - key: LOCAL_TZ
         value: Africa/Tunis
       - key: CORS_ORIGINS
@@ -136,5 +136,9 @@ services:
         value: "240"
       - key: RAINBIRD_MIN_INTERVAL_SEC
         value: "30"
+      - key: EDGE_OFFLINE_BUFFER_ENABLED
+        value: "true"
+      - key: EDGE_OFFLINE_MAX_ITEMS
+        value: "10000"
       - key: API_TOKEN
         generateValue: true
