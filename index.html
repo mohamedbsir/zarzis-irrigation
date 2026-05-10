@@ -3311,7 +3311,80 @@ function initApp() {
   calcFert();
   simulateData();
   fetchWeather();
+
+  // Auto-connexion directe si token mémorisé
+  if(localStorage.getItem('zarzis_api_token_remembered') && apiUrl) {
+    autoConnect();
+  }
 }
+
+// ============ AUTO-CONNEXION RAPIDE ============
+// Utilise les variables directement — pas de dépendance DOM
+// Timeout court (4s), retry exponentiel, silencieux si pas de réseau
+let _autoConnectRetry = 0;
+
+async function autoConnect() {
+  if(connected) return;
+  updateConnStatus('CONNEXION...', 'badge-warn');
+  try {
+    const r = await fetch(`${apiUrl}/api/ping`, {
+      headers: apiHeaders(),
+      signal: AbortSignal.timeout(4000)
+    });
+    const d = await r.json();
+    if(d.status === 'ok') {
+      connected = true;
+      _autoConnectRetry = 0;
+      commandAckNotifyAfter = Date.now() - 5000;
+      seenCommandAckIds.clear();
+      clearAlarm('COM');
+      updateConnStatus('CONNECTÉ ✅', 'badge-on');
+      addLog(`✅ Connecté — agent: ${d.connected ? '✅ ACTIF' : '⏳ ATTENTE'}`, 'ok');
+      if(d.auth_required && !apiToken) addLog('⚠️ Token manquant', 'warn');
+      if(simInterval){ clearInterval(simInterval); simInterval = null; }
+      if(fetchInterval) clearInterval(fetchInterval);
+      const interval = parseInt(document.getElementById('poll-interval')?.value) || 5;
+      fetchInterval = setInterval(fetchRealData, interval * 1000);
+      fetchRealData();
+      fetchCloudPlanningStatus();
+      syncPlanningToCloud(true);
+      startSharedStateSync();
+    } else {
+      _scheduleAutoReconnect();
+    }
+  } catch(e) {
+    connected = false;
+    updateConnStatus('EN ATTENTE...', 'badge-warn');
+    _scheduleAutoReconnect();
+  }
+}
+
+function _scheduleAutoReconnect() {
+  if(connected) return;
+  // Backoff: 5s → 10s → 20s → 30s max
+  const delays = [5000, 10000, 20000, 30000];
+  const delay = delays[Math.min(_autoConnectRetry, delays.length - 1)];
+  _autoConnectRetry++;
+  setTimeout(() => {
+    if(!connected && localStorage.getItem('zarzis_api_token_remembered')) autoConnect();
+  }, delay);
+}
+
+// Reconnexion immédiate si réseau revient
+window.addEventListener('online', () => {
+  if(!connected && localStorage.getItem('zarzis_api_token_remembered')) {
+    _autoConnectRetry = 0;
+    autoConnect();
+  }
+});
+
+// Watchdog silencieux toutes les 30s
+setInterval(() => {
+  if(!connected && localStorage.getItem('zarzis_api_token_remembered') && apiUrl) {
+    _autoConnectRetry = 0;
+    autoConnect();
+  }
+}, 30000);
 
 // ============ CLOCK ============
 function updateClock() {
