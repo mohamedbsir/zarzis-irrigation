@@ -1,0 +1,177 @@
+--- /mnt/data/zarzis_edge_agent.py	2026-05-10 17:56:26.037441585 +0000
++++ /mnt/data/zarzis_edge_agent_fast.py	2026-05-10 17:58:29.035374591 +0000
+@@ -16,6 +16,7 @@
+ import json
+ import os
+ import sqlite3
++import threading
+ import time
+ import urllib.error
+ import urllib.request
+@@ -62,6 +63,9 @@
+ DR302_HOST = os.environ.get("DR302_HOST", "192.168.1.10")
+ DR302_PORT = env_int("DR302_PORT", 502)
+ POLL_SEC = max(1, env_int("EDGE_POLL_SEC", 2))
++COMMAND_POLL_SEC = max(1, env_int("EDGE_COMMAND_POLL_SEC", 1))
++STATUS_PUSH_SEC = max(2, env_int("EDGE_STATUS_PUSH_SEC", 5))
++MODBUS_TIMEOUT_SEC = max(0.5, env_float("MODBUS_TIMEOUT_SEC", 1.5))
+ DATA_DIR = Path(os.environ.get("EDGE_DATA_DIR", os.environ.get("DATA_DIR", str(Path.home() / "zarzis-data"))))
+ LOG_DIR = Path(os.environ.get("EDGE_LOG_DIR", str(DATA_DIR / "logs")))
+ OFFLINE_DB = Path(os.environ.get("EDGE_OFFLINE_DB", str(DATA_DIR / "edge_offline_queue.sqlite3")))
+@@ -145,6 +149,7 @@
+ 
+ 
+ client: ModbusTcpClient | None = None
++modbus_lock = threading.RLock()
+ last_status_snapshot: dict = {}
+ last_status_at = 0.0
+ 
+@@ -199,7 +204,7 @@
+                 client.close()
+             except Exception:
+                 pass
+-        client = ModbusTcpClient(DR302_HOST, port=DR302_PORT, timeout=5)
++        client = ModbusTcpClient(DR302_HOST, port=DR302_PORT, timeout=MODBUS_TIMEOUT_SEC)
+         ok = bool(client.connect())
+         if not ok:
+             log(f"Modbus indisponible sur {DR302_HOST}:{DR302_PORT}")
+@@ -210,32 +215,36 @@
+ 
+ 
+ def read_regs(addr: int, reg: int, count: int = 1) -> list[int] | None:
+-    if reg < 0 or not ensure_modbus():
++    if reg < 0:
+         return None
+-    try:
++    with modbus_lock:
++        if not ensure_modbus():
++            return None
+         try:
+-            result = client.read_holding_registers(reg, count=count, slave=addr)
+-        except TypeError:
+-            result = client.read_holding_registers(reg, count=count, unit=addr)
+-        if result and not result.isError():
+-            return list(result.registers)
+-    except Exception as exc:
+-        log(f"Lecture impossible addr={addr} reg={hex(reg)}: {exc}")
++            try:
++                result = client.read_holding_registers(reg, count=count, slave=addr)
++            except TypeError:
++                result = client.read_holding_registers(reg, count=count, unit=addr)
++            if result and not result.isError():
++                return list(result.registers)
++        except Exception as exc:
++            log(f"Lecture impossible addr={addr} reg={hex(reg)}: {exc}")
+     return None
+ 
+ 
+ def write_reg(addr: int, reg: int, value: int) -> bool:
+-    if not ensure_modbus():
+-        return False
+-    try:
++    with modbus_lock:
++        if not ensure_modbus():
++            return False
+         try:
+-            result = client.write_register(reg, value, slave=addr)
+-        except TypeError:
+-            result = client.write_register(reg, value, unit=addr)
+-        return bool(result and not result.isError())
+-    except Exception as exc:
+-        log(f"Ecriture impossible addr={addr} reg={hex(reg)} val={value}: {exc}")
+-        return False
++            try:
++                result = client.write_register(reg, value, slave=addr)
++            except TypeError:
++                result = client.write_register(reg, value, unit=addr)
++            return bool(result and not result.isError())
++        except Exception as exc:
++            log(f"Ecriture impossible addr={addr} reg={hex(reg)} val={value}: {exc}")
++            return False
+ 
+ 
+ def unavailable(name: str) -> dict:
+@@ -653,43 +662,64 @@
+             log(f"ACK impossible commande {cmd.get('id')}: {exc}")
+ 
+ 
+-def main() -> None:
+-    init_offline_db()
+-    log(f"Agent local demarre: cloud={CLOUD_URL}, dr302={DR302_HOST}:{DR302_PORT}, allow_start={EDGE_ALLOW_START}, buffer_offline={OFFLINE_BUFFER_ENABLED}, data_dir={DATA_DIR}")
++def command_loop() -> None:
++    """Canal prioritaire: récupère les commandes sans attendre la télémétrie Modbus."""
++    consecutive_errors = 0
++    while True:
++        try:
++            fetch_and_execute_commands()
++            consecutive_errors = 0
++        except urllib.error.HTTPError as exc:
++            body = exc.read().decode("utf-8", "replace")
++            consecutive_errors += 1
++            log(f"Erreur HTTP commandes {exc.code}: {body} (echec #{consecutive_errors})")
++        except Exception as exc:
++            consecutive_errors += 1
++            log(f"Erreur boucle commandes: {exc} (echec #{consecutive_errors})")
+ 
+-    # ===== WATCHDOG : compteurs santé =====
++        if consecutive_errors >= 10:
++            time.sleep(min(COMMAND_POLL_SEC * 2, 10))
++        else:
++            time.sleep(COMMAND_POLL_SEC)
++
++
++def status_loop() -> None:
++    """Canal télémétrie: lit le Modbus et pousse l'état vers Render."""
+     consecutive_errors = 0
+-    last_success = time.time()
+     last_heartbeat_log = 0.0
+-
+     while True:
+         cycle_start = time.time()
+         try:
+             push_status()
+-            fetch_and_execute_commands()
+             consecutive_errors = 0
+-            last_success = cycle_start
+-
+-            # Heartbeat log toutes les 5 minutes (pour traçabilité longue durée)
+             if cycle_start - last_heartbeat_log > 300:
+-                log(f"♥ Heartbeat OK — derniers succès: {int(cycle_start - last_success)}s")
++                log("♥ Heartbeat OK — agent actif")
+                 last_heartbeat_log = cycle_start
+-
+         except urllib.error.HTTPError as exc:
+             body = exc.read().decode("utf-8", "replace")
+             consecutive_errors += 1
+-            log(f"Erreur HTTP {exc.code}: {body} (echec consecutif #{consecutive_errors})")
++            log(f"Erreur HTTP télémétrie {exc.code}: {body} (echec #{consecutive_errors})")
+         except Exception as exc:
+             consecutive_errors += 1
+-            log(f"Erreur agent: {exc} (echec consecutif #{consecutive_errors})")
++            log(f"Erreur boucle télémétrie: {exc} (echec #{consecutive_errors})")
+ 
+-        # Backoff uniquement après 10 erreurs consécutives, max 10s
+         if consecutive_errors >= 10:
+-            backoff = min(POLL_SEC * 2, 10)
+-            log(f"Backoff actif: attente {backoff}s avant nouveau cycle")
+-            time.sleep(backoff)
++            time.sleep(min(STATUS_PUSH_SEC * 2, 10))
+         else:
+-            time.sleep(POLL_SEC)
++            time.sleep(STATUS_PUSH_SEC)
++
++
++def main() -> None:
++    init_offline_db()
++    log(
++        f"Agent local demarre: cloud={CLOUD_URL}, dr302={DR302_HOST}:{DR302_PORT}, "
++        f"allow_start={EDGE_ALLOW_START}, buffer_offline={OFFLINE_BUFFER_ENABLED}, "
++        f"data_dir={DATA_DIR}, command_poll={COMMAND_POLL_SEC}s, "
++        f"status_push={STATUS_PUSH_SEC}s, modbus_timeout={MODBUS_TIMEOUT_SEC}s"
++    )
++
++    threading.Thread(target=command_loop, daemon=True, name="zarzis-command-loop").start()
++    status_loop()
+ 
+ 
+ if __name__ == "__main__":
