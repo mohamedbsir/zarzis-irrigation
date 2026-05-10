@@ -621,16 +621,42 @@ def fetch_and_execute_commands() -> None:
 def main() -> None:
     init_offline_db()
     log(f"Agent local demarre: cloud={CLOUD_URL}, dr302={DR302_HOST}:{DR302_PORT}, allow_start={EDGE_ALLOW_START}, buffer_offline={OFFLINE_BUFFER_ENABLED}, data_dir={DATA_DIR}")
+
+    # ===== WATCHDOG : compteurs santé =====
+    consecutive_errors = 0
+    last_success = time.time()
+    last_heartbeat_log = 0.0
+
     while True:
+        cycle_start = time.time()
         try:
             push_status()
             fetch_and_execute_commands()
+            consecutive_errors = 0
+            last_success = cycle_start
+
+            # Heartbeat log toutes les 5 minutes (pour traçabilité longue durée)
+            if cycle_start - last_heartbeat_log > 300:
+                log(f"♥ Heartbeat OK — derniers succès: {int(cycle_start - last_success)}s")
+                last_heartbeat_log = cycle_start
+
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", "replace")
-            log(f"Erreur HTTP {exc.code}: {body}")
+            consecutive_errors += 1
+            log(f"Erreur HTTP {exc.code}: {body} (echec consecutif #{consecutive_errors})")
         except Exception as exc:
-            log(f"Erreur agent: {exc}")
-        time.sleep(POLL_SEC)
+            consecutive_errors += 1
+            log(f"Erreur agent: {exc} (echec consecutif #{consecutive_errors})")
+
+        # ===== BACKOFF EXPONENTIEL =====
+        # Après 3 erreurs consécutives, on espace progressivement les tentatives
+        # pour ne pas saturer le réseau ou Render
+        if consecutive_errors >= 3:
+            backoff = min(POLL_SEC * (2 ** min(consecutive_errors - 2, 5)), 60)
+            log(f"Backoff actif: attente {backoff}s avant nouveau cycle")
+            time.sleep(backoff)
+        else:
+            time.sleep(POLL_SEC)
 
 
 if __name__ == "__main__":

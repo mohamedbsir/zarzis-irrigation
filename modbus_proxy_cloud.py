@@ -16,6 +16,7 @@ import re
 import threading
 import time
 import unicodedata
+import urllib.request
 import uuid
 from collections import deque
 from datetime import datetime, timezone
@@ -65,6 +66,15 @@ UPDATE_SEC = max(2, int(os.environ.get("UPDATE_SEC", "5")))
 PLANNING_POLL_SEC = max(5, int(os.environ.get("PLANNING_POLL_SEC", "10")))
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "*").split(",") if origin.strip()] or ["*"]
+
+# ============ NOTIFICATIONS TELEGRAM ============
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+TELEGRAM_NOTIFY_LEVELS = {
+    level.strip().lower()
+    for level in os.environ.get("TELEGRAM_NOTIFY_LEVELS", "error").split(",")
+    if level.strip()
+}
 LOCAL_TZ_NAME = os.environ.get("LOCAL_TZ", "Africa/Tunis").strip() or "Africa/Tunis"
 try:
     LOCAL_TZ = ZoneInfo(LOCAL_TZ_NAME)
@@ -251,6 +261,45 @@ def add_event(level: str, message: str, **data) -> None:
         log.warning(message)
     else:
         log.info(message)
+    # Notification Telegram pour les événements critiques
+    if level in {"error", "warning"} and TELEGRAM_NOTIFY_LEVELS:
+        if level in TELEGRAM_NOTIFY_LEVELS:
+            send_telegram_notification(level, message, data)
+
+
+def send_telegram_notification(level: str, message: str, data: dict = None) -> None:
+    """Envoie une notification Telegram pour les alarmes critiques.
+
+    Configuration via variables Render :
+    - TELEGRAM_BOT_TOKEN : token du bot (créé via @BotFather)
+    - TELEGRAM_CHAT_ID : ID du chat ou du groupe destinataire
+    - TELEGRAM_NOTIFY_LEVELS : niveaux à notifier, ex "error,warning"
+    """
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    try:
+        emoji = "🚨" if level == "error" else "⚠️"
+        text = f"{emoji} *Zarzis* — {level.upper()}\n{message}"
+        if data:
+            extra = " ".join(f"{k}={v}" for k, v in data.items() if k not in {"ts", "level", "message"})
+            if extra:
+                text += f"\n`{extra}`"
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": text,
+            "parse_mode": "Markdown",
+            "disable_notification": level != "error",
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=5).read()
+    except Exception as exc:
+        log.warning(f"Notification Telegram échouée: {exc}")
 
 
 def token_from_request() -> str:

@@ -3311,6 +3311,31 @@ function initApp() {
   calcFert();
   simulateData();
   fetchWeather();
+
+  // ============ AUTO-CONNEXION CLOUD ============
+  // Si un token est mémorisé ET qu'une URL cloud est définie → connexion automatique
+  const savedToken = localStorage.getItem('zarzis_api_token_remembered');
+  if(savedToken && apiUrl && apiUrl.startsWith('http')) {
+    addLog('🔄 Reconnexion automatique au cloud...', 'info');
+    setTimeout(() => connectCloud(), 800);
+  }
+
+  // ============ WATCHDOG RECONNEXION ============
+  // Toutes les 30s, si déconnecté et token mémorisé → retry
+  setInterval(() => {
+    if(!connected && localStorage.getItem('zarzis_api_token_remembered') && apiUrl) {
+      addLog('🔁 Watchdog: tentative de reconnexion...', 'info');
+      connectCloud();
+    }
+  }, 30000);
+
+  // ============ EVENTS ONLINE/OFFLINE ============
+  // Quand le réseau revient → reconnexion immédiate
+  window.addEventListener('online', () => {
+    if(!connected && localStorage.getItem('zarzis_api_token_remembered')) {
+      setTimeout(() => connectCloud(), 1500);
+    }
+  });
 }
 
 // ============ CLOCK ============
