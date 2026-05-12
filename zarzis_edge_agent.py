@@ -133,6 +133,7 @@ WILO_REGS = {
 
 RELAY_ENABLED = env_bool("RELAY_ENABLED", True)
 RELAY_ACTIVE_LOW = env_bool("RELAY_ACTIVE_LOW", True)  # RUNCCI-YUN = actif bas par défaut
+RELAY_SIMULATION_ENABLED = env_bool("RELAY_SIMULATION_ENABLED", False)
 RELAY_MAX_DURATION_MIN = max(1, env_int("RELAY_MAX_DURATION_MIN", 120))
 RELAY_ZONE_PINS = {
     1: env_int("RELAY_ZONE_1_PIN", 17),
@@ -141,6 +142,8 @@ RELAY_ZONE_PINS = {
     4: env_int("RELAY_ZONE_4_PIN", 23),
     5: env_int("RELAY_ZONE_5_PIN", 24),
     6: env_int("RELAY_ZONE_6_PIN", 25),
+    7: env_int("RELAY_ZONE_7_PIN", 5),
+    8: env_int("RELAY_ZONE_8_PIN", 6),
 }
 relay_state: dict = {"zones": {}, "active_zones": [], "last_cmd": ""}
 
@@ -386,23 +389,31 @@ def read_coffret4() -> dict:
     return {"status": "NON CONFIGURE", "last_seen": now_iso()}
 
 
-def relay_set_zone(zone: int, active: bool) -> bool:
-    """Active ou désactive un relais GPIO pour une zone électrovanne."""
-    if not RELAY_ENABLED or zone not in RELAY_ZONE_PINS:
-        return False
-    pin = RELAY_ZONE_PINS[zone]
+def set_relay_state_local(zone: int, active: bool) -> None:
     relay_state["zones"][str(zone)] = active
     if active and zone not in relay_state["active_zones"]:
         relay_state["active_zones"].append(zone)
     elif not active and zone in relay_state["active_zones"]:
         relay_state["active_zones"].remove(zone)
+
+
+def relay_set_zone(zone: int, active: bool) -> bool:
+    """Active ou désactive un relais GPIO pour une zone électrovanne."""
+    if not RELAY_ENABLED or zone not in RELAY_ZONE_PINS:
+        return False
+    pin = RELAY_ZONE_PINS[zone]
     if not RELAY_GPIO_AVAILABLE:
-        log(f"[SIMULATION GPIO] Zone {zone} pin GPIO{pin} → {'ON' if active else 'OFF'}")
+        if not RELAY_SIMULATION_ENABLED:
+            log(f"Relais refuse: GPIO indisponible pour zone {zone} pin GPIO{pin}. Activer RELAY_SIMULATION_ENABLED=true seulement pour test.")
+            return False
+        set_relay_state_local(zone, active)
+        log(f"[SIMULATION GPIO EXPLICITE] Zone {zone} pin GPIO{pin} -> {'ON' if active else 'OFF'}")
         return True
     try:
         level = GPIO.LOW if (active and RELAY_ACTIVE_LOW) or (not active and not RELAY_ACTIVE_LOW) else GPIO.HIGH
         GPIO.output(pin, level)
-        log(f"Relais zone {zone} pin GPIO{pin} → {'ON' if active else 'OFF'}")
+        set_relay_state_local(zone, active)
+        log(f"Relais zone {zone} pin GPIO{pin} -> {'ON' if active else 'OFF'}")
         return True
     except Exception as exc:
         log(f"Erreur GPIO zone {zone} pin {pin}: {exc}")
@@ -643,7 +654,11 @@ def build_status_payload() -> dict:
             "wilo": read_wilo(),
             "coffret4": read_coffret4(),
         },
-        "relay": relay_state,
+        "relay": {
+            **relay_state,
+            "gpio_available": RELAY_GPIO_AVAILABLE,
+            "simulation_enabled": RELAY_SIMULATION_ENABLED,
+        },
     }
 
 
@@ -865,6 +880,7 @@ def main() -> None:
     log(
         f"Agent local demarre: cloud={CLOUD_URL}, dr302={DR302_HOST}:{DR302_PORT}, "
         f"allow_start={EDGE_ALLOW_START}, buffer_offline={OFFLINE_BUFFER_ENABLED}, "
+        f"relay_gpio={RELAY_GPIO_AVAILABLE}, relay_simulation={RELAY_SIMULATION_ENABLED}, "
         f"data_dir={DATA_DIR}, command_poll={COMMAND_POLL_SEC}s, "
         f"status_push={STATUS_PUSH_SEC}s, modbus_timeout={MODBUS_TIMEOUT_SEC}s, "
         f"ws_enabled={EDGE_WS_ENABLED}, heartbeat={EDGE_HEARTBEAT_SEC}s"
