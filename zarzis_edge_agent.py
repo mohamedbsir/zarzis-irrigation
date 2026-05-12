@@ -141,6 +141,8 @@ RELAY_ZONE_PINS = {
     4: env_int("RELAY_ZONE_4_PIN", 23),
     5: env_int("RELAY_ZONE_5_PIN", 24),
     6: env_int("RELAY_ZONE_6_PIN", 25),
+    7: env_int("RELAY_ZONE_7_PIN", 5),
+    8: env_int("RELAY_ZONE_8_PIN", 6),
 }
 relay_state: dict = {"zones": {}, "active_zones": [], "last_cmd": ""}
 

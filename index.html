@@ -1505,35 +1505,41 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 <div class="tab-content" id="tab-irrigation">
 <main>
 
-  <!-- RAIN BIRD CONNEXION -->
+  <!-- MODULE IRRIGATION 8 ZONES -->
   <div class="card card-full">
     <div class="card-header">
       <div>
-        <div class="card-title">🌧️ Électrovannes — Carte Relais GPIO</div>
-        <div class="card-subtitle" id="rb-card-subtitle">Configuration côté serveur · zones exploitation · Module LNK</div>
+        <div class="card-title">💧 Module Irrigation — 8 Zones</div>
+        <div class="card-subtitle" id="rb-card-subtitle">Pilotage carte relais RUNCCI-YUN via Raspberry Pi GPIO</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openZonesConfigModal()">⚙️ ZONES</button>
         <span class="badge badge-warn" id="rb-badge">EN ATTENTE</span>
-        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="rbRefreshStatus()">🔄</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="rbRefreshStatus()" title="Rafraîchir">🔄</button>
       </div>
     </div>
 
-    <!-- IP Connexion -->
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📡 Agent Raspberry — Carte Relais</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <div>
-          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:4px">Pins GPIO (défaut: 17,27,22,23,24,25)</div>
-          <input type="text" id="rb-ip" placeholder="192.168.1.50" style="background:var(--bg);border:1px solid var(--border);color:var(--green);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:6px;width:160px;outline:none">
-        </div>
-        <button class="btn btn-green" onclick="rbConnect()">CONNECTER</button>
-        <button class="btn btn-ghost" onclick="rbTestPing()" style="font-size:12px">🔍 PING</button>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);flex:1;min-width:200px" id="rb-conn-msg">→ Trouver l'IP dans ton routeur WiFi</span>
+    <!-- BLOC ÉTAT AGENT + GPIO -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Agent Raspberry</div>
+        <div id="rb-agent-status" style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text-dim)">⏳ ATTENTE</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Carte relais</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)">RUNCCI-YUN 8CH</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Mode déclenchement</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--info)">Actif bas (LOW)</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Alimentation</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--warn)">24V AC · 4A</div>
       </div>
     </div>
 
-    <!-- PROGRAMMES RAIN BIRD INTERNES (MODIFIABLES) -->
+    <!-- PROGRAMMES INTERNES (MODIFIABLES) -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">📋 Séquences irrigation automatique</div>
       <button onclick="resetRbPrograms()" style="font-size:9px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-family:var(--mono);cursor:pointer">↺ Reset</button>
@@ -1569,7 +1575,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="mini-metric"><div class="lbl">Débit total</div><div class="val info" id="irrig-flow">0<span style="font-size:11px">L/h</span></div></div>
       <div class="mini-metric"><div class="lbl">Session</div><div class="val" id="irrig-timer">00:00</div></div>
       <div class="mini-metric"><div class="lbl">Volume</div><div class="val" id="irrig-vol">0<span style="font-size:11px">L</span></div></div>
-      <div class="mini-metric"><div class="lbl">Zones actives</div><div class="val" id="irrig-active">0/6</div></div>
+      <div class="mini-metric"><div class="lbl">Zones actives</div><div class="val" id="irrig-active">0/8</div></div>
     </div>
   </div>
 
@@ -3105,12 +3111,14 @@ async function postApiJson(path, payload={}, timeout=5000) {
 
 // Zones irrigation — CONFIGURATION MODIFIABLE
 const DEFAULT_ZONES = [
-  { num:1, label:'Grands A', type:'grand', trees:30, drippers:4, dripperFlow:16 },
-  { num:2, label:'Grands B', type:'grand', trees:30, drippers:4, dripperFlow:16 },
-  { num:3, label:'Grands C', type:'grand', trees:30, drippers:4, dripperFlow:16 },
-  { num:4, label:'Petits A', type:'petit', trees:22, drippers:2, dripperFlow:8 },
-  { num:5, label:'Petits B', type:'petit', trees:22, drippers:2, dripperFlow:8 },
-  { num:6, label:'Petits C', type:'petit', trees:22, drippers:2, dripperFlow:8 },
+  { num:1, label:'Grands A', type:'grand', trees:30, drippers:4, dripperFlow:16, gpio:17 },
+  { num:2, label:'Grands B', type:'grand', trees:30, drippers:4, dripperFlow:16, gpio:27 },
+  { num:3, label:'Grands C', type:'grand', trees:30, drippers:4, dripperFlow:16, gpio:22 },
+  { num:4, label:'Petits A', type:'petit', trees:22, drippers:2, dripperFlow:8,  gpio:23 },
+  { num:5, label:'Petits B', type:'petit', trees:22, drippers:2, dripperFlow:8,  gpio:24 },
+  { num:6, label:'Petits C', type:'petit', trees:22, drippers:2, dripperFlow:8,  gpio:25 },
+  { num:7, label:'Zone 7',   type:'petit', trees:0,  drippers:2, dripperFlow:8,  gpio:5  },
+  { num:8, label:'Zone 8',   type:'petit', trees:0,  drippers:2, dripperFlow:8,  gpio:6  },
 ];
 
 // Charger config depuis localStorage ou utiliser défaut
@@ -3630,7 +3638,7 @@ function initZones() {
   // Init Relais GPIO zones grid
   const grid = document.getElementById('rb-zones-grid');
   const subtitle = document.getElementById('rb-card-subtitle');
-  if(subtitle) subtitle.textContent = `Configuration côté serveur · ${zoneConfig.length} zones exploitation · Module LNK`;
+  if(subtitle) subtitle.textContent = `${zoneConfig.length} zones · Pilotage carte relais RUNCCI-YUN 8 canaux`;
   if(!grid) return;
   grid.innerHTML = '';
   zoneConfig.forEach(z => {
@@ -3638,11 +3646,15 @@ function initZones() {
     div.id = `rb-zone-${z.num}`;
     div.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;transition:all 0.3s';
     const flow = getZoneFlow(z);
+    const gpioBadge = z.gpio ? `<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px;margin-left:6px">GPIO ${z.gpio}</span>` : '';
     div.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div>
-          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">Zone ${z.num} — ${z.label}</div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${z.trees} arbres · ${z.drippers}×${z.dripperFlow}L/h · ${flow} L/h</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;flex-wrap:wrap">
+            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">Z${z.num} — ${z.label}</div>
+            ${gpioBadge}
+          </div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:3px">${z.trees} arbres · ${z.drippers}×${z.dripperFlow}L/h · <span style="color:var(--info);font-weight:700">${flow} L/h</span></div>
         </div>
         <span class="badge badge-off" id="rb-z${z.num}-badge">FERMÉE</span>
       </div>

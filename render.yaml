@@ -146,6 +146,10 @@ services:
         value: "24"
       - key: RELAY_ZONE_6_PIN
         value: "25"
+      - key: RELAY_ZONE_7_PIN
+        value: "5"
+      - key: RELAY_ZONE_8_PIN
+        value: "6"
       - key: TELEGRAM_BOT_TOKEN
         value: ""
       - key: TELEGRAM_CHAT_ID

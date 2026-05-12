@@ -240,7 +240,7 @@ last_relay_command_at = 0.0
 RELAY_ENABLED = env_bool("RELAY_ENABLED", True)
 RELAY_MAX_DURATION_MIN = max(1, env_int("RELAY_MAX_DURATION_MIN", 120))
 RELAY_MIN_INTERVAL_SEC = max(0, env_int("RELAY_MIN_INTERVAL_SEC", 10))
-RELAY_ZONES = list(range(1, 7))  # 6 zones par défaut
+RELAY_ZONES = list(range(1, 9))  # 8 zones (carte RUNCCI-YUN 8 canaux)
 relay_state: dict = {"zones": {}, "active_zones": [], "last_cmd": ""}
 
 
