@@ -120,6 +120,8 @@ EDGE_PUSH_STALE_SEC = max(10, env_int("EDGE_PUSH_STALE_SEC", 45))
 EDGE_AGENT_STALE_SEC = max(20, env_int("EDGE_AGENT_STALE_SEC", max(EDGE_PUSH_STALE_SEC, 180)))
 EDGE_WS_ENABLED = env_bool("EDGE_WS_ENABLED", True)
 EDGE_WS_HEARTBEAT_SEC = max(5, env_int("EDGE_WS_HEARTBEAT_SEC", 10))
+EDGE_WS_COMMAND_PUSH_SEC = max(0.2, env_float("EDGE_WS_COMMAND_PUSH_SEC", 0.25))
+EDGE_WS_RECEIVE_TIMEOUT_SEC = max(0.2, env_float("EDGE_WS_RECEIVE_TIMEOUT_SEC", 0.25))
 EDGE_COMMAND_TTL_SEC = max(30, env_int("EDGE_COMMAND_TTL_SEC", 300))
 EDGE_ACK_TIMEOUT_SEC = max(10, env_int("EDGE_ACK_TIMEOUT_SEC", 45))
 HISTORY_MAX_ITEMS = max(100, env_int("HISTORY_MAX_ITEMS", 2000))
@@ -2173,7 +2175,7 @@ if sock is not None:
         try:
             while True:
                 try:
-                    raw = ws.receive(timeout=1)
+                    raw = ws.receive(timeout=EDGE_WS_RECEIVE_TIMEOUT_SEC)
                 except TypeError:
                     raw = ws.receive()
                 if raw:
@@ -2184,7 +2186,7 @@ if sock is not None:
                     response = _handle_ws_message(body, str(agent_id))
                     if response:
                         _ws_send_json(ws, response)
-                if time.time() - last_command_push >= 1:
+                if time.time() - last_command_push >= EDGE_WS_COMMAND_PUSH_SEC:
                     commands = take_pending_commands_for_agent(str(agent_id), transport="websocket")
                     if commands:
                         _ws_send_json(ws, {"type": "commands", "success": True, "commands": commands, "count": len(commands), "server_time": local_now().isoformat()})

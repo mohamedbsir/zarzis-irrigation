@@ -57,9 +57,9 @@ Dans Render > Environment :
 EDGE_MODE=http_push
 EDGE_HOST=
 EDGE_PORT=502
-EDGE_PUSH_STALE_SEC=45
+EDGE_PUSH_STALE_SEC=10
 EDGE_COMMAND_TTL_SEC=300
-EDGE_ACK_TIMEOUT_SEC=45
+EDGE_ACK_TIMEOUT_SEC=10
 HISTORY_MAX_ITEMS=2000
 HISTORY_SAVE_MIN_INTERVAL_SEC=30
 API_TOKEN=mot_de_passe_long
@@ -68,7 +68,7 @@ APP_LOGIN_EMAIL=mohamedbsir@live.fr
 APP_LOGIN_PASSWORD_HASH=hash_pbkdf2_du_mot_de_passe
 APP_LOGIN_SESSION_SECRET=secret_long_aleatoire
 APP_LOGIN_REMEMBER_TTL_DAYS=30
-UPDATE_SEC=5
+UPDATE_SEC=2
 CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
 ENABLE_PLANNING=false
 PERSISTENT_STORAGE_ENABLED=false
@@ -313,19 +313,23 @@ Variables principales côté Render :
 ```txt
 EDGE_MODE=http_push
 EDGE_WS_ENABLED=true
-EDGE_WS_HEARTBEAT_SEC=10
-EDGE_AGENT_STALE_SEC=180
-EDGE_PUSH_STALE_SEC=180
+EDGE_WS_HEARTBEAT_SEC=5
+EDGE_WS_COMMAND_PUSH_SEC=0.25
+EDGE_WS_RECEIVE_TIMEOUT_SEC=0.25
+EDGE_AGENT_STALE_SEC=20
+EDGE_PUSH_STALE_SEC=10
 ```
 
 Variables principales côté Raspberry :
 
 ```txt
 EDGE_WS_ENABLED=true
-EDGE_HEARTBEAT_SEC=10
-EDGE_STATUS_PUSH_SEC=5
+EDGE_HEARTBEAT_SEC=5
+EDGE_STATUS_PUSH_SEC=2
 EDGE_COMMAND_POLL_SEC=1
 MODBUS_TIMEOUT_SEC=0.8
 ```
+
+Mode reactif recommande : l'interface relit l'etat toutes les 1 s, l'agent pousse la telemetrie toutes les 2 s, et les commandes WebSocket sont poussees par le serveur environ toutes les 0,25 s. Garder `COMMAND_RESTART_DELAY_SEC=60` pour proteger les pompes contre les redemarrages rapides.
 
 Ne pas ouvrir le port Modbus 502 sur Internet. Le WebSocket sort du Raspberry vers Render, donc il reste compatible avec box 4G, fibre ou ADSL derrière NAT.

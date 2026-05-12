@@ -2971,7 +2971,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       </div>
       <div class="conn-group">
         <div class="conn-label">Intervalle (s)</div>
-        <input type="number" class="conn-input narrow" id="poll-interval" value="5">
+        <input type="number" class="conn-input narrow" id="poll-interval" value="1" min="1" max="30">
       </div>
       <div class="conn-group">
         <div class="conn-label">Jeton avancé optionnel</div>
@@ -3287,7 +3287,7 @@ async function validateStoredSession() {
   try {
     const res = await fetch(`${apiUrl}/api/auth/session`, {
       headers: apiHeaders(),
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(3000)
     });
     const data = await res.json();
     if(!res.ok || !data.authenticated) throw new Error(data.error || 'session invalide');
@@ -3319,7 +3319,7 @@ async function checkLogin() {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({email, password, remember}),
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(5000)
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || !data.success) throw new Error(data.error || 'Connexion refusée');
@@ -3425,7 +3425,7 @@ async function autoConnect() {
   try {
     const r = await fetch(`${apiUrl}/api/ping`, {
       headers: apiHeaders(),
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(2000)
     });
     const d = await r.json();
     if(d.status === 'ok') {
@@ -3439,7 +3439,7 @@ async function autoConnect() {
       if(d.auth_required && !apiToken) addLog('⚠️ Token manquant', 'warn');
       if(simInterval){ clearInterval(simInterval); simInterval = null; }
       if(fetchInterval) clearInterval(fetchInterval);
-      const interval = parseInt(document.getElementById('poll-interval')?.value) || 5;
+      const interval = Math.max(1, parseInt(document.getElementById('poll-interval')?.value) || 1);
       fetchInterval = setInterval(fetchRealData, interval * 1000);
       fetchRealData();
       fetchCloudPlanningStatus();
@@ -3458,7 +3458,7 @@ async function autoConnect() {
 function _scheduleAutoReconnect() {
   if(connected) return;
   // Backoff: 5s → 10s → 20s → 30s max
-  const delays = [5000, 10000, 20000, 30000];
+  const delays = [1000, 2000, 3000, 5000, 10000];
   const delay = delays[Math.min(_autoConnectRetry, delays.length - 1)];
   _autoConnectRetry++;
   setTimeout(() => {
@@ -3480,7 +3480,7 @@ setInterval(() => {
     _autoConnectRetry = 0;
     autoConnect();
   }
-}, 30000);
+}, 5000);
 
 // ============ CLOCK ============
 function updateClock() {
@@ -5995,7 +5995,7 @@ function updateConnStatus(text, cls) {
 
 function connectCloud() {
   const url = document.getElementById('cloud-url').value.trim();
-  const interval = parseInt(document.getElementById('poll-interval').value)||5;
+  const interval = Math.max(1, parseInt(document.getElementById('poll-interval').value)||1);
   const manualToken = document.getElementById('api-token')?.value.trim() || '';
   if(manualToken) {
     apiToken = manualToken;
@@ -6009,7 +6009,7 @@ function connectCloud() {
   updateConnStatus('CONNEXION...', 'badge-warn');
   addLog(`Connexion serveur cloud → ${apiUrl}`, 'info');
 
-  fetch(`${apiUrl}/api/ping`, {headers: apiHeaders(), signal:AbortSignal.timeout(10000)})
+  fetch(`${apiUrl}/api/ping`, {headers: apiHeaders(), signal:AbortSignal.timeout(3000)})
     .then(r=>r.json())
     .then(d => {
       if(d.status==='ok') {
@@ -6100,7 +6100,7 @@ function handleCommandAcks(acks) {
 }
 
 function fetchRealData() {
-  fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
+  fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(2500)})
     .then(r=>r.json())
     .then(d => {
       handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
