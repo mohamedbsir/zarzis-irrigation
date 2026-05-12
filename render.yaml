@@ -158,3 +158,15 @@ services:
         value: "error,warning"
       - key: API_TOKEN
         generateValue: true
+      - key: APP_LOGIN_ENABLED
+        value: "true"
+      - key: APP_LOGIN_EMAIL
+        value: mohamedbsir@live.fr
+      - key: APP_LOGIN_PASSWORD_HASH
+        value: "pbkdf2_sha256$260000$HPLRvA2gpozBXgJGnqVgiQ$WpOCM3cpTPkNwumc7SdMZ51VSdIFNcTwEvsmuy4Nph8"
+      - key: APP_LOGIN_SESSION_SECRET
+        generateValue: true
+      - key: APP_LOGIN_SESSION_TTL_HOURS
+        value: "12"
+      - key: APP_LOGIN_REMEMBER_TTL_DAYS
+        value: "30"
