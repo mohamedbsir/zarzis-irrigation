@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest" id="manifest-link">
 <link rel="apple-touch-icon" href="icône-192.png">
 <link rel="icon" type="image/svg+xml" href="icône.svg">
-<title>Zarzis SunNode — Supervision Irrigation Solaire v9.1</title>
+<title>Zarzis SunNode — Supervision Irrigation Solaire v9.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
@@ -123,14 +123,6 @@ body::before {
 }
 .login-btn:hover { background: #00ff8a; box-shadow: 0 0 30px rgba(0,232,122,0.4); }
 .login-error { color: var(--red); font-family: var(--mono); font-size: 12px; margin-top: 12px; display: none; }
-.login-email { letter-spacing: 0; font-size: 15px; text-transform: lowercase; }
-.login-remember {
-  display: flex; align-items: center; justify-content: center; gap: 9px;
-  color: var(--text-mid); font-size: 12px; margin: 2px 0 18px;
-  cursor: pointer; user-select: none;
-}
-.login-remember input { accent-color: var(--green); }
-.login-hint { color: var(--text-dim); font-size: 11px; margin-top: 14px; line-height: 1.5; }
 
 /* ============ HEADER ============ */
 header {
@@ -737,13 +729,10 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
   <div class="login-box">
     <div class="login-logo">🌱</div>
     <div class="login-title">Zarzis Pro</div>
-    <p class="login-sub">SUPERVISION IRRIGATION · ACCÈS PRIVÉ</p>
-    <input type="email" class="login-input login-email" id="login-email" placeholder="email" autocomplete="username" onkeydown="if(event.key==='Enter')checkLogin()">
-    <input type="password" class="login-input" id="login-pw" placeholder="mot de passe" maxlength="96" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkLogin()">
-    <label class="login-remember"><input type="checkbox" id="login-remember" checked> Rester connecté</label>
-    <button class="login-btn" id="login-submit" onclick="checkLogin()">SE CONNECTER</button>
-    <div class="login-error" id="login-err">Email ou mot de passe incorrect</div>
-    <div class="login-hint">Session protégée côté serveur. Le mot de passe n'est jamais stocké dans cette application.</div>
+    <p class="login-sub">SUPERVISION IRRIGATION · MODE EXPLOITATION SÉCURISÉ</p>
+    <input type="password" class="login-input" id="login-pw" placeholder="••••••" maxlength="32" onkeydown="if(event.key==='Enter')checkLogin()">
+    <button class="login-btn" onclick="checkLogin()">ENTRER</button>
+    <div class="login-error" id="login-err">❌ Mot de passe incorrect</div>
   </div>
 </div>
 
@@ -1516,41 +1505,35 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 <div class="tab-content" id="tab-irrigation">
 <main>
 
-  <!-- MODULE IRRIGATION 8 ZONES -->
+  <!-- RAIN BIRD CONNEXION -->
   <div class="card card-full">
     <div class="card-header">
       <div>
-        <div class="card-title">💧 Module Irrigation — 8 Zones</div>
-        <div class="card-subtitle" id="rb-card-subtitle">Pilotage carte relais RUNCCI-YUN via Raspberry Pi GPIO</div>
+        <div class="card-title">🌧️ Électrovannes — Carte Relais GPIO</div>
+        <div class="card-subtitle" id="rb-card-subtitle">Configuration côté serveur · zones exploitation · Module LNK</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openZonesConfigModal()">⚙️ ZONES</button>
         <span class="badge badge-warn" id="rb-badge">EN ATTENTE</span>
-        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="rbRefreshStatus()" title="Rafraîchir">🔄</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="rbRefreshStatus()">🔄</button>
       </div>
     </div>
 
-    <!-- BLOC ÉTAT AGENT + GPIO -->
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
-      <div>
-        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Agent Raspberry</div>
-        <div id="rb-agent-status" style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text-dim)">⏳ ATTENTE</div>
-      </div>
-      <div>
-        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Carte relais</div>
-        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green)">RUNCCI-YUN 8CH</div>
-      </div>
-      <div>
-        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Mode déclenchement</div>
-        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--info)">Actif bas (LOW)</div>
-      </div>
-      <div>
-        <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Alimentation</div>
-        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--warn)">24V AC · 4A</div>
+    <!-- IP Connexion -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📡 Agent Raspberry — Carte Relais</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:4px">Pins GPIO (défaut: 17,27,22,23,24,25)</div>
+          <input type="text" id="rb-ip" placeholder="192.168.1.50" style="background:var(--bg);border:1px solid var(--border);color:var(--green);font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:6px;width:160px;outline:none">
+        </div>
+        <button class="btn btn-green" onclick="rbConnect()">CONNECTER</button>
+        <button class="btn btn-ghost" onclick="rbTestPing()" style="font-size:12px">🔍 PING</button>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);flex:1;min-width:200px" id="rb-conn-msg">→ Trouver l'IP dans ton routeur WiFi</span>
       </div>
     </div>
 
-    <!-- PROGRAMMES INTERNES (MODIFIABLES) -->
+    <!-- PROGRAMMES RAIN BIRD INTERNES (MODIFIABLES) -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px">📋 Séquences irrigation automatique</div>
       <button onclick="resetRbPrograms()" style="font-size:9px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text-dim);font-family:var(--mono);cursor:pointer">↺ Reset</button>
@@ -1586,7 +1569,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="mini-metric"><div class="lbl">Débit total</div><div class="val info" id="irrig-flow">0<span style="font-size:11px">L/h</span></div></div>
       <div class="mini-metric"><div class="lbl">Session</div><div class="val" id="irrig-timer">00:00</div></div>
       <div class="mini-metric"><div class="lbl">Volume</div><div class="val" id="irrig-vol">0<span style="font-size:11px">L</span></div></div>
-      <div class="mini-metric"><div class="lbl">Zones actives</div><div class="val" id="irrig-active">0/8</div></div>
+      <div class="mini-metric"><div class="lbl">Zones actives</div><div class="val" id="irrig-active">0/6</div></div>
     </div>
   </div>
 
@@ -2971,14 +2954,14 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       </div>
       <div class="conn-group">
         <div class="conn-label">Intervalle (s)</div>
-        <input type="number" class="conn-input narrow" id="poll-interval" value="1" min="1" max="30">
+        <input type="number" class="conn-input narrow" id="poll-interval" value="5">
       </div>
       <div class="conn-group">
-        <div class="conn-label">Jeton avancé optionnel</div>
-        <input type="password" class="conn-input wide" id="api-token" placeholder="Laisser vide avec la connexion email">
+        <div class="conn-label">Token API</div>
+        <input type="password" class="conn-input wide" id="api-token" placeholder="API_TOKEN Render">
         <label style="display:flex;align-items:center;gap:7px;margin-top:7px;font-size:10px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase">
-          <input type="checkbox" id="remember-token" style="accent-color:var(--green)" disabled>
-          Stockage permanent désactivé pour les jetons avancés
+          <input type="checkbox" id="remember-token" style="accent-color:var(--green)">
+          Mémoriser sur cet appareil
         </label>
       </div>
     </div>
@@ -3004,13 +2987,13 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
 
     <div class="divider"></div>
-    <div class="metric-label" style="margin-bottom:8px">Compte connecté</div>
+    <div class="metric-label" style="margin-bottom:8px">Mot de passe local</div>
     <div class="conn-row">
       <div class="conn-group">
-        <div class="conn-label">Identifiant</div>
-        <input type="email" class="conn-input wide" id="account-email" value="mohamedbsir@live.fr" readonly>
+        <div class="conn-label">Nouveau mot de passe</div>
+        <input type="password" class="conn-input" id="new-pw" placeholder="Nouveau MDP" style="width:160px">
       </div>
-      <button class="btn btn-ghost" style="align-self:flex-end" onclick="changePw()">Sécurité</button>
+      <button class="btn btn-ghost" style="align-self:flex-end" onclick="changePw()">Changer</button>
     </div>
 
 
@@ -3074,15 +3057,8 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 <script>
 // ============ CONFIG ============
 let apiUrl = localStorage.getItem('zarzis_api') || 'https://zarzis-irrigation-1.onrender.com';
-const SESSION_TOKEN_KEY = 'zarzis_session_token_session';
-const REMEMBER_TOKEN_KEY = 'zarzis_session_token_remembered';
-const REMEMBER_EMAIL_KEY = 'zarzis_login_email';
-let apiToken = sessionStorage.getItem(SESSION_TOKEN_KEY) || localStorage.getItem(REMEMBER_TOKEN_KEY) || '';
-let currentUserEmail = localStorage.getItem(REMEMBER_EMAIL_KEY) || 'mohamedbsir@live.fr';
+let apiToken = sessionStorage.getItem('zarzis_api_token_session') || localStorage.getItem('zarzis_api_token_remembered') || '';
 localStorage.removeItem('zarzis_api_token');
-localStorage.removeItem('zarzis_api_token_remembered');
-localStorage.removeItem('zarzis_pw');
-localStorage.removeItem('zarzis_pw_hash');
 let connected = false;
 let simInterval = null;
 let fetchInterval = null;
@@ -3096,6 +3072,7 @@ let history_vdc = [];
 let history_power = [];
 let history_pressure = [];
 let chartVdc, chartPower, chartPressure;
+const DEFAULT_PASSWORD = 'zarzis2026';
 const RESTART_DELAY_MS = 60000;
 const ENABLE_PLANNING_UI = false;
 let lastStopAt = { forage: 0, wilo: 0 };
@@ -3103,7 +3080,6 @@ let maintenanceMode = false;
 let activeAlarms = {};
 let seenCommandAckIds = new Set();
 let commandAckNotifyAfter = Date.now() - 30000;
-let appInitialized = false;
 
 function apiHeaders(extra={}) {
   const headers = {'Content-Type':'application/json', ...extra};
@@ -3129,14 +3105,12 @@ async function postApiJson(path, payload={}, timeout=5000) {
 
 // Zones irrigation — CONFIGURATION MODIFIABLE
 const DEFAULT_ZONES = [
-  { num:1, label:'Grands A', type:'grand', trees:30, drippers:4, dripperFlow:16, gpio:17 },
-  { num:2, label:'Grands B', type:'grand', trees:30, drippers:4, dripperFlow:16, gpio:27 },
-  { num:3, label:'Grands C', type:'grand', trees:30, drippers:4, dripperFlow:16, gpio:22 },
-  { num:4, label:'Petits A', type:'petit', trees:22, drippers:2, dripperFlow:8,  gpio:23 },
-  { num:5, label:'Petits B', type:'petit', trees:22, drippers:2, dripperFlow:8,  gpio:24 },
-  { num:6, label:'Petits C', type:'petit', trees:22, drippers:2, dripperFlow:8,  gpio:25 },
-  { num:7, label:'Zone 7',   type:'petit', trees:0,  drippers:2, dripperFlow:8,  gpio:5  },
-  { num:8, label:'Zone 8',   type:'petit', trees:0,  drippers:2, dripperFlow:8,  gpio:6  },
+  { num:1, label:'Grands A', type:'grand', trees:30, drippers:4, dripperFlow:16 },
+  { num:2, label:'Grands B', type:'grand', trees:30, drippers:4, dripperFlow:16 },
+  { num:3, label:'Grands C', type:'grand', trees:30, drippers:4, dripperFlow:16 },
+  { num:4, label:'Petits A', type:'petit', trees:22, drippers:2, dripperFlow:8 },
+  { num:5, label:'Petits B', type:'petit', trees:22, drippers:2, dripperFlow:8 },
+  { num:6, label:'Petits C', type:'petit', trees:22, drippers:2, dripperFlow:8 },
 ];
 
 // Charger config depuis localStorage ou utiliser défaut
@@ -3255,118 +3229,54 @@ function saveRbPrograms() {
 let activeZones = new Set();
 let zoneTimes = {};
 
-// ============ LOGIN / SESSION SERVEUR ============
-function showLoginError(message) {
-  const err = document.getElementById('login-err');
-  if(!err) return;
-  err.textContent = message || 'Email ou mot de passe incorrect';
-  err.style.display = 'block';
-  setTimeout(() => { err.style.display = 'none'; }, 4000);
+// ============ LOGIN / ACCÈS LOCAL ============
+async function sha256(text) {
+  if(!window.crypto || !crypto.subtle) return text;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-function setLoginBusy(isBusy) {
-  const btn = document.getElementById('login-submit');
-  if(!btn) return;
-  btn.disabled = !!isBusy;
-  btn.textContent = isBusy ? 'CONNEXION...' : 'SE CONNECTER';
-}
-
-function persistSession(token, email, remember) {
-  apiToken = token || '';
-  currentUserEmail = email || currentUserEmail;
-  sessionStorage.setItem(SESSION_TOKEN_KEY, apiToken);
-  localStorage.setItem(REMEMBER_EMAIL_KEY, currentUserEmail);
-  if(remember) localStorage.setItem(REMEMBER_TOKEN_KEY, apiToken);
-  else localStorage.removeItem(REMEMBER_TOKEN_KEY);
-  localStorage.removeItem('zarzis_api_token');
-  localStorage.removeItem('zarzis_api_token_remembered');
-}
-
-async function validateStoredSession() {
-  if(!apiToken) return false;
-  try {
-    const res = await fetch(`${apiUrl}/api/auth/session`, {
-      headers: apiHeaders(),
-      signal: AbortSignal.timeout(3000)
-    });
-    const data = await res.json();
-    if(!res.ok || !data.authenticated) throw new Error(data.error || 'session invalide');
-    currentUserEmail = data.user?.email || currentUserEmail;
-    localStorage.setItem(REMEMBER_EMAIL_KEY, currentUserEmail);
-    return true;
-  } catch(e) {
-    sessionStorage.removeItem(SESSION_TOKEN_KEY);
-    localStorage.removeItem(REMEMBER_TOKEN_KEY);
-    apiToken = '';
-    return false;
+async function getPasswordHash() {
+  let hash = localStorage.getItem('zarzis_pw_hash');
+  if(!hash) {
+    const legacy = localStorage.getItem('zarzis_pw') || DEFAULT_PASSWORD;
+    hash = await sha256(legacy);
+    localStorage.setItem('zarzis_pw_hash', hash);
+    localStorage.removeItem('zarzis_pw');
   }
+  return hash;
 }
 
 async function checkLogin() {
-  const emailEl = document.getElementById('login-email');
-  const pwEl = document.getElementById('login-pw');
-  const rememberEl = document.getElementById('login-remember');
-  const email = (emailEl?.value || '').trim().toLowerCase();
-  const password = pwEl?.value || '';
-  const remember = !!rememberEl?.checked;
-  if(!email || !password) {
-    showLoginError('Email et mot de passe requis');
-    return;
-  }
-  setLoginBusy(true);
-  try {
-    const res = await fetch(`${apiUrl}/api/auth/login`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email, password, remember}),
-      signal: AbortSignal.timeout(5000)
-    });
-    const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.success) throw new Error(data.error || 'Connexion refusée');
-    persistSession(data.session_token, data.user?.email || email, remember);
-    if(pwEl) pwEl.value = '';
+  const pw = document.getElementById('login-pw').value;
+  const hash = await getPasswordHash();
+  const ok = (await sha256(pw)) === hash;
+  if(ok) {
     document.getElementById('login-screen').style.display = 'none';
     initApp();
-  } catch(e) {
-    showLoginError(e.message || 'Connexion impossible');
-    if(pwEl) pwEl.value = '';
-  } finally {
-    setLoginBusy(false);
-  }
-}
-
-async function resumeLoginIfPossible() {
-  const emailEl = document.getElementById('login-email');
-  if(emailEl) emailEl.value = currentUserEmail;
-  if(await validateStoredSession()) {
-    document.getElementById('login-screen').style.display = 'none';
-    initApp();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pw').value = '';
+    setTimeout(() => document.getElementById('login-err').style.display = 'none', 3000);
   }
 }
 
 function logout() {
-  apiToken = '';
   maintenanceMode = false;
-  connected = false;
-  if(fetchInterval){clearInterval(fetchInterval);fetchInterval=null;}
-  sessionStorage.removeItem(SESSION_TOKEN_KEY);
-  localStorage.removeItem(REMEMBER_TOKEN_KEY);
-  stopSharedStateSync();
   updateSafetyPanel();
   document.getElementById('login-screen').style.display = 'flex';
-  const emailEl = document.getElementById('login-email');
-  const pwEl = document.getElementById('login-pw');
-  if(emailEl) emailEl.value = currentUserEmail;
-  if(pwEl) pwEl.value = '';
+  document.getElementById('login-pw').value = '';
 }
 
-function changePw() {
-  toast('Mot de passe géré côté serveur Render', 'info');
-  addLog('Changement mot de passe: modifier APP_LOGIN_PASSWORD_HASH côté Render', 'info');
+async function changePw() {
+  const nw = document.getElementById('new-pw').value;
+  if(nw.length < 6) { toast('⚠️ Minimum 6 caractères', 'warn'); return; }
+  localStorage.setItem('zarzis_pw_hash', await sha256(nw));
+  localStorage.removeItem('zarzis_pw');
+  document.getElementById('new-pw').value = '';
+  toast('✅ Mot de passe local changé', 'ok');
+  addLog('Mot de passe local modifié', 'warn');
 }
-
-document.addEventListener('DOMContentLoaded', resumeLoginIfPossible);
-if(document.readyState !== 'loading') resumeLoginIfPossible();
 
 // ============ INIT ============
 function applyFeatureFlags() {
@@ -3379,19 +3289,12 @@ function applyFeatureFlags() {
 }
 
 function initApp() {
-  if(appInitialized) {
-    if(apiUrl) autoConnect();
-    return;
-  }
-  appInitialized = true;
   const cloudInput = document.getElementById('cloud-url');
   const tokenInput = document.getElementById('api-token');
   const rememberInput = document.getElementById('remember-token');
-  const accountEmailInput = document.getElementById('account-email');
   if(cloudInput) cloudInput.value = apiUrl;
-  if(tokenInput) tokenInput.value = '';
-  if(rememberInput) rememberInput.checked = false;
-  if(accountEmailInput) accountEmailInput.value = currentUserEmail;
+  if(tokenInput) tokenInput.value = apiToken;
+  if(rememberInput) rememberInput.checked = localStorage.getItem('zarzis_remember_token_pref') !== 'off';
   applyFeatureFlags();
   initSolarBar();
   initExploitationModule();
@@ -3425,7 +3328,7 @@ async function autoConnect() {
   try {
     const r = await fetch(`${apiUrl}/api/ping`, {
       headers: apiHeaders(),
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(4000)
     });
     const d = await r.json();
     if(d.status === 'ok') {
@@ -3439,7 +3342,7 @@ async function autoConnect() {
       if(d.auth_required && !apiToken) addLog('⚠️ Token manquant', 'warn');
       if(simInterval){ clearInterval(simInterval); simInterval = null; }
       if(fetchInterval) clearInterval(fetchInterval);
-      const interval = Math.max(1, parseInt(document.getElementById('poll-interval')?.value) || 1);
+      const interval = parseInt(document.getElementById('poll-interval')?.value) || 5;
       fetchInterval = setInterval(fetchRealData, interval * 1000);
       fetchRealData();
       fetchCloudPlanningStatus();
@@ -3458,7 +3361,7 @@ async function autoConnect() {
 function _scheduleAutoReconnect() {
   if(connected) return;
   // Backoff: 5s → 10s → 20s → 30s max
-  const delays = [1000, 2000, 3000, 5000, 10000];
+  const delays = [5000, 10000, 20000, 30000];
   const delay = delays[Math.min(_autoConnectRetry, delays.length - 1)];
   _autoConnectRetry++;
   setTimeout(() => {
@@ -3480,7 +3383,7 @@ setInterval(() => {
     _autoConnectRetry = 0;
     autoConnect();
   }
-}, 5000);
+}, 30000);
 
 // ============ CLOCK ============
 function updateClock() {
@@ -3727,7 +3630,7 @@ function initZones() {
   // Init Relais GPIO zones grid
   const grid = document.getElementById('rb-zones-grid');
   const subtitle = document.getElementById('rb-card-subtitle');
-  if(subtitle) subtitle.textContent = `${zoneConfig.length} zones · Pilotage carte relais RUNCCI-YUN 8 canaux`;
+  if(subtitle) subtitle.textContent = `Configuration côté serveur · ${zoneConfig.length} zones exploitation · Module LNK`;
   if(!grid) return;
   grid.innerHTML = '';
   zoneConfig.forEach(z => {
@@ -3735,15 +3638,11 @@ function initZones() {
     div.id = `rb-zone-${z.num}`;
     div.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;transition:all 0.3s';
     const flow = getZoneFlow(z);
-    const gpioBadge = z.gpio ? `<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px;margin-left:6px">GPIO ${z.gpio}</span>` : '';
     div.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;flex-wrap:wrap">
-            <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">Z${z.num} — ${z.label}</div>
-            ${gpioBadge}
-          </div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:3px">${z.trees} arbres · ${z.drippers}×${z.dripperFlow}L/h · <span style="color:var(--info);font-weight:700">${flow} L/h</span></div>
+        <div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">Zone ${z.num} — ${z.label}</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-top:2px">${z.trees} arbres · ${z.drippers}×${z.dripperFlow}L/h · ${flow} L/h</div>
         </div>
         <span class="badge badge-off" id="rb-z${z.num}-badge">FERMÉE</span>
       </div>
@@ -5878,6 +5777,43 @@ function recordPumpStop(pump) {
   lastStopAt[pump] = Date.now();
 }
 
+function controlInverter(action){
+  if(action !== 'stop'){
+    const guard = canExecutePumpCommand('invt', 'on');
+    if(!guard.ok){ toast('⛔ Variateur refusé', 'err'); addLog(`⛔ INVT ${action} refusé — ${guard.reason}`, 'err'); return; }
+  }
+  const ind = document.getElementById('ctrl-invt-ind');
+  const st = document.getElementById('ctrl-invt-state');
+  const on = action !== 'stop';
+  if(ind) ind.className = 'pump-indicator ' + (on?'on':'off');
+  if(st){ st.textContent = action==='forward'?'MARCHE AVANT':action==='reverse'?'MARCHE ARRIÈRE':'VEILLE'; st.style.color = on?'var(--green)':'var(--text-dim)'; }
+  toast(action==='stop'?'■ INVT arrêté':action==='reverse'?'↩ INVT marche arrière':'▶ INVT marche avant', action==='stop'?'warn':'ok');
+  addLog(`Commande INVT : ${action}`, action==='stop'?'warn':'ok');
+  if(connected) fetch(`${apiUrl}/api/inverter`, {method:'POST', headers:apiHeaders(), body:JSON.stringify({action})}).catch(e=>addLog('Erreur commande INVT: '+e.message,'err'));
+}
+
+// ============ PUMP CONTROL ============
+function controlPump(pump, action) {
+  const guard = canExecutePumpCommand(pump, action);
+  if(!guard.ok) {
+    toast('⛔ Commande refusée', 'err');
+    addLog(`⛔ Commande ${pump} ${action} refusée — ${guard.reason}`, 'err');
+    return;
+  }
+
+  pumpStates[pump] = action === 'on';
+  if(action === 'off') recordPumpStop(pump);
+  const ind = document.getElementById(`ctrl-${pump}-ind`);
+  const st  = document.getElementById(`ctrl-${pump}-state`);
+  const isOn = action === 'on';
+  ind.className = 'pump-indicator '+(isOn?'on':'off');
+  st.textContent = isOn ? 'EN MARCHE' : (pump==='forage'?'ARRÊTÉE':'ARRÊTÉ');
+  st.style.color = isOn?'var(--green)':'var(--text-dim)';
+  toast(`${pump==='forage'?'💧 Forage':'⚙️ Wilo'}: ${isOn?'DÉMARRAGE ▶':'ARRÊT ■'}`, isOn?'ok':'warn');
+  addLog(`${isOn?'▶ DÉMARRAGE':'■ ARRÊT'} ${pump==='forage'?'Pompe Forage':'Surpresseur Wilo'}`, isOn?'ok':'warn');
+  sendModbusCmd(pump, action);
+}
+
 function confirmAction(action) {
   pendingAction = action;
   const overlay = document.getElementById('confirm-overlay');
@@ -5995,21 +5931,23 @@ function updateConnStatus(text, cls) {
 
 function connectCloud() {
   const url = document.getElementById('cloud-url').value.trim();
-  const interval = Math.max(1, parseInt(document.getElementById('poll-interval').value)||1);
-  const manualToken = document.getElementById('api-token')?.value.trim() || '';
-  if(manualToken) {
-    apiToken = manualToken;
-    sessionStorage.setItem(SESSION_TOKEN_KEY, apiToken);
-    localStorage.removeItem(REMEMBER_TOKEN_KEY);
-  }
+  const interval = parseInt(document.getElementById('poll-interval').value)||5;
+  apiToken = document.getElementById('api-token')?.value.trim() || '';
   apiUrl = url.startsWith('http') ? url : `https://${url}`;
   localStorage.setItem('zarzis_api', apiUrl);
+  sessionStorage.setItem('zarzis_api_token_session', apiToken);
   localStorage.removeItem('zarzis_api_token');
-  localStorage.removeItem('zarzis_api_token_remembered');
+  if(document.getElementById('remember-token')?.checked) {
+    localStorage.setItem('zarzis_api_token_remembered', apiToken);
+    localStorage.setItem('zarzis_remember_token_pref', 'on');
+  } else {
+    localStorage.removeItem('zarzis_api_token_remembered');
+    localStorage.setItem('zarzis_remember_token_pref', 'off');
+  }
   updateConnStatus('CONNEXION...', 'badge-warn');
   addLog(`Connexion serveur cloud → ${apiUrl}`, 'info');
 
-  fetch(`${apiUrl}/api/ping`, {headers: apiHeaders(), signal:AbortSignal.timeout(3000)})
+  fetch(`${apiUrl}/api/ping`, {headers: apiHeaders(), signal:AbortSignal.timeout(10000)})
     .then(r=>r.json())
     .then(d => {
       if(d.status==='ok') {
@@ -6043,7 +5981,11 @@ function disconnectCloud() {
   if(fetchInterval){clearInterval(fetchInterval);fetchInterval=null;}
   connected = false;
   sessionStorage.removeItem('zarzis_api_token_session');
-  localStorage.removeItem('zarzis_api_token_remembered');
+  if(!document.getElementById('remember-token')?.checked) {
+    apiToken = '';
+    const tokenInput = document.getElementById('api-token');
+    if(tokenInput) tokenInput.value = '';
+  }
   stopSharedStateSync();
   updateConnStatus('DÉCONNECTÉ', 'badge-off');
   toast('🔌 Déconnecté', 'warn');
@@ -6100,7 +6042,7 @@ function handleCommandAcks(acks) {
 }
 
 function fetchRealData() {
-  fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(2500)})
+  fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(5000)})
     .then(r=>r.json())
     .then(d => {
       handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
@@ -6125,6 +6067,22 @@ function fetchRealData() {
     })
     .catch(e => { setAlarm('COM', 'Perte communication serveur', false); addLog(`⚠️ Erreur lecture: ${e.message}`, 'warn'); });
 }
+
+function sendModbusCmd(pump, action) {
+  addLog(`[CMD] ${pump} → ${action.toUpperCase()}`, 'cmd');
+  if(!connected) { addLog('[SIM] Commande simulée localement', 'info'); return; }
+  fetch(`${apiUrl}/api/control`, {
+    method:'POST', headers: apiHeaders(),
+    body:JSON.stringify({pump, device:pump, action}), signal:AbortSignal.timeout(5000)
+  })
+  .then(r=>r.json())
+  .then(d => {
+    if(d.success) { toast(`✅ ${pump} ${action.toUpperCase()}`, 'ok'); addLog(`✅ Modbus: ${pump} ${action}`, 'ok'); }
+    else addLog(`❌ Erreur Modbus: ${d.error}`, 'err');
+  })
+  .catch(e => addLog(`❌ Erreur commande: ${e.message}`, 'err'));
+}
+
 
 function setPumpControlStateLocal(pump, action) {
   pumpStates[pump] = action === 'on';

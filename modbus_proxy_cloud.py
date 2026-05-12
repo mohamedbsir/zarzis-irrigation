@@ -13,9 +13,6 @@ import json
 import logging
 import os
 import re
-import base64
-import hashlib
-import hmac
 import threading
 import time
 import unicodedata
@@ -35,52 +32,29 @@ except Exception:  # WebSocket optionnel: l'ancien HTTP PUSH reste disponible
     Sock = None
 
 
-ENV_ALIASES = {
-    "EDGE_MODE": ("G781_MODE",),
-    "EDGE_HOST": ("G781_HOST",),
-    "EDGE_PORT": ("G781_PORT",),
-    "EDGE_PUSH_STALE_SEC": ("G781_HTTP_PUSH_STALE_SEC",),
-    "EDGE_COMMAND_TTL_SEC": ("G781_COMMAND_TTL_SEC",),
-    "EDGE_ACK_TIMEOUT_SEC": ("G781_COMMAND_ACK_TIMEOUT_SEC",),
-    "ALLOW_REMOTE_CONNECT": ("ALLOW_REMOTE_G781_CONNECT",),
-}
-
-
-def env_value(name: str, default=None):
-    for key in (name, *ENV_ALIASES.get(name, ())):
-        value = os.environ.get(key)
-        if value is not None and str(value).strip() != "":
-            return value
-    return default
-
-
-def env_str(name: str, default: str = "") -> str:
-    return str(env_value(name, default))
-
-
 def env_bool(name: str, default: bool = False) -> bool:
-    value = env_value(name)
+    value = os.environ.get(name)
     if value is None or str(value).strip() == "":
         return default
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def env_int(name: str, default: int) -> int:
-    value = env_value(name)
+    value = os.environ.get(name)
     if value is None or str(value).strip() == "":
         return default
     return int(str(value).strip(), 0)
 
 
 def env_float(name: str, default: float) -> float:
-    value = env_value(name)
+    value = os.environ.get(name)
     if value is None or str(value).strip() == "":
         return default
     return float(str(value).strip().replace(",", "."))
 
 
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.12-zarzis-auth-relay-safe-v9.1"
+APP_VERSION = "2026.05.11-zarzis-ws-localbrain-v9.0"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
@@ -88,19 +62,13 @@ APP_STATE_FILE = Path(os.environ.get("APP_STATE_FILE", str(DATA_DIR / "app_state
 HISTORY_FILE = Path(os.environ.get("HISTORY_FILE", str(DATA_DIR / "history_zarzis.json")))
 PERSISTENT_STORAGE_ENABLED = env_bool("PERSISTENT_STORAGE_ENABLED", False)
 
-EDGE_MODE = env_str("EDGE_MODE", "http_push").strip().lower()
-EDGE_HOST = env_str("EDGE_HOST", "")
-EDGE_PORT = env_int("EDGE_PORT", 502)
+EDGE_MODE = os.environ.get("EDGE_MODE", "http_push").strip().lower()
+EDGE_HOST = os.environ.get("EDGE_HOST", "")
+EDGE_PORT = int(os.environ.get("EDGE_PORT", "502"))
 SERVER_PORT = int(os.environ.get("PORT", "8080"))
 UPDATE_SEC = max(2, int(os.environ.get("UPDATE_SEC", "5")))
 PLANNING_POLL_SEC = max(5, int(os.environ.get("PLANNING_POLL_SEC", "10")))
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
-APP_LOGIN_ENABLED = env_bool("APP_LOGIN_ENABLED", True)
-APP_LOGIN_EMAIL = env_str("APP_LOGIN_EMAIL", "mohamedbsir@live.fr").strip().lower()
-APP_LOGIN_PASSWORD_HASH = env_str("APP_LOGIN_PASSWORD_HASH", "").strip()
-APP_LOGIN_SESSION_SECRET = env_str("APP_LOGIN_SESSION_SECRET", API_TOKEN or APP_LOGIN_PASSWORD_HASH).strip()
-APP_LOGIN_SESSION_TTL_HOURS = max(1, env_int("APP_LOGIN_SESSION_TTL_HOURS", 12))
-APP_LOGIN_REMEMBER_TTL_DAYS = max(1, env_int("APP_LOGIN_REMEMBER_TTL_DAYS", 30))
 CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "*").split(",") if origin.strip()] or ["*"]
 LOCAL_TZ_NAME = os.environ.get("LOCAL_TZ", "Africa/Tunis").strip() or "Africa/Tunis"
 try:
@@ -109,9 +77,9 @@ except Exception:
     LOCAL_TZ = timezone.utc
     LOCAL_TZ_NAME = "UTC"
 
-SERVER_SAFETY_ENABLED = env_bool("SERVER_SAFETY_ENABLED", True)
-ALLOW_PARAM_WRITE = env_bool("ALLOW_PARAM_WRITE", False)
-MODBUS_REGISTERS_VALIDATED = env_bool("MODBUS_REGISTERS_VALIDATED", False)
+SERVER_SAFETY_ENABLED = os.environ.get("SERVER_SAFETY_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
+ALLOW_PARAM_WRITE = os.environ.get("ALLOW_PARAM_WRITE", "false").strip().lower() not in {"0", "false", "no", "off"}
+MODBUS_REGISTERS_VALIDATED = os.environ.get("MODBUS_REGISTERS_VALIDATED", "false").strip().lower() in {"1", "true", "yes", "on"}
 ENABLE_PLANNING = env_bool("ENABLE_PLANNING", False)
 ALLOW_REMOTE_CONNECT = env_bool("ALLOW_REMOTE_CONNECT", False)
 COMMAND_MIN_INTERVAL_SEC = max(0, int(os.environ.get("COMMAND_MIN_INTERVAL_SEC", "30")))
@@ -120,8 +88,6 @@ EDGE_PUSH_STALE_SEC = max(10, env_int("EDGE_PUSH_STALE_SEC", 45))
 EDGE_AGENT_STALE_SEC = max(20, env_int("EDGE_AGENT_STALE_SEC", max(EDGE_PUSH_STALE_SEC, 180)))
 EDGE_WS_ENABLED = env_bool("EDGE_WS_ENABLED", True)
 EDGE_WS_HEARTBEAT_SEC = max(5, env_int("EDGE_WS_HEARTBEAT_SEC", 10))
-EDGE_WS_COMMAND_PUSH_SEC = max(0.2, env_float("EDGE_WS_COMMAND_PUSH_SEC", 0.25))
-EDGE_WS_RECEIVE_TIMEOUT_SEC = max(0.2, env_float("EDGE_WS_RECEIVE_TIMEOUT_SEC", 0.25))
 EDGE_COMMAND_TTL_SEC = max(30, env_int("EDGE_COMMAND_TTL_SEC", 300))
 EDGE_ACK_TIMEOUT_SEC = max(10, env_int("EDGE_ACK_TIMEOUT_SEC", 45))
 HISTORY_MAX_ITEMS = max(100, env_int("HISTORY_MAX_ITEMS", 2000))
@@ -130,10 +96,10 @@ SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
 INVT_NOMINAL_KW = env_float("INVT_NOMINAL_KW", 5.5)
 
-ADDR_INVT = env_int("ADDR_INVT", 1)
-ADDR_SALMSON = env_int("ADDR_SALMSON", 2)
-ADDR_WILO = env_int("ADDR_WILO", 3)
-ADDR_COFFRET4 = env_int("ADDR_COFFRET4", 4)
+ADDR_INVT = int(os.environ.get("ADDR_INVT", "1"))
+ADDR_SALMSON = int(os.environ.get("ADDR_SALMSON", "2"))
+ADDR_WILO = int(os.environ.get("ADDR_WILO", "3"))
+ADDR_COFFRET4 = int(os.environ.get("ADDR_COFFRET4", "4"))
 
 TCP_MODES = {"direct_tcp", "tcp", "modbus_tcp"}
 HTTP_PUSH_MODES = {"http_push", "httpd_client", "push"}
@@ -269,13 +235,12 @@ running_plan_ids: set[str] = set()
 last_command_at: dict[str, float] = {}
 last_off_at: dict[str, float] = {}
 last_relay_command_at = 0.0
-login_failures: dict[str, list[float]] = {}
 
 # ============ RELAY CONFIG ============
 RELAY_ENABLED = env_bool("RELAY_ENABLED", True)
 RELAY_MAX_DURATION_MIN = max(1, env_int("RELAY_MAX_DURATION_MIN", 120))
 RELAY_MIN_INTERVAL_SEC = max(0, env_int("RELAY_MIN_INTERVAL_SEC", 10))
-RELAY_ZONES = list(range(1, 9))  # 8 zones (carte RUNCCI-YUN 8 canaux)
+RELAY_ZONES = list(range(1, 7))  # 6 zones par défaut
 relay_state: dict = {"zones": {}, "active_zones": [], "last_cmd": ""}
 
 
@@ -302,81 +267,6 @@ def add_event(level: str, message: str, **data) -> None:
         log.info(message)
 
 
-def b64url_encode(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
-
-
-def b64url_decode(text: str) -> bytes:
-    padding = "=" * ((4 - len(text) % 4) % 4)
-    return base64.urlsafe_b64decode((text + padding).encode("ascii"))
-
-
-def verify_password_hash(password: str, stored_hash: str) -> bool:
-    try:
-        algo, iterations_text, salt_text, digest_text = stored_hash.split("$", 3)
-        if algo != "pbkdf2_sha256":
-            return False
-        iterations = int(iterations_text)
-        salt = b64url_decode(salt_text)
-        expected = b64url_decode(digest_text)
-        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
-        return hmac.compare_digest(digest, expected)
-    except Exception:
-        return False
-
-
-def session_secret() -> bytes:
-    secret = APP_LOGIN_SESSION_SECRET or API_TOKEN or APP_LOGIN_PASSWORD_HASH
-    return secret.encode("utf-8")
-
-
-def make_session_token(email: str, remember: bool = False) -> tuple[str, int]:
-    ttl = APP_LOGIN_REMEMBER_TTL_DAYS * 86400 if remember else APP_LOGIN_SESSION_TTL_HOURS * 3600
-    exp = int(time.time() + ttl)
-    payload = {
-        "sub": email.lower(),
-        "iat": int(time.time()),
-        "exp": exp,
-        "remember": bool(remember),
-        "nonce": uuid.uuid4().hex,
-    }
-    body = b64url_encode(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
-    sig = b64url_encode(hmac.new(session_secret(), body.encode("ascii"), hashlib.sha256).digest())
-    return f"zt1.{body}.{sig}", exp
-
-
-def verify_session_token(token: str) -> dict | None:
-    try:
-        if not token.startswith("zt1."):
-            return None
-        _, body, sig = token.split(".", 2)
-        expected = b64url_encode(hmac.new(session_secret(), body.encode("ascii"), hashlib.sha256).digest())
-        if not hmac.compare_digest(sig, expected):
-            return None
-        payload = json.loads(b64url_decode(body).decode("utf-8"))
-        if int(payload.get("exp") or 0) < int(time.time()):
-            return None
-        if str(payload.get("sub") or "").lower() != APP_LOGIN_EMAIL:
-            return None
-        return payload
-    except Exception:
-        return None
-
-
-def login_rate_limited(remote: str) -> bool:
-    current = time.time()
-    failures = [ts for ts in login_failures.get(remote, []) if current - ts < 900]
-    login_failures[remote] = failures
-    return len(failures) >= 8
-
-
-def record_login_failure(remote: str) -> None:
-    current = time.time()
-    failures = [ts for ts in login_failures.get(remote, []) if current - ts < 900]
-    failures.append(current)
-    login_failures[remote] = failures
-
-
 def token_from_request() -> str:
     auth = request.headers.get("Authorization", "")
     if auth.lower().startswith("bearer "):
@@ -390,29 +280,20 @@ def token_from_request() -> str:
     return ""
 
 
-def request_is_authorized() -> bool:
-    token = token_from_request()
-    if API_TOKEN and hmac.compare_digest(token, API_TOKEN):
-        return True
-    if APP_LOGIN_ENABLED and verify_session_token(token):
-        return True
-    return False
-
-
 def requires_auth() -> bool:
+    if not API_TOKEN:
+        return False
     if request.method == "OPTIONS":
         return False
     if not request.path.startswith("/api/"):
         return False
-    if request.path in {"/api/ping", "/api/auth/login", "/api/auth/session"}:
-        return False
-    return bool(API_TOKEN or APP_LOGIN_ENABLED)
+    return request.path not in {"/api/ping"}
 
 
 @app.before_request
 def check_api_token():
-    if requires_auth() and not request_is_authorized():
-        return jsonify({"success": False, "error": "Session ou API token invalide"}), 401
+    if requires_auth() and token_from_request() != API_TOKEN:
+        return jsonify({"success": False, "error": "API token manquant ou invalide"}), 401
     return None
 
 
@@ -1228,6 +1109,7 @@ def relay_start_zone(zone: int, duration: int) -> tuple[bool, dict]:
         queue_command({"type": "relay", "action": "start", "zone": zone, "duration": duration})
         relay_state["last_cmd"] = f"QUEUED START Zone {zone} {duration}min"
         last_relay_command_at = current
+        add_history("command_executed", force_save=True, type="relay", action="start", zone=zone, duration=duration, mode="http_push")
         return True, {"mode": "http_push", "queued": True, "zone": zone, "duration": duration}
     if EDGE_MODE in SIMULATION_MODES:
         relay_state["active_zones"] = [zone]
@@ -1244,6 +1126,7 @@ def relay_stop_zone(zone: int | None = None) -> tuple[bool, dict]:
     if EDGE_MODE in HTTP_PUSH_MODES:
         queue_command({"type": "relay", "action": "stop", "zone": zone})
         relay_state["last_cmd"] = f"QUEUED STOP {'Zone ' + str(zone) if zone else 'TOUTES ZONES'}"
+        add_history("command_executed", force_save=True, type="relay", action="stop", zone=zone, mode="http_push")
         return True, {"mode": "http_push", "queued": True, "zone": zone}
     if EDGE_MODE in SIMULATION_MODES:
         relay_state["active_zones"] = []
@@ -1597,54 +1480,6 @@ def build_ai_diagnostic(question: str) -> dict:
     }
 
 
-# ============ AUTH ============
-@app.route("/api/auth/login", methods=["POST"])
-def auth_login():
-    if not APP_LOGIN_ENABLED:
-        return jsonify({"success": False, "error": "Connexion applicative desactivee"}), 403
-    if not APP_LOGIN_EMAIL or not APP_LOGIN_PASSWORD_HASH:
-        return jsonify({"success": False, "error": "Connexion applicative non configuree cote serveur"}), 503
-    body = request.get_json(silent=True) or {}
-    remote = request.remote_addr or "unknown"
-    if login_rate_limited(remote):
-        return jsonify({"success": False, "error": "Trop de tentatives. Reessayer dans quelques minutes."}), 429
-
-    email = str(body.get("email") or "").strip().lower()
-    password = str(body.get("password") or "")
-    remember = bool(body.get("remember", False))
-    if email != APP_LOGIN_EMAIL or not verify_password_hash(password, APP_LOGIN_PASSWORD_HASH):
-        record_login_failure(remote)
-        add_event("warning", "Tentative connexion refusee", email=email, remote=remote)
-        return jsonify({"success": False, "error": "Email ou mot de passe incorrect"}), 401
-
-    login_failures.pop(remote, None)
-    token, expires_at = make_session_token(email, remember=remember)
-    add_event("info", "Connexion dashboard OK", email=email, remember=remember)
-    return jsonify({
-        "success": True,
-        "session_token": token,
-        "token_type": "Bearer",
-        "expires_at": expires_at,
-        "expires_at_iso": datetime.fromtimestamp(expires_at, timezone.utc).isoformat(),
-        "remember": remember,
-        "user": {"email": APP_LOGIN_EMAIL},
-    })
-
-
-@app.route("/api/auth/session")
-def auth_session():
-    payload = verify_session_token(token_from_request())
-    if not payload:
-        return jsonify({"success": False, "authenticated": False}), 401
-    return jsonify({
-        "success": True,
-        "authenticated": True,
-        "user": {"email": APP_LOGIN_EMAIL},
-        "expires_at": payload.get("exp"),
-        "remember": bool(payload.get("remember")),
-    })
-
-
 # ============ API ============
 @app.route("/api/ping")
 def ping():
@@ -1658,9 +1493,7 @@ def ping():
             "agent_ip": cache["agent_ip"],
             "edge_agent": cache["agent_ip"],
             "edge": edge_status_snapshot(),
-            "auth_required": bool(API_TOKEN or APP_LOGIN_ENABLED),
-            "login_enabled": APP_LOGIN_ENABLED,
-            "login_email": APP_LOGIN_EMAIL if APP_LOGIN_ENABLED else "",
+            "auth_required": bool(API_TOKEN),
             "server_time": local_now().isoformat(),
             "timezone": LOCAL_TZ_NAME,
             "planning_enabled": ENABLE_PLANNING,
@@ -2175,7 +2008,7 @@ if sock is not None:
         try:
             while True:
                 try:
-                    raw = ws.receive(timeout=EDGE_WS_RECEIVE_TIMEOUT_SEC)
+                    raw = ws.receive(timeout=1)
                 except TypeError:
                     raw = ws.receive()
                 if raw:
@@ -2186,7 +2019,7 @@ if sock is not None:
                     response = _handle_ws_message(body, str(agent_id))
                     if response:
                         _ws_send_json(ws, response)
-                if time.time() - last_command_push >= EDGE_WS_COMMAND_PUSH_SEC:
+                if time.time() - last_command_push >= 1:
                     commands = take_pending_commands_for_agent(str(agent_id), transport="websocket")
                     if commands:
                         _ws_send_json(ws, {"type": "commands", "success": True, "commands": commands, "count": len(commands), "server_time": local_now().isoformat()})

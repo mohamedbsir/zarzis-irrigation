@@ -1,4 +1,4 @@
-﻿# Zarzis Irrigation - Dashboard + API Cloud
+# Zarzis Irrigation - Dashboard + API Cloud
 
 Version corrigee `http_push` pour Render / GitHub.
 
@@ -42,37 +42,30 @@ set API_TOKEN=API_TOKEN_RENDER
 set DR302_HOST=IP_LOCALE_DR302
 set DR302_PORT=502
 set EDGE_ALLOW_START=false
-set RELAY_SIMULATION_ENABLED=false
 python zarzis_edge_agent.py
 ```
 
 `EDGE_ALLOW_START=false` bloque les demarrages mais laisse les arrets possibles. Passer `EDGE_ALLOW_START=true` seulement apres validation qModMaster et essai terrain.
-`RELAY_SIMULATION_ENABLED=false` force les commandes relais a echouer si le GPIO Raspberry n'est pas disponible. Le passer a `true` seulement pour un test hors terrain.
 
 ## Variables Render
 
 Dans Render > Environment :
 
 ```txt
-EDGE_MODE=http_push
-EDGE_HOST=
-EDGE_PORT=502
-EDGE_PUSH_STALE_SEC=10
-EDGE_COMMAND_TTL_SEC=300
-EDGE_ACK_TIMEOUT_SEC=10
+G781_MODE=http_push
+G781_HOST=
+G781_PORT=502
+G781_HTTP_PUSH_STALE_SEC=45
+G781_COMMAND_TTL_SEC=300
+G781_COMMAND_ACK_TIMEOUT_SEC=45
 HISTORY_MAX_ITEMS=2000
 HISTORY_SAVE_MIN_INTERVAL_SEC=30
 API_TOKEN=mot_de_passe_long
-APP_LOGIN_ENABLED=true
-APP_LOGIN_EMAIL=mohamedbsir@live.fr
-APP_LOGIN_PASSWORD_HASH=hash_pbkdf2_du_mot_de_passe
-APP_LOGIN_SESSION_SECRET=secret_long_aleatoire
-APP_LOGIN_REMEMBER_TTL_DAYS=30
-UPDATE_SEC=2
+UPDATE_SEC=5
 CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
 ENABLE_PLANNING=false
 PERSISTENT_STORAGE_ENABLED=false
-ALLOW_REMOTE_CONNECT=false
+ALLOW_REMOTE_G781_CONNECT=false
 ALLOW_PARAM_WRITE=false
 MODBUS_REGISTERS_VALIDATED=false
 COMMAND_MIN_INTERVAL_SEC=30
@@ -110,7 +103,7 @@ ADDR_WILO=3
 ADDR_COFFRET4=4
 ```
 
-Les noms `EDGE_*` sont les variables officielles. Les anciens noms `G781_*` restent acceptes uniquement comme alias de compatibilite historique; aucun USR-G781-E n'est necessaire.
+Les noms `G781_*` sont conserves dans le code pour compatibilite historique. Avec l'architecture mai 2026, ils signifient simplement "mode de liaison terrain"; aucun USR-G781-E n'est necessaire.
 
 Ne pas exposer le port Modbus TCP directement sur Internet. En `http_push`, Render ne contacte jamais le DR302 en direct : seul l'agent local parle au Modbus sur le LAN du routeur 4G existant.
 
@@ -235,7 +228,7 @@ Cette version ajoute :
 - Rain Bird route via l'agent local en mode `http_push`
 - assistant IA lecture seule pour diagnostic, surveillance et propositions sans commande directe
 - synchronisation planning bloquee tant que `ENABLE_PLANNING=false`
-- mode simulation backend via `EDGE_MODE=simulation` pour tester avant réception du matériel
+- mode simulation backend via `G781_MODE=simulation` pour tester avant réception du matériel
 - protection API sur tous les endpoints `/api/*` sauf `/api/ping` quand `API_TOKEN` existe
 - verrouillage serveur minimal avant démarrage si défaut INVT/Salmson/Wilo déjà connu
 - anti-spam serveur sur les commandes : 30 s entre deux demarrages et 60 s apres un arret avant redemarrage
@@ -244,9 +237,9 @@ Cette version ajoute :
 - valeurs critiques configurables : `INVT_OFF_VALUE`, `SALMSON_FLOAT_LOW_OK_VALUE`, `*_CMD_REG`, `*_REG_*`
 - icônes PWA PNG 192/512 pour installation mobile
 
-Avant reception des modules, tu peux laisser le dashboard en simulation locale. Pour tester le serveur sans materiel, mettre temporairement `EDGE_MODE=simulation` sur Render. Pour la mise en service reelle, garder `EDGE_MODE=http_push` et lancer l'agent local sur site.
+Avant reception des modules, tu peux laisser le dashboard en simulation locale. Pour tester le serveur sans materiel, mettre temporairement `G781_MODE=simulation` sur Render. Pour la mise en service reelle, garder `G781_MODE=http_push` et lancer l'agent local sur site.
 
-Le dashboard utilise maintenant une vraie connexion serveur via `/api/auth/login`. Le mot de passe n'est pas stocke en clair dans le depot: Render doit recevoir `APP_LOGIN_EMAIL`, `APP_LOGIN_PASSWORD_HASH` et `APP_LOGIN_SESSION_SECRET`. L'option `Rester connecté` garde seulement un jeton de session.
+Le mot de passe local par défaut du dashboard est maintenant : `zarzis2026`. Le vrai verrouillage des commandes distantes reste `API_TOKEN` côté Render.
 
 ## Sécurité
 
@@ -259,7 +252,7 @@ Synchronisation multi-appareils :
 - Les données partagées sont centralisées sur Render via `/api/app-state`.
 - iPhone, tablette et PC récupèrent les réglages toutes les 5 secondes après connexion au cloud.
 - Sont synchronisés : zones, programmes, planning irrigation, exploitation, goutte-à-goutte, réservoirs, matériel, fertigation, localisation et compteurs.
-- Ne sont pas synchronisés : session de connexion, `API_TOKEN`, son et mode maintenance. Ces éléments restent propres à chaque appareil pour la sécurité.
+- Ne sont pas synchronisés : `API_TOKEN`, mot de passe local, son et mode maintenance. Ces éléments restent propres à chaque appareil pour la sécurité.
 - Après modification sur un appareil, attendre quelques secondes ou cliquer `SYNC APPAREILS` dans Connexion.
 
 ## Securite production
@@ -268,10 +261,10 @@ Synchronisation multi-appareils :
 - Utiliser `http_push` par defaut avec agent local.
 - Utiliser `direct_tcp` seulement via VPN, APN prive ou reseau prive equivalent.
 - Un VPN grand public pour naviguer anonymement ne suffit pas. Il faut que Render/la passerelle et le site Zarzis soient dans le meme reseau prive.
-- Garder `ALLOW_REMOTE_CONNECT=false` en production. En `http_push`, `EDGE_HOST` reste vide cote Render; en `direct_tcp`, il serait fixe cote serveur, jamais depuis le navigateur.
+- Garder `ALLOW_REMOTE_G781_CONNECT=false` en production. En `http_push`, `G781_HOST` reste vide cote Render; en `direct_tcp`, il serait fixe cote serveur, jamais depuis le navigateur. Le nom de variable est historique.
 - Garder `ENABLE_PLANNING=false` si le dashboard doit rester en lecture/commande manuelle seulement.
 - Garder `ALLOW_PARAM_WRITE=false` en production. L'activer seulement pour une maintenance courte et controlee.
-- Le token API ou la session dashboard passent seulement par `Authorization: Bearer ...` ou `X-API-Token`. Ne jamais les mettre dans l'URL.
+- Le token API passe seulement par `Authorization: Bearer ...` ou `X-API-Token`. Ne jamais le mettre dans l'URL.
 - Les commandes de demarrage sont limitees cote serveur par `COMMAND_MIN_INTERVAL_SEC` et `COMMAND_RESTART_DELAY_SEC`.
 
 ## Validation Modbus
@@ -313,23 +306,19 @@ Variables principales côté Render :
 ```txt
 EDGE_MODE=http_push
 EDGE_WS_ENABLED=true
-EDGE_WS_HEARTBEAT_SEC=5
-EDGE_WS_COMMAND_PUSH_SEC=0.25
-EDGE_WS_RECEIVE_TIMEOUT_SEC=0.25
-EDGE_AGENT_STALE_SEC=20
-EDGE_PUSH_STALE_SEC=10
+EDGE_WS_HEARTBEAT_SEC=10
+EDGE_AGENT_STALE_SEC=180
+EDGE_PUSH_STALE_SEC=180
 ```
 
 Variables principales côté Raspberry :
 
 ```txt
 EDGE_WS_ENABLED=true
-EDGE_HEARTBEAT_SEC=5
-EDGE_STATUS_PUSH_SEC=2
+EDGE_HEARTBEAT_SEC=10
+EDGE_STATUS_PUSH_SEC=5
 EDGE_COMMAND_POLL_SEC=1
 MODBUS_TIMEOUT_SEC=0.8
 ```
-
-Mode reactif recommande : l'interface relit l'etat toutes les 1 s, l'agent pousse la telemetrie toutes les 2 s, et les commandes WebSocket sont poussees par le serveur environ toutes les 0,25 s. Garder `COMMAND_RESTART_DELAY_SEC=60` pour proteger les pompes contre les redemarrages rapides.
 
 Ne pas ouvrir le port Modbus 502 sur Internet. Le WebSocket sort du Raspberry vers Render, donc il reste compatible avec box 4G, fibre ou ADSL derrière NAT.
