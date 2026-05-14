@@ -1998,9 +1998,10 @@ def take_pending_commands_for_agent(agent_id: str, transport: str = "http") -> l
             cmd["transport"] = transport
             cmd["attempts"] = int(cmd.get("attempts", 0)) + 1
             commands.append(command_snapshot(cmd))
-        if commands:
-            add_history("command_sent", agent_id=agent_id, transport=transport, commands=commands, force_save=True)
-        return commands
+    # Ecriture disque HORS du lock pour eviter blocage des threads
+    if commands:
+        add_history("command_sent", agent_id=agent_id, transport=transport, commands=commands, force_save=True)
+    return commands
 
 
 @app.route("/api/edge/commands")
