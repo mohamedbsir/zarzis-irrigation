@@ -21,7 +21,7 @@ services:
       - key: EDGE_AGENT_STALE_SEC
         value: "20"
       - key: EDGE_WS_ENABLED
-        value: "true"
+        value: "false"
       - key: EDGE_WS_HEARTBEAT_SEC
         value: "5"
       - key: EDGE_WS_COMMAND_PUSH_SEC
