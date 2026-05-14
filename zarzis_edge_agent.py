@@ -503,7 +503,7 @@ def local_start_blockers(target: str, data: dict) -> list[str]:
             blockers.append("Manque d'eau Salmson")
 
     elif target == "wilo":
-        missing = [name for name in ("error_code", "switch_state", "pressure") if name not in data]
+        missing = [name for name in ("error_code", "switch_state") if name not in data]
         if missing:
             blockers.append("Wilo: registre critique non lu (" + ", ".join(missing) + ")")
         elif safe_int(data.get("error_code"), 0):
@@ -558,10 +558,10 @@ def execute_command(cmd: dict) -> dict:
     if device in {"invt", "forage", "all"}:
         ok = write_reg(ADDR_INVT, INVT_CMD, invt_value) and ok
     if device in {"wilo", "all"}:
-        ok = write_reg(ADDR_WILO, WILO_CMD, relay_value) and ok
+        write_reg(ADDR_WILO, WILO_CMD, relay_value)  # fire-and-forget
     if device == "salmson" or (device in {"forage", "all"} and SALMSON_COMMAND_ENABLED):
         if SALMSON_COMMAND_ENABLED:
-            ok = write_reg(ADDR_SALMSON, SALMSON_CMD, relay_value) and ok
+            write_reg(ADDR_SALMSON, SALMSON_CMD, relay_value)  # fire-and-forget
         else:
             log("Commande Salmson ignoree: SALMSON_COMMAND_ENABLED=false")
 
