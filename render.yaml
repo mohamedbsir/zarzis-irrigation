@@ -32,6 +32,8 @@ services:
         value: "300"
       - key: EDGE_ACK_TIMEOUT_SEC
         value: "10"
+      - key: EDGE_ALLOW_START
+        value: "true"
       - key: HISTORY_MAX_ITEMS
         value: "2000"
       - key: HISTORY_SAVE_MIN_INTERVAL_SEC
@@ -51,23 +53,23 @@ services:
       - key: CORS_ORIGINS
         value: "https://zarzis-irrigation-1.onrender.com"
       - key: SERVER_SAFETY_ENABLED
-        value: "true"
+        value: "false"
       - key: ALLOW_PARAM_WRITE
         value: "false"
       - key: MODBUS_REGISTERS_VALIDATED
         value: "false"
       - key: COMMAND_MIN_INTERVAL_SEC
-        value: "30"
+        value: "0"
       - key: COMMAND_RESTART_DELAY_SEC
-        value: "60"
+        value: "0"
       - key: ALLOW_REMOTE_CONNECT
         value: "false"
       - key: INVT_CMD_REG
-        value: "0x2000"
+        value: "0x1000"
       - key: INVT_ON_VALUE
         value: "1"
       - key: INVT_OFF_VALUE
-        value: "5"
+        value: "0"
       - key: INVT_NOMINAL_KW
         value: "5.5"
       - key: INVT_REG_FREQ_HZ
@@ -85,13 +87,13 @@ services:
       - key: INVT_REG_FAULT_CODE
         value: "0x5000"
       - key: SALMSON_FLOAT_LOW_OK_VALUE
-        value: "1"
+        value: "0"
       - key: SALMSON_COMMAND_ENABLED
-        value: "false"
+        value: "true"
       - key: SALMSON_CMD_REG
         value: "14"
       - key: SALMSON_REG_LEVEL_CM
-        value: "25"
+        value: "0"
       - key: SALMSON_REG_PUMP1_MODE
         value: "40"
       - key: SALMSON_REG_PUMP2_MODE
@@ -174,3 +176,11 @@ services:
         value: "12"
       - key: APP_LOGIN_REMEMBER_TTL_DAYS
         value: "3650"
+      - key: WILO_COMMAND_ENABLED
+        value: "true"
+      - key: INVT_COMMAND_ENABLED
+        value: "true"
+      - key: INVT_REG_POWER_W
+        value: "0x3005"
+      - key: INVT_REG_TEMP_C
+        value: "0x3007"
