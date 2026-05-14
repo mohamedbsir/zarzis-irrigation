@@ -4,7 +4,7 @@ services:
     env: python
     plan: starter
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn modbus_proxy_cloud:app --bind 0.0.0.0:$PORT --worker-class gevent --workers 1 --worker-connections 100 --timeout 300
+    startCommand: gunicorn modbus_proxy_cloud:app --bind 0.0.0.0:$PORT --worker-class gthread --workers 1 --threads 10 --timeout 300
     disk:
       name: zarzis-data
       mountPath: /var/data
