@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zarzis-irrigation-v9.2-terrain-validated';
+const CACHE_NAME = 'zarzis-irrigation-v9.1-auth-relay-safe';
 const APP_SHELL = [
   './',
   './index.html',

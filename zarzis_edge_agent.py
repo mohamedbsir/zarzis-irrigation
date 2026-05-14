@@ -84,7 +84,7 @@ OFFLINE_BUFFER_ENABLED = env_bool("EDGE_OFFLINE_BUFFER_ENABLED", True)
 OFFLINE_MAX_ITEMS = max(100, env_int("EDGE_OFFLINE_MAX_ITEMS", 10000))
 EDGE_ALLOW_START = env_bool("EDGE_ALLOW_START", False)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
-SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 0)
+SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
 INVT_NOMINAL_KW = env_float("INVT_NOMINAL_KW", 5.5)
 
 ADDR_INVT = env_int("ADDR_INVT", 1)
@@ -92,12 +92,12 @@ ADDR_SALMSON = env_int("ADDR_SALMSON", 2)
 ADDR_WILO = env_int("ADDR_WILO", 3)
 ADDR_COFFRET4 = env_int("ADDR_COFFRET4", 4)
 
-INVT_CMD = env_int("INVT_CMD_REG", 0x1000)
+INVT_CMD = env_int("INVT_CMD_REG", 0x2000)
 INVT_ACTIONS = {
     "on": env_int("INVT_ON_VALUE", 1),
     "forward": env_int("INVT_FORWARD_VALUE", 1),
     "reverse": env_int("INVT_REVERSE_VALUE", 2),
-    "off": env_int("INVT_OFF_VALUE", 0),
+    "off": env_int("INVT_OFF_VALUE", 5),
 }
 INVT_REGS = {
     "freq_hz": env_int("INVT_REG_FREQ_HZ", 0x3000),

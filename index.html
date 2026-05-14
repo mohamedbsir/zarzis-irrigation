@@ -1291,7 +1291,26 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div>
         <div class="card-title">🎮 Commandes</div>
         <div class="card-subtitle">Contrôle direct des équipements</div>
-      </div></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">MODE :</span>
+        <button id="mode-auto-btn" onclick="setSystemMode('auto')" style="padding:5px 12px;background:rgba(0,232,122,0.15);border:1px solid var(--green);color:var(--green);border-radius:5px;font-family:var(--mono);font-size:10px;cursor:pointer;font-weight:700">AUTO</button>
+        <button id="mode-manuel-btn" onclick="setSystemMode('manuel')" style="padding:5px 12px;background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);border-radius:5px;font-family:var(--mono);font-size:10px;cursor:pointer;font-weight:700">MANUEL</button>
+      </div>
+    </div>
+
+    <!-- VARIATEUR INVT -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div style="font-size:32px">⚡</div>
+        <div style="flex:1">
+          <div style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:700" id="ctrl-invt-name">Variateur INVT GD100-PV 5.5kW</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-invt-specs">DC 250-900V → AC 380V 3ph · I max 19.5A</div>
+        </div>
+        <div style="text-align:right">
+          <div class="pump-indicator off" id="ctrl-invt-ind" style="margin:0 0 4px auto;width:42px;height:42px;font-size:18px">⚡</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-invt-state">VEILLE</div>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
         <button class="mini-btn mini-on" onclick="controlInverter('forward')">▶ AVANT</button>
@@ -1335,7 +1354,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         <div style="font-size:32px">⚙️</div>
         <div style="flex:1">
           <div style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:700" id="ctrl-wilo-name">Surpresseur Wilo CO-2 Helix V604/EC</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-wilo-specs">2 × 0.75kW · 16 bar max · Pression cible 2 bar</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-wilo-specs">2 × 0.75kW · 16 bar max · Pression cible 3.5 bar</div>
         </div>
         <div style="text-align:right">
           <div class="pump-indicator off" id="ctrl-wilo-ind" style="margin:0 0 4px auto;width:42px;height:42px;font-size:18px">⚙️</div>
@@ -1363,6 +1382,35 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <button onclick="emergencyStop()" style="width:100%;padding:14px;background:linear-gradient(135deg,#ff4d4d,#cc0000);border:2px solid #ff0000;border-radius:10px;color:#fff;font-family:var(--display);font-size:16px;font-weight:900;letter-spacing:3px;text-transform:uppercase;cursor:pointer;box-shadow:0 0 20px rgba(255,77,77,0.4);transition:all 0.2s">
       🚨 ARRÊT D'URGENCE 🚨
     </button>
+  </div>
+
+  <!-- ACTIONS RAPIDES -->
+  <div class="card card-full">
+    <div class="card-header">
+      <div><div class="card-title">⚡ Actions rapides</div><div class="card-subtitle">Scénarios prédéfinis</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
+      <button onclick="runScenario('test')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
+        <div style="font-size:20px;margin-bottom:4px">🧪</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Test système</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Démarre 30s puis arrête</div>
+      </button>
+      <button onclick="runScenario('purge')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
+        <div style="font-size:20px;margin-bottom:4px">🌊</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Purge réseau</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Vidange canalisations</div>
+      </button>
+      <button onclick="runScenario('maintenance')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
+        <div style="font-size:20px;margin-bottom:4px">🔧</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Mode maintenance</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Bloque tous démarrages</div>
+      </button>
+      <button onclick="runScenario('reset')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
+        <div style="font-size:20px;margin-bottom:4px">↺</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Reset défauts</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Acquitte erreurs INVT/Salmson</div>
+      </button>
+    </div>
   </div>
 
   <!-- COMPTEURS -->
@@ -2148,7 +2196,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="param-row"><div class="param-info"><div class="param-name">Nom affiché</div><div class="param-desc">Exemple : Surpresseur</div></div><input class="fert-input" id="eq-wilo-title" style="max-width:260px;margin:0" value="Surpresseur"></div>
       <div class="param-row"><div class="param-info"><div class="param-name">Marque / coffret</div><div class="param-desc">Exemple : Wilo</div></div><input class="fert-input" id="eq-wilo-brand" style="max-width:260px;margin:0" value="Wilo"></div>
       <div class="param-row"><div class="param-info"><div class="param-name">Modèle</div><div class="param-desc">Exemple : CO-2Helix V604/EC</div></div><input class="fert-input" id="eq-wilo-model" style="max-width:260px;margin:0" value="CO-2Helix V604/EC"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Caractéristiques</div><div class="param-desc">Nombre de pompes, puissance, pression, consigne</div></div><input class="fert-input" id="eq-wilo-specs" style="max-width:480px;margin:0" value="2 × 0.75 kW · 16 bar max · Pression cible 2 bar"></div>
+      <div class="param-row"><div class="param-info"><div class="param-name">Caractéristiques</div><div class="param-desc">Nombre de pompes, puissance, pression, consigne</div></div><input class="fert-input" id="eq-wilo-specs" style="max-width:480px;margin:0" value="2 × 0.75 kW · 16 bar max · Pression cible 3.5 bar"></div>
     </div>
     <div class="param-status" id="equipment-config-msg"></div>
   </div>
@@ -2935,7 +2983,9 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-ghost" onclick="autoConnect()">↺ RECONNECTER</button>
+      <button class="btn btn-green" onclick="connectCloud()">CONNECTER</button>
+      <button class="btn btn-red" onclick="disconnectCloud()">DÉCONNECTER</button>
+      <button class="btn btn-ghost" onclick="simulateData()">SIMULATION</button>
       <button class="btn btn-ghost" onclick="syncSharedStateNow(false)">SYNC APPAREILS</button>
     </div>
 
@@ -2964,6 +3014,31 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
 
 
+    <div class="divider"></div>
+    <div class="metric-label" style="margin-bottom:8px">Sécurité exploitation</div>
+    <div class="safety-grid">
+      <div class="safety-card">
+        <div><strong>Mode exploitation</strong><small id="safety-mode-label">Lecture seule</small></div>
+        <label class="lock-switch"><input type="checkbox" id="maintenance-toggle" onchange="toggleMaintenanceMode(this.checked)"> Maintenance</label>
+      </div>
+      <div class="safety-card">
+        <div><strong>Commandes pompes</strong><small id="command-lock-label">Verrouillées</small></div>
+        <span class="badge badge-off" id="command-lock-badge">BLOQUÉ</span>
+      </div>
+      <div class="safety-card">
+        <div><strong>Anti-redémarrage</strong><small>60 secondes minimum</small></div>
+        <span class="badge badge-info">ACTIF</span>
+      </div>
+      <div class="safety-card">
+        <div><strong>Alarme bloquante</strong><small id="blocking-alarm-label">Aucune alarme active</small></div>
+        <span class="badge badge-on" id="blocking-alarm-badge">OK</span>
+      </div>
+    </div>
+    <div class="safety-list" id="safety-list">
+      <span class="ok">✅ Interface en lecture seule au démarrage.</span><br>
+      <span class="ok">✅ Les commandes critiques exigent le mode maintenance.</span><br>
+      <span class="ok">✅ Les alarmes manque d'eau / tension basse / réservoir bas bloquent le démarrage.</span>
+    </div>
 
 
     <div class="divider"></div>
@@ -3021,10 +3096,10 @@ let history_vdc = [];
 let history_power = [];
 let history_pressure = [];
 let chartVdc, chartPower, chartPressure;
-const RESTART_DELAY_MS = 0;
+const RESTART_DELAY_MS = 60000;
 const ENABLE_PLANNING_UI = false;
 let lastStopAt = { forage: 0, wilo: 0 };
-let maintenanceMode = true;
+let maintenanceMode = false;
 let activeAlarms = {};
 let seenCommandAckIds = new Set();
 let commandAckNotifyAfter = Date.now() - 30000;
@@ -3261,21 +3336,17 @@ async function checkLogin() {
 }
 
 async function resumeLoginIfPossible() {
-  // Masquer l'écran de login IMMÉDIATEMENT - connexion directe sans attente
-  const loginScreen = document.getElementById('login-screen');
-  if(loginScreen) loginScreen.style.display = 'none';
-  
-  // Lancer l'app immédiatement
-  initApp();
-  
-  // Valider/renouveler le token en arrière-plan (silencieux)
-  if(apiToken) {
-    validateStoredSession().catch(() => {});
+  const emailEl = document.getElementById('login-email');
+  if(emailEl) emailEl.value = currentUserEmail;
+  if(await validateStoredSession()) {
+    document.getElementById('login-screen').style.display = 'none';
+    initApp();
   }
 }
 
 function logout() {
   apiToken = '';
+  maintenanceMode = false;
   connected = false;
   if(fetchInterval){clearInterval(fetchInterval);fetchInterval=null;}
   sessionStorage.removeItem(SESSION_TOKEN_KEY);
@@ -3335,6 +3406,7 @@ function initApp() {
   setInterval(updateClock, 1000);
   loadCounters();
   calcFert();
+  simulateData();
   fetchWeather();
 
   // Auto-connexion directe à l'ouverture.
@@ -3346,7 +3418,6 @@ function initApp() {
 // Utilise les variables directement — pas de dépendance DOM
 // Timeout court (4s), retry exponentiel, silencieux si pas de réseau
 let _autoConnectRetry = 0;
-let _autoConnectTimer = null;
 
 async function autoConnect() {
   if(connected) return;
@@ -3385,11 +3456,16 @@ async function autoConnect() {
 }
 
 function _scheduleAutoReconnect() {
-  const delay = Math.min(5000, 1000 * (1 + _autoConnectRetry));
+  if(connected) return;
+  // Backoff: 5s → 10s → 20s → 30s max
+  const delays = [1000, 2000, 3000, 5000, 10000];
+  const delay = delays[Math.min(_autoConnectRetry, delays.length - 1)];
   _autoConnectRetry++;
-  if(_autoConnectTimer) clearTimeout(_autoConnectTimer);
-  _autoConnectTimer = setTimeout(() => autoConnect(), delay);
+  setTimeout(() => {
+    if(!connected && apiUrl) autoConnect();
+  }, delay);
 }
+
 // Reconnexion immédiate si réseau revient
 window.addEventListener('online', () => {
   if(!connected && apiUrl) {
@@ -3750,7 +3826,7 @@ function rbConnect() {
   .catch(e => {
     msgEl.textContent = '⚠️ Mode hors-ligne (simulation)';
     msgEl.style.color = 'var(--yellow)';
-    document.getElementById('rb-badge').textContent = 'HORS LIGNE';
+    document.getElementById('rb-badge').textContent = 'SIMULATION';
     document.getElementById('rb-badge').className = 'badge badge-warn';
     addLog(`Relais mode simulation`, 'warn');
   });
@@ -4147,6 +4223,7 @@ function applySharedStateToUi() {
   if(typeof renderDripLines === 'function') renderDripLines();
   if(typeof applyEquipmentConfig === 'function') applyEquipmentConfig(getEquipmentConfig());
   if(typeof applyReservoirConfig === 'function') applyReservoirConfig(true);
+  if(typeof setSystemMode === 'function') setSystemMode(systemMode);
 }
 
 function applySharedStateFromCloud(state, revision) {
@@ -5131,7 +5208,31 @@ function copyCoords() {
   }
 }
 
-function setSystemMode(mode) { /* désactivé */ }
+function setSystemMode(mode) {
+  systemMode = mode;
+  localStorage.setItem('systemMode', mode);
+  const autoBtn = document.getElementById('mode-auto-btn');
+  const manuelBtn = document.getElementById('mode-manuel-btn');
+  if(autoBtn && manuelBtn) {
+    if(mode === 'auto') {
+      autoBtn.style.background = 'rgba(0,232,122,0.15)';
+      autoBtn.style.borderColor = 'var(--green)';
+      autoBtn.style.color = 'var(--green)';
+      manuelBtn.style.background = 'var(--surface2)';
+      manuelBtn.style.borderColor = 'var(--border)';
+      manuelBtn.style.color = 'var(--text-dim)';
+    } else {
+      manuelBtn.style.background = 'rgba(245,200,66,0.15)';
+      manuelBtn.style.borderColor = 'var(--yellow)';
+      manuelBtn.style.color = 'var(--yellow)';
+      autoBtn.style.background = 'var(--surface2)';
+      autoBtn.style.borderColor = 'var(--border)';
+      autoBtn.style.color = 'var(--text-dim)';
+    }
+  }
+  toast(mode === 'auto' ? '🤖 Mode AUTOMATIQUE' : '👋 Mode MANUEL', 'info');
+  addLog(`Mode système : ${mode.toUpperCase()}`, 'info');
+}
 
 function emergencyStop() {
   if(!confirm('🚨 ARRÊT D\'URGENCE\n\nArrêter immédiatement TOUS les équipements ?')) return;
@@ -5224,15 +5325,24 @@ function refreshSystemStatus() {
   
   // Badge global
   const sysBadge = document.getElementById('sys-badge');
+  const isMaint = localStorage.getItem('maintenanceMode') === 'true';
   if(sysBadge) {
-    const anyOn = (forageStateEl?.textContent || '').includes('MARCHE') || 
-                  (wiloStateEl?.textContent || '').includes('MARCHE');
-    sysBadge.textContent = anyOn ? 'EN MARCHE' : 'VEILLE';
-    sysBadge.style.background = anyOn ? 'rgba(0,232,122,0.15)' : 'rgba(245,200,66,0.15)';
-    sysBadge.style.color = anyOn ? 'var(--green)' : 'var(--yellow)';
+    if(isMaint) {
+      sysBadge.textContent = 'MAINTENANCE';
+      sysBadge.style.background = 'rgba(245,200,66,0.15)';
+      sysBadge.style.color = 'var(--yellow)';
+      sysBadge.style.borderColor = 'rgba(245,200,66,0.3)';
+    } else {
+      const anyOn = (forageStateEl?.textContent || '').includes('MARCHE') || 
+                    (wiloStateEl?.textContent || '').includes('MARCHE');
+      sysBadge.textContent = anyOn ? 'EN MARCHE' : 'VEILLE';
+      sysBadge.style.background = anyOn ? 'rgba(0,232,122,0.15)' : 'rgba(245,200,66,0.15)';
+      sysBadge.style.color = anyOn ? 'var(--green)' : 'var(--yellow)';
+    }
   }
 }
 setInterval(refreshSystemStatus, 2000);
+setTimeout(() => setSystemMode(systemMode), 800);
 
 function resetCounters() {
   if(confirm('Remettre tous les compteurs à zéro ?')) {
@@ -5330,6 +5440,7 @@ async function writeParam(device, addr, reg, id, multiplier, unit) {
   const msgEl = document.getElementById(device+'-param-msg');
 
   if(isNaN(val)) { toast('⚠️ Valeur invalide', 'warn'); return; }
+  if(!maintenanceMode) { toast('⛔ Écriture refusée — mode maintenance requis', 'err'); addLog(`⛔ Écriture ${id} refusée — lecture seule`, 'err'); return; }
 
   const confirmed = confirm(`⚠️ Écrire ${val}${unit} dans ${id} ?\n\nCette action modifie directement le coffret.`);
   if(!confirmed) return;
@@ -5418,6 +5529,7 @@ async function writeParamSelect(device, addr, reg, id) {
   const text = selectEl.options[selectEl.selectedIndex].text;
   const msgEl = document.getElementById(device+'-param-msg');
 
+  if(!maintenanceMode) { toast('⛔ Écriture refusée — mode maintenance requis', 'err'); addLog(`⛔ Écriture ${id} refusée — lecture seule`, 'err'); return; }
 
   const confirmed = confirm(`⚠️ Écrire "${text}" dans ${id} ?\n\nCette action modifie directement le coffret.`);
   if(!confirmed) return;
@@ -5516,6 +5628,15 @@ function readAllParams(device) {
   }
 }
 
+// ============ SIMULATION ============
+function simulateData() {
+  if(simInterval) clearInterval(simInterval);
+  connected = false;
+  updateConnStatus('SIMULATION', 'badge-info');
+  addLog('Mode simulation activé', 'info');
+  simInterval = setInterval(runSim, 3000);
+  runSim();
+}
 
 function runSim() {
   const hour = new Date().getHours();
@@ -5594,22 +5715,7 @@ function updateINVT(vdc, freq, power, amp, vac, solar, error) {
   bar.style.width = pct+'%';
   bar.className = 'progress-fill ' + (vdc<300?'red':vdc<500?'yellow':'blue');
 
-  // Sync Contrôle tab
-  const vdcEl = document.getElementById('ctrl-invt-vdc');
-  const freqEl = document.getElementById('ctrl-invt-freq');
-  const loadEl = document.getElementById('ctrl-invt-load');
-  if(vdcEl) vdcEl.textContent = vdc+'V';
-  if(freqEl) freqEl.textContent = freq+'Hz';
-  if(loadEl) loadEl.textContent = power+'kW';
-  // Sync TOUS modules
-  const _si = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-  _si('sys-invt-freq', freq);
-  _si('sys-invt-load', power);
-  _si('sys-solar-power', Math.round(power*1000)+'W');
-  _si('sys-solar-volt', vdc);
   const running = freq > 0;
-  const _syStat = document.getElementById('sys-invt-status');
-  if(_syStat) { _syStat.textContent = running?'ON':(vdc<250?'VEILLE':'ATTENTE'); _syStat.style.color = running?'var(--green)':'var(--text-dim)'; }
   const badge = document.getElementById('invt-badge');
   badge.textContent = running ? 'EN MARCHE' : (vdc<250 ? 'VEILLE' : 'ATTENTE');
   badge.className = 'badge ' + (running ? 'badge-on' : vdc<250 ? 'badge-off' : 'badge-warn');
@@ -5647,22 +5753,11 @@ function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
   document.getElementById('f-haut-icon').textContent = '🌊';
 
   // Contrôle tab
-  const ctrlAmp = document.getElementById('ctrl-forage-current');
-  if(ctrlAmp) ctrlAmp.textContent = cur+'A';
   const ind = document.getElementById('ctrl-forage-ind');
   const st = document.getElementById('ctrl-forage-state');
   ind.className = 'pump-indicator '+(pumpOn?'on':'off');
   st.textContent = pumpOn?'EN MARCHE':'ARRÊTÉE';
   st.style.color = pumpOn?'var(--green)':'var(--text-dim)';
-  // Sync TOUS les éléments inter-modules
-  const _setCur = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-  const _curVal = pumpOn && Number.isFinite(Number(amp)) ? Number(amp).toFixed(1) : '0';
-  _setCur('ctrl-forage-current', _curVal+'A');
-  _setCur('sys-forage-current', _curVal);
-  _setCur('sys-forage-flow', '—');
-  _setCur('sys-forage-status', pumpOn?'ON':'OFF');
-  const _sfStatus = document.getElementById('sys-forage-status');
-  if(_sfStatus) _sfStatus.style.color = pumpOn?'var(--green)':'var(--text-dim)';
   document.getElementById('stat-forage').textContent = pumpOn?'🟢 ON':'🔴 OFF';
 
   const err = document.getElementById('s-err');
@@ -5692,20 +5787,6 @@ function updateWilo(pressure, flow, pumpOn) {
   ind.className = 'pump-indicator '+(pumpOn?'on':'off');
   st.textContent = pumpOn?'EN MARCHE':'ARRÊTÉ';
   st.style.color = pumpOn?'var(--green)':'var(--text-dim)';
-  // Sync Contrôle tab
-  const ctrlPress = document.getElementById('ctrl-wilo-pressure');
-  const ctrlActive = document.getElementById('ctrl-wilo-active');
-  if(ctrlPress) ctrlPress.textContent = pressure+' bar';
-  if(ctrlActive) ctrlActive.textContent = pumpOn ? 'P1' : '—';
-  // Sync TOUS les éléments inter-modules
-  const _setW = (id, v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-  _setW('ctrl-wilo-pressure', pressure+' bar');
-  _setW('ctrl-wilo-active', pumpOn?'P1 actif':'—');
-  _setW('sys-wilo-pressure', pressure);
-  _setW('sys-wilo-current', '—');
-  _setW('sys-wilo-status', pumpOn?'ON':'OFF');
-  const _swStatus = document.getElementById('sys-wilo-status');
-  if(_swStatus) _swStatus.style.color = pumpOn?'var(--green)':'var(--text-dim)';
   if(pumpOn && flow <= 0.2) setAlarm('WILO_DEBIT', 'Pompe Wilo en marche sans débit détecté', true); else clearAlarm('WILO_DEBIT');
   if(pressure > 14.5) setAlarm('WILO_PRESSION', 'Pression Wilo trop élevée', true); else clearAlarm('WILO_PRESSION');
 }
@@ -5743,7 +5824,10 @@ function getBlockingAlarms() {
 }
 
 function toggleMaintenanceMode(enabled) {
-  maintenanceMode = true;
+  maintenanceMode = !!enabled;
+  updateSafetyPanel();
+  addLog(maintenanceMode ? '🔓 Mode maintenance activé' : '🔒 Mode lecture seule activé', maintenanceMode ? 'warn' : 'info');
+  toast(maintenanceMode ? '🔓 Maintenance active — commandes autorisées avec sécurités' : '🔒 Lecture seule — commandes verrouillées', maintenanceMode ? 'warn' : 'info');
 }
 
 function updateSafetyPanel() {
@@ -5781,6 +5865,12 @@ function updateSafetyPanel() {
 }
 
 function canExecutePumpCommand(pump, action) {
+  if(action === 'off') return { ok:true };
+  if(!maintenanceMode) return { ok:false, reason:'Mode lecture seule actif. Activez le mode maintenance dans Connexion > Sécurité exploitation.' };
+  const blocking = getBlockingAlarms();
+  if(blocking.length) return { ok:false, reason:'Démarrage interdit : ' + blocking.join(' / ') };
+  const elapsed = Date.now() - (lastStopAt[pump] || 0);
+  if(elapsed < RESTART_DELAY_MS) return { ok:false, reason:`Anti-redémarrage actif : attendre encore ${Math.ceil((RESTART_DELAY_MS-elapsed)/1000)} s.` };
   return { ok:true };
 }
 
@@ -5958,6 +6048,7 @@ function disconnectCloud() {
   updateConnStatus('DÉCONNECTÉ', 'badge-off');
   toast('🔌 Déconnecté', 'warn');
   addLog('Déconnexion', 'warn');
+  simulateData();
 }
 
 function connectAgent() {
@@ -6010,15 +6101,7 @@ function handleCommandAcks(acks) {
 
 function fetchRealData() {
   fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(2500)})
-    .then(r => {
-      if(r.status === 401) {
-        // Token expiré - reconnexion silencieuse en arrière-plan
-        connected = false;
-        _scheduleAutoReconnect();
-        throw new Error('session expirée');
-      }
-      return r.json();
-    })
+    .then(r=>r.json())
     .then(d => {
       handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
       const invt = d.invt || {};
@@ -6040,7 +6123,7 @@ function fetchRealData() {
       updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
       addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
     })
-    .catch(e => { if(!e.message.includes('aborted')) { setAlarm('COM', 'Perte communication serveur', false); addLog(`⚠️ Erreur lecture: ${e.message}`, 'warn'); connected=false; _scheduleAutoReconnect(); } });
+    .catch(e => { setAlarm('COM', 'Perte communication serveur', false); addLog(`⚠️ Erreur lecture: ${e.message}`, 'warn'); });
 }
 
 function setPumpControlStateLocal(pump, action) {
@@ -6128,7 +6211,9 @@ controlPump = async function(pump, action) {
 
   addLog(`[CMD] ${pump} -> ${action.toUpperCase()}`, 'cmd');
   if(!connected) {
-    toast('⚠️ Agent non connecté', 'warn');
+    setPumpControlStateLocal(pump, action);
+    toast(`[SIM] ${pump} ${action}`, 'info');
+    addLog(`[SIM] ${pump} ${action}`, 'info');
     return;
   }
 
@@ -7206,7 +7291,7 @@ function generateDripLinesFromExploitation(){
   const DEFAULT_EQUIPMENT = {
     invt: { title:'Variateur INVT', model:'GD100-5R5G-4-PV', specs:'5.5 kW · DC 250-900V → AC 380V 3ph · I max 19.5A' },
     forage: { title:'Pompe Forage', controller:'Salmson Easy Control', model:'Pedrollo 4PD/2', specs:'1.5 kW · 4.8 A · 380V · IP68 · 60 m de profondeur' },
-    wilo: { title:'Surpresseur', brand:'Wilo', model:'CO-2Helix V604/EC', specs:'2 × 0.75 kW · 16 bar max · Pression cible 2 bar' }
+    wilo: { title:'Surpresseur', brand:'Wilo', model:'CO-2Helix V604/EC', specs:'2 × 0.75 kW · 16 bar max · Pression cible 3.5 bar' }
   };
 
   function getEquipmentConfig(){
