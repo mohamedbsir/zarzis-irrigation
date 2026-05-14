@@ -607,22 +607,6 @@ main {
 .conn-input.wide { width: 220px; }
 .conn-input.narrow { width: 80px; }
 
-
-
-/* ============ SAFETY / INDUSTRIAL GUARD ============ */
-.safety-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-top:12px; }
-.safety-card {
-  background: var(--surface2); border:1px solid var(--border); border-radius:10px;
-  padding:12px; display:flex; align-items:center; justify-content:space-between; gap:10px;
-}
-.safety-card strong { font-family:var(--display); font-size:13px; letter-spacing:1px; text-transform:uppercase; }
-.safety-card small { display:block; font-size:10px; color:var(--text-dim); font-family:var(--mono); margin-top:2px; }
-.lock-switch { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.lock-switch input { transform:scale(1.2); accent-color: var(--green); }
-.safety-list { font-family:var(--mono); font-size:11px; line-height:1.7; margin-top:10px; color:var(--text-mid); }
-.safety-list .danger { color:var(--red); }
-.safety-list .ok { color:var(--green); }
-
 /* ============ NOTIF TOAST ============ */
 #toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
@@ -740,7 +724,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <p class="login-sub">SUPERVISION IRRIGATION · ACCÈS PRIVÉ</p>
     <input type="email" class="login-input login-email" id="login-email" placeholder="email" autocomplete="username" onkeydown="if(event.key==='Enter')checkLogin()">
     <input type="password" class="login-input" id="login-pw" placeholder="mot de passe" maxlength="96" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkLogin()">
-    <label class="login-remember"><input type="checkbox" id="login-remember" checked> Rester connecté</label>
+    <label class="login-remember"><input type="checkbox" id="login-remember" checked> Rester connecte automatiquement</label>
     <button class="login-btn" id="login-submit" onclick="checkLogin()">SE CONNECTER</button>
     <div class="login-error" id="login-err">Email ou mot de passe incorrect</div>
     <div class="login-hint">Session protégée côté serveur. Le mot de passe n'est jamais stocké dans cette application.</div>
@@ -789,7 +773,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <div class="pro-title" id="hero-exploitation-title">Tableau de bord exploitation</div>
       <div class="pro-sub" id="hero-exploitation-subtitle">Vue terrain synchronisée avec les données d’exploitation.</div>
     </div>
-    <div class="pro-status-card"><div class="top">Mode</div><div class="big" id="hero-mode">Lecture</div><div class="small">Maintenance obligatoire pour commander</div></div>
+    <div class="pro-status-card"><div class="top">Mode</div><div class="big" id="hero-mode">Direct</div><div class="small">Commandes manuelles via serveur</div></div>
     <div class="pro-status-card"><div class="top">Alarmes</div><div class="big" id="hero-alarms">0</div><div class="small">Blocage automatique si critique</div></div>
     <div class="pro-status-card"><div class="top">Application</div><div class="big" id="hero-app-type">PWA</div><div class="small" id="hero-app-small">Mobile / tablette / PC</div></div>
   </div>
@@ -1222,7 +1206,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       <span class="badge badge-info">V4 PRO</span>
     </div>
     <div class="equipment-grid">
-      <div class="equipment-card"><h3>⚡ INVT Variateur PV</h3><ul><li>Commande marche / arrêt / sens arrière ajoutée.</li><li>Lecture statistiques : Vdc, Vac, Hz, A, kW, kWh.</li><li>Paramètres modifiables uniquement en maintenance.</li><li>Défaut tension DC basse bloquant au démarrage.</li></ul></div>
+      <div class="equipment-card"><h3>⚡ INVT Variateur PV</h3><ul><li>Commande marche / arrêt / sens arrière ajoutée.</li><li>Lecture statistiques : Vdc, Vac, Hz, A, kW, kWh.</li><li>Paramètres protégés côté serveur.</li><li>Défaut tension DC basse bloquant au démarrage.</li></ul></div>
       <div class="equipment-card"><h3 id="equip-forage-title">🔴 Salmson forage</h3><ul id="equip-forage-list"><li>Coffret conservé.</li><li>Sécurité manque d’eau raccordée sur bornes 21/22.</li><li>Pas de capteur niveau bas/haut dans le forage.</li><li>Commande marche/arrêt sous conditions de sécurité.</li></ul></div>
       <div class="equipment-card"><h3 id="equip-wilo-title">💧 Wilo surpresseur</h3><ul id="equip-wilo-list"><li>Capteur pression déjà présent.</li><li>Capteur débit à ajouter pour m³/h et volume cumulé.</li><li>Paramètres Wilo affichés dans le module Paramètres.</li><li>Surveillance pression mini/maxi et marche sans débit.</li></ul></div>
       <div class="equipment-card"><h3 id="equip-res-title">🌊 Réservoir principal 10 000 L</h3><ul id="equip-res-list"><li>Capteur niveau d’eau à ajouter.</li><li>Seuils bas / très bas / plein.</li><li>Alarme niveau bas bloquante pour le surpresseur.</li><li>Suivi volume estimé en litres.</li></ul></div>
@@ -1382,35 +1366,6 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <button onclick="emergencyStop()" style="width:100%;padding:14px;background:linear-gradient(135deg,#ff4d4d,#cc0000);border:2px solid #ff0000;border-radius:10px;color:#fff;font-family:var(--display);font-size:16px;font-weight:900;letter-spacing:3px;text-transform:uppercase;cursor:pointer;box-shadow:0 0 20px rgba(255,77,77,0.4);transition:all 0.2s">
       🚨 ARRÊT D'URGENCE 🚨
     </button>
-  </div>
-
-  <!-- ACTIONS RAPIDES -->
-  <div class="card card-full">
-    <div class="card-header">
-      <div><div class="card-title">⚡ Actions rapides</div><div class="card-subtitle">Scénarios prédéfinis</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
-      <button onclick="runScenario('test')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
-        <div style="font-size:20px;margin-bottom:4px">🧪</div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Test système</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Démarre 30s puis arrête</div>
-      </button>
-      <button onclick="runScenario('purge')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
-        <div style="font-size:20px;margin-bottom:4px">🌊</div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Purge réseau</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Vidange canalisations</div>
-      </button>
-      <button onclick="runScenario('maintenance')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
-        <div style="font-size:20px;margin-bottom:4px">🔧</div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Mode maintenance</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Bloque tous démarrages</div>
-      </button>
-      <button onclick="runScenario('reset')" style="padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;transition:all 0.2s">
-        <div style="font-size:20px;margin-bottom:4px">↺</div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:700">Reset défauts</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px">Acquitte erreurs INVT/Salmson</div>
-      </button>
-    </div>
   </div>
 
   <!-- COMPTEURS -->
@@ -2451,7 +2406,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       </div>
     </div>
     <div class="alert-panel alert-warn" style="margin-bottom:14px">
-      ⚠️ Les écritures Wilo sont verrouillées hors mode maintenance. Vérifier les valeurs sur l'écran du coffret après modification.
+      ⚠️ Les écritures Wilo restent protégées par le serveur. Vérifier les valeurs sur l'écran du coffret après modification.
       Ton coffret EC-B2 pilote des pompes à vitesse fixe : les paramètres de vitesse variable ECe ne sont pas activés ici.
     </div>
     <div class="alert-panel alert-ok" style="margin-bottom:14px">
@@ -2983,7 +2938,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-green" onclick="connectCloud()">CONNECTER</button>
+      <button class="btn btn-green" onclick="connectCloud()">CONNECTER MAINTENANT</button>
       <button class="btn btn-red" onclick="disconnectCloud()">DÉCONNECTER</button>
       <button class="btn btn-ghost" onclick="simulateData()">SIMULATION</button>
       <button class="btn btn-ghost" onclick="syncSharedStateNow(false)">SYNC APPAREILS</button>
@@ -3000,7 +2955,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         <div class="conn-label">Port DR302 local</div>
         <input type="number" class="conn-input narrow" id="agent-port" value="502" readonly>
       </div>
-      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectAgent()">Verifier agent</button>
+      <button class="btn btn-ghost" style="align-self:flex-end" onclick="connectAgent()">ETAT AGENT</button>
     </div>
 
     <div class="divider"></div>
@@ -3011,33 +2966,6 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
         <input type="email" class="conn-input wide" id="account-email" value="mohamedbsir@live.fr" readonly>
       </div>
       <button class="btn btn-ghost" style="align-self:flex-end" onclick="changePw()">Sécurité</button>
-    </div>
-
-
-    <div class="divider"></div>
-    <div class="metric-label" style="margin-bottom:8px">Sécurité exploitation</div>
-    <div class="safety-grid">
-      <div class="safety-card">
-        <div><strong>Mode exploitation</strong><small id="safety-mode-label">Lecture seule</small></div>
-        <label class="lock-switch"><input type="checkbox" id="maintenance-toggle" onchange="toggleMaintenanceMode(this.checked)"> Maintenance</label>
-      </div>
-      <div class="safety-card">
-        <div><strong>Commandes pompes</strong><small id="command-lock-label">Verrouillées</small></div>
-        <span class="badge badge-off" id="command-lock-badge">BLOQUÉ</span>
-      </div>
-      <div class="safety-card">
-        <div><strong>Anti-redémarrage</strong><small>60 secondes minimum</small></div>
-        <span class="badge badge-info">ACTIF</span>
-      </div>
-      <div class="safety-card">
-        <div><strong>Alarme bloquante</strong><small id="blocking-alarm-label">Aucune alarme active</small></div>
-        <span class="badge badge-on" id="blocking-alarm-badge">OK</span>
-      </div>
-    </div>
-    <div class="safety-list" id="safety-list">
-      <span class="ok">✅ Interface en lecture seule au démarrage.</span><br>
-      <span class="ok">✅ Les commandes critiques exigent le mode maintenance.</span><br>
-      <span class="ok">✅ Les alarmes manque d'eau / tension basse / réservoir bas bloquent le démarrage.</span>
     </div>
 
 
@@ -3096,14 +3024,14 @@ let history_vdc = [];
 let history_power = [];
 let history_pressure = [];
 let chartVdc, chartPower, chartPressure;
-const RESTART_DELAY_MS = 60000;
 const ENABLE_PLANNING_UI = false;
-let lastStopAt = { forage: 0, wilo: 0 };
-let maintenanceMode = false;
 let activeAlarms = {};
 let seenCommandAckIds = new Set();
 let commandAckNotifyAfter = Date.now() - 30000;
 let appInitialized = false;
+let autoConnectInProgress = false;
+let cloudConnectFailureLogged = false;
+let lastStatusErrorAt = 0;
 
 function apiHeaders(extra={}) {
   const headers = {'Content-Type':'application/json', ...extra};
@@ -3287,18 +3215,23 @@ async function validateStoredSession() {
   try {
     const res = await fetch(`${apiUrl}/api/auth/session`, {
       headers: apiHeaders(),
-      signal: AbortSignal.timeout(3000)
+      signal: AbortSignal.timeout(8000)
     });
-    const data = await res.json();
-    if(!res.ok || !data.authenticated) throw new Error(data.error || 'session invalide');
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.authenticated) {
+      if(res.status === 401 || res.status === 403) {
+        sessionStorage.removeItem(SESSION_TOKEN_KEY);
+        localStorage.removeItem(REMEMBER_TOKEN_KEY);
+        apiToken = '';
+        return false;
+      }
+      throw new Error(data.error || 'session temporairement indisponible');
+    }
     currentUserEmail = data.user?.email || currentUserEmail;
     localStorage.setItem(REMEMBER_EMAIL_KEY, currentUserEmail);
     return true;
   } catch(e) {
-    sessionStorage.removeItem(SESSION_TOKEN_KEY);
-    localStorage.removeItem(REMEMBER_TOKEN_KEY);
-    apiToken = '';
-    return false;
+    return true;
   }
 }
 
@@ -3308,7 +3241,8 @@ async function checkLogin() {
   const rememberEl = document.getElementById('login-remember');
   const email = (emailEl?.value || '').trim().toLowerCase();
   const password = pwEl?.value || '';
-  const remember = !!rememberEl?.checked;
+  const remember = true;
+  if(rememberEl) rememberEl.checked = true;
   if(!email || !password) {
     showLoginError('Email et mot de passe requis');
     return;
@@ -3346,7 +3280,6 @@ async function resumeLoginIfPossible() {
 
 function logout() {
   apiToken = '';
-  maintenanceMode = false;
   connected = false;
   if(fetchInterval){clearInterval(fetchInterval);fetchInterval=null;}
   sessionStorage.removeItem(SESSION_TOKEN_KEY);
@@ -3414,73 +3347,60 @@ function initApp() {
   if(apiUrl) autoConnect();
 }
 
-// ============ AUTO-CONNEXION RAPIDE ============
-// Utilise les variables directement — pas de dépendance DOM
-// Timeout court (4s), retry exponentiel, silencieux si pas de réseau
-let _autoConnectRetry = 0;
-
-async function autoConnect() {
-  if(connected) return;
+// ============ AUTO-CONNEXION DIRECTE ============
+// Nouveau principe: une connexion immediate a l'ouverture, puis lecture d'etat.
+// Pas de boucle qui "cherche" l'agent: l'agent est declare present par Render/WS.
+async function autoConnect(options={}) {
+  const manual = !!options.manual;
+  if(connected || autoConnectInProgress) {
+    if(manual && connected) toast('Deja connecte au serveur cloud', 'ok');
+    return;
+  }
+  autoConnectInProgress = true;
   updateConnStatus('CONNEXION...', 'badge-warn');
   try {
     const r = await fetch(`${apiUrl}/api/ping`, {
       headers: apiHeaders(),
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(manual ? 5000 : 2500)
     });
     const d = await r.json();
-    if(d.status === 'ok') {
-      connected = true;
-      _autoConnectRetry = 0;
-      commandAckNotifyAfter = Date.now() - 5000;
-      seenCommandAckIds.clear();
-      clearAlarm('COM');
-      updateConnStatus('CONNECTÉ ✅', 'badge-on');
-      addLog(`✅ Cloud connecté — agent: ${d.edge?.agent_online || d.connected ? '✅ ACTIF' : '⏳ ATTENTE'}${d.edge?.ws_connected ? ' / WS' : ''}`, 'ok');
-      if(d.auth_required && !apiToken) addLog('⚠️ Token manquant', 'warn');
-      if(simInterval){ clearInterval(simInterval); simInterval = null; }
-      if(fetchInterval) clearInterval(fetchInterval);
-      const interval = Math.max(1, parseInt(document.getElementById('poll-interval')?.value) || 1);
-      fetchInterval = setInterval(fetchRealData, interval * 1000);
-      fetchRealData();
-      fetchCloudPlanningStatus();
-      syncPlanningToCloud(true);
-      startSharedStateSync();
-    } else {
-      _scheduleAutoReconnect();
-    }
+    if(!r.ok || d.status !== 'ok') throw new Error(d.error || 'Serveur cloud indisponible');
+
+    connected = true;
+    cloudConnectFailureLogged = false;
+    lastStatusErrorAt = 0;
+    commandAckNotifyAfter = Date.now() - 5000;
+    seenCommandAckIds.clear();
+    clearAlarm('COM');
+    updateConnStatus(d.edge?.ws_connected ? 'WS CONNECTE' : 'CONNECTE', 'badge-on');
+    if(manual) toast('Connecte au serveur cloud', 'ok');
+    addLog(`Cloud connecte - agent: ${d.edge?.agent_online || d.connected ? 'PRESENT' : 'EN ATTENTE'}${d.edge?.ws_connected ? ' / WS' : ''}`, 'ok');
+    if(d.auth_required && !apiToken) addLog('Token/session requis pour les commandes', 'warn');
+    if(simInterval){ clearInterval(simInterval); simInterval = null; }
+    if(fetchInterval) clearInterval(fetchInterval);
+    const interval = Math.max(1, parseInt(document.getElementById('poll-interval')?.value) || 1);
+    fetchInterval = setInterval(fetchRealData, interval * 1000);
+    fetchRealData();
+    fetchCloudPlanningStatus();
+    syncPlanningToCloud(true);
+    startSharedStateSync();
   } catch(e) {
     connected = false;
-    updateConnStatus('EN ATTENTE...', 'badge-warn');
-    _scheduleAutoReconnect();
+    updateConnStatus('HORS LIGNE', 'badge-warn');
+    if(manual) toast('Serveur cloud inaccessible', 'err');
+    if(!cloudConnectFailureLogged || manual) {
+      addLog(`Connexion cloud non etablie: ${e.message}`, manual ? 'err' : 'warn');
+      cloudConnectFailureLogged = true;
+    }
+  } finally {
+    autoConnectInProgress = false;
   }
 }
 
-function _scheduleAutoReconnect() {
-  if(connected) return;
-  // Backoff: 5s → 10s → 20s → 30s max
-  const delays = [1000, 2000, 3000, 5000, 10000];
-  const delay = delays[Math.min(_autoConnectRetry, delays.length - 1)];
-  _autoConnectRetry++;
-  setTimeout(() => {
-    if(!connected && apiUrl) autoConnect();
-  }, delay);
-}
-
-// Reconnexion immédiate si réseau revient
+// Reconnexion immediate uniquement quand le navigateur signale le retour reseau.
 window.addEventListener('online', () => {
-  if(!connected && apiUrl) {
-    _autoConnectRetry = 0;
-    autoConnect();
-  }
+  if(!connected && apiUrl) autoConnect();
 });
-
-// Watchdog silencieux toutes les 30s
-setInterval(() => {
-  if(!connected && apiUrl) {
-    _autoConnectRetry = 0;
-    autoConnect();
-  }
-}, 5000);
 
 // ============ CLOCK ============
 function updateClock() {
@@ -5244,58 +5164,6 @@ function emergencyStop() {
   addLog('🚨 ARRÊT D\'URGENCE - Tous équipements stoppés', 'err');
 }
 
-function runScenario(scenario) {
-  switch(scenario) {
-    case 'test':
-      if(!confirm('Lancer un test système ?\n→ Démarre toutes les pompes 30 sec\n→ Puis arrêt automatique')) return;
-      toast('🧪 Test système démarré', 'info');
-      addLog('🧪 Test système lancé', 'info');
-      controlInverter('forward');
-      setTimeout(() => controlPump('forage','on'), 1000);
-      setTimeout(() => controlPump('wilo','on'), 2000);
-      setTimeout(() => {
-        controlPump('wilo','off');
-        controlPump('forage','off');
-        controlInverter('stop');
-        toast('✅ Test système terminé', 'ok');
-        addLog('✅ Test système OK', 'ok');
-      }, 30000);
-      break;
-    case 'purge':
-      if(!confirm('Purger le réseau ?\n→ Ouvre toutes les zones Relais GPIO\n→ Pendant 5 minutes')) return;
-      toast('🌊 Purge réseau (5 min)', 'info');
-      addLog('🌊 Purge réseau démarrée', 'info');
-      if(typeof rbAllOn === 'function') rbAllOn();
-      setTimeout(() => {
-        if(typeof rbStopAll === 'function') rbStopAll();
-        toast('✅ Purge terminée', 'ok');
-        addLog('✅ Purge réseau OK', 'ok');
-      }, 5*60*1000);
-      break;
-    case 'maintenance':
-      const wasInMaint = localStorage.getItem('maintenanceMode') === 'true';
-      if(wasInMaint) {
-        localStorage.removeItem('maintenanceMode');
-        toast('✅ Mode maintenance désactivé', 'ok');
-        addLog('Mode maintenance OFF', 'ok');
-      } else {
-        if(!confirm('Activer le mode maintenance ?\n→ Bloque tous les démarrages\n→ Cliquer à nouveau pour désactiver')) return;
-        localStorage.setItem('maintenanceMode', 'true');
-        controlInverter('stop');
-        controlPump('forage','off');
-        controlPump('wilo','off');
-        toast('🔧 Mode maintenance ACTIVÉ', 'warn');
-        addLog('🔧 Mode maintenance ON - Démarrages bloqués', 'warn');
-      }
-      break;
-    case 'reset':
-      if(!confirm('Reset défauts ?\n→ Acquitte les erreurs INVT/Salmson/Wilo')) return;
-      toast('↺ Reset défauts envoyé', 'info');
-      addLog('↺ Reset défauts INVT/Salmson/Wilo', 'info');
-      break;
-  }
-}
-
 // Sync État Système (utilise les valeurs existantes si disponibles)
 function refreshSystemStatus() {
   // Synchroniser indicateurs principaux
@@ -5325,20 +5193,12 @@ function refreshSystemStatus() {
   
   // Badge global
   const sysBadge = document.getElementById('sys-badge');
-  const isMaint = localStorage.getItem('maintenanceMode') === 'true';
   if(sysBadge) {
-    if(isMaint) {
-      sysBadge.textContent = 'MAINTENANCE';
-      sysBadge.style.background = 'rgba(245,200,66,0.15)';
-      sysBadge.style.color = 'var(--yellow)';
-      sysBadge.style.borderColor = 'rgba(245,200,66,0.3)';
-    } else {
-      const anyOn = (forageStateEl?.textContent || '').includes('MARCHE') || 
-                    (wiloStateEl?.textContent || '').includes('MARCHE');
-      sysBadge.textContent = anyOn ? 'EN MARCHE' : 'VEILLE';
-      sysBadge.style.background = anyOn ? 'rgba(0,232,122,0.15)' : 'rgba(245,200,66,0.15)';
-      sysBadge.style.color = anyOn ? 'var(--green)' : 'var(--yellow)';
-    }
+    const anyOn = (forageStateEl?.textContent || '').includes('MARCHE') || 
+                  (wiloStateEl?.textContent || '').includes('MARCHE');
+    sysBadge.textContent = anyOn ? 'EN MARCHE' : 'VEILLE';
+    sysBadge.style.background = anyOn ? 'rgba(0,232,122,0.15)' : 'rgba(245,200,66,0.15)';
+    sysBadge.style.color = anyOn ? 'var(--green)' : 'var(--yellow)';
   }
 }
 setInterval(refreshSystemStatus, 2000);
@@ -5440,8 +5300,6 @@ async function writeParam(device, addr, reg, id, multiplier, unit) {
   const msgEl = document.getElementById(device+'-param-msg');
 
   if(isNaN(val)) { toast('⚠️ Valeur invalide', 'warn'); return; }
-  if(!maintenanceMode) { toast('⛔ Écriture refusée — mode maintenance requis', 'err'); addLog(`⛔ Écriture ${id} refusée — lecture seule`, 'err'); return; }
-
   const confirmed = confirm(`⚠️ Écrire ${val}${unit} dans ${id} ?\n\nCette action modifie directement le coffret.`);
   if(!confirmed) return;
 
@@ -5528,8 +5386,6 @@ async function writeParamSelect(device, addr, reg, id) {
   const rawVal = parseInt(selectEl.value);
   const text = selectEl.options[selectEl.selectedIndex].text;
   const msgEl = document.getElementById(device+'-param-msg');
-
-  if(!maintenanceMode) { toast('⛔ Écriture refusée — mode maintenance requis', 'err'); addLog(`⛔ Écriture ${id} refusée — lecture seule`, 'err'); return; }
 
   const confirmed = confirm(`⚠️ Écrire "${text}" dans ${id} ?\n\nCette action modifie directement le coffret.`);
   if(!confirmed) return;
@@ -5823,59 +5679,16 @@ function getBlockingAlarms() {
   return Object.entries(activeAlarms).filter(([_, a]) => a.blocking).map(([code, a]) => `${code} — ${a.label}`);
 }
 
-function toggleMaintenanceMode(enabled) {
-  maintenanceMode = !!enabled;
-  updateSafetyPanel();
-  addLog(maintenanceMode ? '🔓 Mode maintenance activé' : '🔒 Mode lecture seule activé', maintenanceMode ? 'warn' : 'info');
-  toast(maintenanceMode ? '🔓 Maintenance active — commandes autorisées avec sécurités' : '🔒 Lecture seule — commandes verrouillées', maintenanceMode ? 'warn' : 'info');
-}
-
 function updateSafetyPanel() {
-  const lockBadge = document.getElementById('command-lock-badge');
-  const lockLabel = document.getElementById('command-lock-label');
-  const modeLabel = document.getElementById('safety-mode-label');
-  const toggle = document.getElementById('maintenance-toggle');
-  const alarmLabel = document.getElementById('blocking-alarm-label');
-  const alarmBadge = document.getElementById('blocking-alarm-badge');
-  const list = document.getElementById('safety-list');
   const blocking = getBlockingAlarms();
-
-  if(toggle) toggle.checked = maintenanceMode;
-  if(modeLabel) modeLabel.textContent = maintenanceMode ? 'Maintenance active' : 'Lecture seule';
-  if(lockBadge) {
-    lockBadge.textContent = maintenanceMode ? 'AUTORISÉ' : 'BLOQUÉ';
-    lockBadge.className = 'badge ' + (maintenanceMode ? 'badge-warn' : 'badge-off');
-  }
-  if(lockLabel) lockLabel.textContent = maintenanceMode ? 'Autorisées sous conditions' : 'Verrouillées';
-  if(alarmLabel) alarmLabel.textContent = blocking.length ? `${blocking.length} alarme(s) active(s)` : 'Aucune alarme active';
-  if(alarmBadge) {
-    alarmBadge.textContent = blocking.length ? 'BLOQUANT' : 'OK';
-    alarmBadge.className = 'badge ' + (blocking.length ? 'badge-off' : 'badge-on');
-  }
   const heroMode = document.getElementById('hero-mode');
   const heroAlarms = document.getElementById('hero-alarms');
-  if(heroMode) heroMode.textContent = maintenanceMode ? 'Maintenance' : 'Lecture';
+  if(heroMode) heroMode.textContent = 'Direct';
   if(heroAlarms) { heroAlarms.textContent = blocking.length; heroAlarms.style.color = blocking.length ? 'var(--red)' : 'var(--green)'; }
-  if(list) {
-    const lines = blocking.length
-      ? blocking.map(a => `<span class="danger">⛔ ${a}</span>`).join('<br>')
-      : '<span class="ok">✅ Aucune alarme bloquante active.</span>';
-    list.innerHTML = lines + '<br><span class="ok">✅ Anti-redémarrage 60 secondes actif.</span><br><span class="ok">✅ Mode maintenance obligatoire pour démarrer une pompe.</span>';
-  }
 }
 
 function canExecutePumpCommand(pump, action) {
-  if(action === 'off') return { ok:true };
-  if(!maintenanceMode) return { ok:false, reason:'Mode lecture seule actif. Activez le mode maintenance dans Connexion > Sécurité exploitation.' };
-  const blocking = getBlockingAlarms();
-  if(blocking.length) return { ok:false, reason:'Démarrage interdit : ' + blocking.join(' / ') };
-  const elapsed = Date.now() - (lastStopAt[pump] || 0);
-  if(elapsed < RESTART_DELAY_MS) return { ok:false, reason:`Anti-redémarrage actif : attendre encore ${Math.ceil((RESTART_DELAY_MS-elapsed)/1000)} s.` };
   return { ok:true };
-}
-
-function recordPumpStop(pump) {
-  lastStopAt[pump] = Date.now();
 }
 
 function confirmAction(action) {
@@ -5995,7 +5808,6 @@ function updateConnStatus(text, cls) {
 
 function connectCloud() {
   const url = document.getElementById('cloud-url').value.trim();
-  const interval = Math.max(1, parseInt(document.getElementById('poll-interval').value)||1);
   const manualToken = document.getElementById('api-token')?.value.trim() || '';
   if(manualToken) {
     apiToken = manualToken;
@@ -6006,37 +5818,9 @@ function connectCloud() {
   localStorage.setItem('zarzis_api', apiUrl);
   localStorage.removeItem('zarzis_api_token');
   localStorage.removeItem('zarzis_api_token_remembered');
-  updateConnStatus('CONNEXION...', 'badge-warn');
-  addLog(`Connexion serveur cloud → ${apiUrl}`, 'info');
-
-  fetch(`${apiUrl}/api/ping`, {headers: apiHeaders(), signal:AbortSignal.timeout(3000)})
-    .then(r=>r.json())
-    .then(d => {
-      if(d.status==='ok') {
-        connected = true;
-        commandAckNotifyAfter = Date.now() - 5000;
-        seenCommandAckIds.clear();
-        clearAlarm('COM');
-        updateConnStatus('CONNECTÉ ✅', 'badge-on');
-        toast('✅ Connecté au serveur cloud', 'ok');
-        addLog(`✅ Serveur cloud connecté — agent: ${d.edge?.agent_online || d.connected ? '✅ CONNECTÉ' : '⏳ ATTENTE'}${d.edge?.ws_connected ? ' / WebSocket' : ''}`, 'ok');
-        if(d.storage && !d.storage.persistent) addLog('⚠️ Stockage Render non persistant pour l’instant. OK pour tests, à passer sur disque Render avant usage long terme.', 'warn');
-        if(d.auth_required && !apiToken) addLog('⚠️ API_TOKEN requis pour les commandes. Renseignez le token Render dans Connexion.', 'warn');
-        if(simInterval){clearInterval(simInterval);simInterval=null;}
-        if(fetchInterval) clearInterval(fetchInterval);
-        fetchInterval = setInterval(fetchRealData, interval*1000);
-        fetchRealData();
-        fetchCloudPlanningStatus();
-        syncPlanningToCloud(true);
-        startSharedStateSync();
-      }
-    })
-    .catch(e => {
-      connected = false;
-      updateConnStatus('ERREUR', 'badge-off');
-      toast('❌ Serveur inaccessible', 'err');
-      addLog(`❌ Erreur: ${e.message}`, 'err');
-    });
+  connected = false;
+  if(fetchInterval){ clearInterval(fetchInterval); fetchInterval = null; }
+  autoConnect({manual:true});
 }
 
 function disconnectCloud() {
@@ -6052,19 +5836,8 @@ function disconnectCloud() {
 }
 
 function connectAgent() {
-  const ip = document.getElementById('agent-ip').value;
-  const port = document.getElementById('agent-port').value;
-  addLog('Verification HTTP PUSH cote serveur', 'info');
-  fetch(`${apiUrl}/api/connect`, {
-    method:'POST', headers: apiHeaders(),
-    body:JSON.stringify({ip, port:parseInt(port)})
-  })
-  .then(r=>r.json())
-  .then(d => {
-    if(d.success) { toast('✅ HTTP PUSH prêt', 'ok'); addLog(`✅ Mode ${d.mode} prêt — agent: ${d.host || ip || 'en attente push'}`, 'ok'); }
-    else { toast('❌ Agent indisponible', 'err'); addLog(`❌ Agent indisponible: ${d.error}`, 'err'); }
-  })
-  .catch(e => addLog(`❌ Erreur agent: ${e.message}`, 'err'));
+  fetchRealData();
+  addLog('Etat agent lu depuis /api/status', 'info');
 }
 
 function handleCommandAcks(acks) {
@@ -6101,8 +5874,15 @@ function handleCommandAcks(acks) {
 
 function fetchRealData() {
   fetch(`${apiUrl}/api/status`, {headers: apiHeaders(), signal:AbortSignal.timeout(2500)})
-    .then(r=>r.json())
+    .then(async r => {
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      return d;
+    })
     .then(d => {
+      connected = true;
+      lastStatusErrorAt = 0;
+      clearAlarm('COM');
       handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
       const invt = d.invt || {};
       const salmson = d.salmson || {};
@@ -6123,12 +5903,18 @@ function fetchRealData() {
       updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
       addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
     })
-    .catch(e => { setAlarm('COM', 'Perte communication serveur', false); addLog(`⚠️ Erreur lecture: ${e.message}`, 'warn'); });
+    .catch(e => {
+      setAlarm('COM', 'Perte communication serveur', false);
+      const now = Date.now();
+      if(now - lastStatusErrorAt > 30000) {
+        addLog(`Erreur lecture serveur: ${e.message}`, 'warn');
+        lastStatusErrorAt = now;
+      }
+    });
 }
 
 function setPumpControlStateLocal(pump, action) {
   pumpStates[pump] = action === 'on';
-  if(action === 'off') recordPumpStop(pump);
   const ind = document.getElementById(`ctrl-${pump}-ind`);
   const st = document.getElementById(`ctrl-${pump}-state`);
   const isOn = action === 'on';
@@ -6219,7 +6005,6 @@ controlPump = async function(pump, action) {
 
   try {
     const data = await sendModbusCmd(pump, action);
-    if(action === 'off') recordPumpStop(pump);
     if(data.queued) {
       toast(`Commande ${pump} en attente agent`, 'warn');
     } else {
@@ -6321,23 +6106,32 @@ rbStopAll = async function() {
 };
 
 connectAgent = async function() {
-  addLog('Verification agent local via serveur Render', 'info');
+  addLog('Lecture etat agent depuis Render', 'info');
   try {
-    const data = await postApiJson('/api/connect', {}, 10000);
+    const res = await fetch(`${apiUrl}/api/status`, {
+      headers: apiHeaders(),
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'status indisponible');
+    const edge = data.edge || {};
     const ipEl = document.getElementById('agent-ip');
     const portEl = document.getElementById('agent-port');
-    if(ipEl) ipEl.value = data.host || data.ip || '';
-    if(portEl) portEl.value = data.port || 502;
-    if(data.success) {
-      toast('Agent local pret', 'ok');
-      addLog(`Agent local pret: ${data.host || data.ip || 'http_push'}`, 'ok');
+    if(ipEl) ipEl.value = data.agent_ip || data.edge_agent || edge.agent_id || 'HTTP PUSH/WS';
+    if(portEl) portEl.value = 502;
+    const online = !!(edge.agent_online ?? data.agent_online ?? data.connected);
+    const fresh = !!(edge.data_fresh ?? data.data_fresh ?? data.connected);
+    const transport = edge.ws_connected ? 'WebSocket' : (edge.last_transport || data.mode || 'HTTP push');
+    if(online) {
+      toast(fresh ? 'Agent present' : 'Agent present, mesures en attente', fresh ? 'ok' : 'warn');
+      addLog(`Agent present via ${transport}${fresh ? ' - mesures fraiches' : ' - attente mesures Modbus'}`, fresh ? 'ok' : 'warn');
     } else {
-      toast('Agent indisponible', 'err');
-      addLog(`Agent indisponible: ${data.error || 'connexion refusee'}`, 'err');
+      toast('Agent non vu recemment', 'warn');
+      addLog('Agent non vu recemment par Render. Le dashboard reste connecte au cloud.', 'warn');
     }
   } catch(e) {
-    toast('Agent indisponible', 'err');
-    addLog(`Erreur agent: ${e.message}`, 'err');
+    toast('Etat agent indisponible', 'err');
+    addLog(`Etat agent indisponible: ${e.message}`, 'err');
   }
 };
 

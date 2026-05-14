@@ -173,4 +173,4 @@ services:
       - key: APP_LOGIN_SESSION_TTL_HOURS
         value: "12"
       - key: APP_LOGIN_REMEMBER_TTL_DAYS
-        value: "30"
+        value: "3650"

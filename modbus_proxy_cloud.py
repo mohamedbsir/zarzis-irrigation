@@ -80,7 +80,7 @@ def env_float(name: str, default: float) -> float:
 
 
 # ============ CONFIGURATION ============
-APP_VERSION = "2026.05.12-zarzis-auth-relay-safe-v9.1"
+APP_VERSION = "2026.05.14-zarzis-clean-control-ui-v9.3"
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(APP_DIR)))
 PLANNING_FILE = Path(os.environ.get("PLANNING_FILE", str(DATA_DIR / "planning_zarzis.json")))
@@ -100,7 +100,7 @@ APP_LOGIN_EMAIL = env_str("APP_LOGIN_EMAIL", "mohamedbsir@live.fr").strip().lowe
 APP_LOGIN_PASSWORD_HASH = env_str("APP_LOGIN_PASSWORD_HASH", "").strip()
 APP_LOGIN_SESSION_SECRET = env_str("APP_LOGIN_SESSION_SECRET", API_TOKEN or APP_LOGIN_PASSWORD_HASH).strip()
 APP_LOGIN_SESSION_TTL_HOURS = max(1, env_int("APP_LOGIN_SESSION_TTL_HOURS", 12))
-APP_LOGIN_REMEMBER_TTL_DAYS = max(1, env_int("APP_LOGIN_REMEMBER_TTL_DAYS", 30))
+APP_LOGIN_REMEMBER_TTL_DAYS = max(1, env_int("APP_LOGIN_REMEMBER_TTL_DAYS", 3650))
 CORS_ORIGINS = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "*").split(",") if origin.strip()] or ["*"]
 LOCAL_TZ_NAME = os.environ.get("LOCAL_TZ", "Africa/Tunis").strip() or "Africa/Tunis"
 try:

@@ -67,7 +67,7 @@ APP_LOGIN_ENABLED=true
 APP_LOGIN_EMAIL=mohamedbsir@live.fr
 APP_LOGIN_PASSWORD_HASH=hash_pbkdf2_du_mot_de_passe
 APP_LOGIN_SESSION_SECRET=secret_long_aleatoire
-APP_LOGIN_REMEMBER_TTL_DAYS=30
+APP_LOGIN_REMEMBER_TTL_DAYS=3650
 UPDATE_SEC=2
 CORS_ORIGINS=https://zarzis-irrigation-1.onrender.com
 ENABLE_PLANNING=false
@@ -246,7 +246,11 @@ Cette version ajoute :
 
 Avant reception des modules, tu peux laisser le dashboard en simulation locale. Pour tester le serveur sans materiel, mettre temporairement `EDGE_MODE=simulation` sur Render. Pour la mise en service reelle, garder `EDGE_MODE=http_push` et lancer l'agent local sur site.
 
-Le dashboard utilise maintenant une vraie connexion serveur via `/api/auth/login`. Le mot de passe n'est pas stocke en clair dans le depot: Render doit recevoir `APP_LOGIN_EMAIL`, `APP_LOGIN_PASSWORD_HASH` et `APP_LOGIN_SESSION_SECRET`. L'option `Rester connecté` garde seulement un jeton de session.
+Le dashboard utilise maintenant une vraie connexion serveur via `/api/auth/login`. Le mot de passe n'est pas stocke en clair dans le depot: Render doit recevoir `APP_LOGIN_EMAIL`, `APP_LOGIN_PASSWORD_HASH` et `APP_LOGIN_SESSION_SECRET`. L'option `Rester connecte automatiquement` garde seulement un jeton de session longue duree.
+
+Principe connexion v9.2 : apres une premiere connexion, l'application se rouvre directement connectee au cloud. Elle ne relance plus une boucle de recherche de l'agent toutes les quelques secondes. L'etat de l'agent local est lu via `/api/status`, alimente par WebSocket/HTTP push depuis le Raspberry.
+
+Version v9.3 : les blocs dashboard `Securite exploitation` et `Actions rapides` sont retires. Les commandes manuelles restent disponibles dans l'onglet Controle; les securites reelles restent gerees par le serveur, l'agent local et les coffrets.
 
 ## Sécurité
 
