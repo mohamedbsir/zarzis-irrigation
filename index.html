@@ -2140,7 +2140,6 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn btn-green" onclick="connectCloud()">CONNECTER MAINTENANT</button>
       <button class="btn btn-red" onclick="disconnectCloud()">DÉCONNECTER</button>
-      <button class="btn btn-ghost" onclick="simulateData()">SIMULATION</button>
       <button class="btn btn-ghost" onclick="syncSharedStateNow(false)">SYNC APPAREILS</button>
     </div>
 
@@ -2581,11 +2580,9 @@ function initApp() {
   setInterval(updateClock, 1000);
   loadCounters();
   calcFert();
-  simulateData();
   fetchWeather();
 
-  // Auto-connexion directe à l'ouverture.
-  // /api/ping ne demande pas de token; /api/status demandera le token si le serveur est protégé.
+  // Connexion directe au serveur au démarrage
   if(apiUrl) autoConnect();
 }
 
@@ -2622,7 +2619,6 @@ async function autoConnect(options={}) {
     if(manual) toast('Connecte au serveur cloud', 'ok');
     addLog(`Cloud connecte - agent: ${d.edge?.agent_online || d.connected ? 'PRESENT' : 'EN ATTENTE'}${d.edge?.ws_connected ? ' / WS' : ''}`, 'ok');
     if(d.auth_required && !apiToken) addLog('Token/session requis pour les commandes', 'warn');
-    if(simInterval){ clearInterval(simInterval); simInterval = null; }
     if(fetchInterval) clearInterval(fetchInterval);
     const interval = Math.max(1, parseInt(document.getElementById('poll-interval')?.value) || 1);
     fetchInterval = setInterval(fetchRealData, interval * 1000);
@@ -2985,11 +2981,11 @@ function rbConnect() {
     }
   })
   .catch(e => {
-    msgEl.textContent = '⚠️ Mode hors-ligne (simulation)';
+    msgEl.textContent = '⚠️ Serveur non connecté';
     msgEl.style.color = 'var(--yellow)';
-    document.getElementById('rb-badge').textContent = 'SIMULATION';
+    document.getElementById('rb-badge').textContent = 'HORS LIGNE';
     document.getElementById('rb-badge').className = 'badge badge-warn';
-    addLog(`Relais mode simulation`, 'warn');
+    addLog('Relais hors ligne — serveur non connecté', 'warn');
   });
 }
 
@@ -3003,7 +2999,7 @@ function rbTestPing() {
       if(d.connected) toast(`✅ Relais répond !`, 'ok');
       else toast(`⏳ Relais GPIO: ${d.error || 'pas de réponse'}`, 'warn');
     })
-    .catch(() => toast('⚠️ Mode simulation', 'warn'));
+    .catch(() => toast('⚠️ Serveur non connecté', 'warn'));
 }
 
 function rbRefreshStatus() {
@@ -4725,64 +4721,9 @@ function readAllParams(device) {
   }
 }
 
-// ============ SIMULATION ============
-function simulateData() {
-  if(simInterval) clearInterval(simInterval);
-  connected = false;
-  updateConnStatus('SIMULATION', 'badge-info');
-  addLog('Mode simulation activé', 'info');
-  simInterval = setInterval(runSim, 3000);
-  runSim();
-}
-
-function runSim() {
-  const hour = new Date().getHours();
-  const min = new Date().getMinutes();
-  let solar = 0;
-  if(hour >= 8 && hour < 18) {
-    const mid = 13;
-    const dist = Math.abs(hour + min/60 - mid);
-    solar = Math.max(0, 100 - dist * 15 + (Math.random()*10-5));
-  }
-
-  const vdc = solar > 5 ? Math.round(300 + solar*3.5 + Math.random()*20) : Math.round(Math.random()*80);
-  const freq = solar > 30 ? parseFloat((50 + (Math.random()-0.5)*2).toFixed(2)) : 0;
-  const power = solar > 30 ? parseFloat((1.5 + solar/100*1.5 + (Math.random()-0.5)*0.3).toFixed(2)) : 0;
-  const amp = solar > 30 ? parseFloat((4.2 + Math.random()*0.8).toFixed(1)) : 0;
-  const vac = solar > 30 ? Math.round(375 + Math.random()*10) : 0;
-
-  const manqueEau = Math.random() < 0.08;
-  const niveauReservoirPct = Math.round(30 + Math.random()*50);
-  const pumpOn = solar > 30 && !manqueEau && niveauReservoirPct < 95;
-  const pressure = pumpOn ? parseFloat((3+Math.random()*2).toFixed(1)) : 0;
-  const flow = pumpOn ? parseFloat((2.5+Math.random()*1).toFixed(1)) : 0;
-  const reservoir = niveauReservoirPct;
-
-  let invtErr = null;
-  if(vdc < 300 && hour >= 8 && hour < 18) invtErr = {code:'A-LS', desc:'Tension DC insuffisante — Soleil trop faible'};
-
-  let salmsonErr = null;
-  if(manqueEau && solar > 30) salmsonErr = {code:'E040', desc:'Manque d’eau coffret Salmson — contact 21/22 ouvert'};
-
-  const solarPctSim = Math.min(100, vdc / 9);
-  updateINVT(vdc, freq, power, amp, vac, solarPctSim, invtErr);
-  updateSalmson(null, !manqueEau, reservoir, pumpOn, salmsonErr, false);
-  updateWilo(pumpOn ? pressure : null, null, pumpOn, null);
-  updateReservoir(reservoir);
-  updateSolarBar(solar);
-  addChartPoint(vdc, power);
-  updateGlobalStats(vdc, power, pumpOn, reservoir, solar);
-
-  // Compteurs auto
-  if(pumpOn) {
-    runHours.forage += 3/3600;
-    runHours.wilo += 3/3600;
-    runHours.water += flow * 3 / 60;
-  }
-  if(solar > 10) runHours.kwh += power * 3 / 3600;
-  localStorage.setItem('runHours', JSON.stringify(runHours));
-  loadCounters();
-}
+// Mode simulation supprimé — connexion directe au serveur uniquement
+function simulateData() { /* Simulation désactivée */ }
+function runSim() { /* Simulation désactivée */ }
 
 function updateGlobalStats(vdc, power, pumpOn, reservoir, solar) {
   document.getElementById('stat-solar').textContent = vdc+'V';
@@ -5133,7 +5074,6 @@ function disconnectCloud() {
   updateConnStatus('DÉCONNECTÉ', 'badge-off');
   toast('🔌 Déconnecté', 'warn');
   addLog('Déconnexion', 'warn');
-  simulateData();
 }
 
 function connectAgent() {
