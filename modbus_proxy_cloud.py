@@ -127,6 +127,8 @@ EDGE_ACK_TIMEOUT_SEC = max(10, env_int("EDGE_ACK_TIMEOUT_SEC", 45))
 HISTORY_MAX_ITEMS = max(100, env_int("HISTORY_MAX_ITEMS", 2000))
 HISTORY_SAVE_MIN_INTERVAL_SEC = max(5, env_int("HISTORY_SAVE_MIN_INTERVAL_SEC", 30))
 SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
+SALMSON_FLOAT_LOW_BIT = env_int("SALMSON_FLOAT_LOW_BIT", 0)
+SALMSON_HIGH_WATER_BIT = env_int("SALMSON_HIGH_WATER_BIT", 4)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
 INVT_NOMINAL_KW = env_float("INVT_NOMINAL_KW", 5.5)
 
@@ -864,11 +866,13 @@ def enrich_salmson_data(data: dict) -> dict:
     data["running_source"] = "Salmson EC-L switch_box_state"
     if "float_state" in data:
         float_state = int(data.get("float_state", 0) or 0)
-        dry_run = bool(float_state & (1 << 0))
-        high_water = bool(float_state & (1 << 4))
-        data["dry_run"] = dry_run
+        float_low = 1 if float_state & (1 << SALMSON_FLOAT_LOW_BIT) else 0
+        water_ok = float_low == SALMSON_FLOAT_LOW_OK_VALUE
+        high_water = bool(float_state & (1 << SALMSON_HIGH_WATER_BIT))
+        data["float_low"] = float_low
+        data["water_ok"] = water_ok
+        data["dry_run"] = not water_ok
         data["high_water"] = high_water
-        data["float_low"] = 0 if dry_run else SALMSON_FLOAT_LOW_OK_VALUE
         data["float_high"] = 1 if high_water else 0
     data["current_a"] = data.get("current_a", 0)
     return data

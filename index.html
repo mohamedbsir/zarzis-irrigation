@@ -5560,7 +5560,23 @@ function updateGlobalStats(vdc, power, pumpOn, reservoir, solar) {
 }
 
 // ============ UI UPDATE FUNCTIONS ============
-function updateINVT(vdc, freq, power, amp, vac, solar, error) {
+function numOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function setTextIfExists(id, value) {
+  const el = document.getElementById(id);
+  if(el) el.textContent = value;
+}
+
+function updateINVT(vdc, freq, power, amp, vac, solar, error, loadPct=null) {
+  vdc = numOrNull(vdc) ?? 0;
+  freq = numOrNull(freq) ?? 0;
+  power = numOrNull(power) ?? 0;
+  amp = numOrNull(amp) ?? 0;
+  vac = numOrNull(vac) ?? 0;
+  const load = numOrNull(loadPct) ?? Math.max(0, Math.min(100, Math.round((power / 5.5) * 100)));
   document.getElementById('invt-vdc').innerHTML = `${vdc}<span class="metric-unit">V</span>`;
   document.getElementById('invt-freq').innerHTML = `${freq}<span style="font-size:11px;color:var(--text-dim)">Hz</span>`;
   document.getElementById('invt-power').innerHTML = `${power}<span style="font-size:11px;color:var(--text-dim)">kW</span>`;
@@ -5576,6 +5592,18 @@ function updateINVT(vdc, freq, power, amp, vac, solar, error) {
   const badge = document.getElementById('invt-badge');
   badge.textContent = running ? 'EN MARCHE' : (vdc<250 ? 'VEILLE' : 'ATTENTE');
   badge.className = 'badge ' + (running ? 'badge-on' : vdc<250 ? 'badge-off' : 'badge-warn');
+  const ctrlInd = document.getElementById('ctrl-invt-ind');
+  const ctrlState = document.getElementById('ctrl-invt-state');
+  if(ctrlInd) ctrlInd.className = 'pump-indicator ' + (running ? 'on' : 'off');
+  if(ctrlState) {
+    ctrlState.textContent = running ? 'EN MARCHE' : 'VEILLE';
+    ctrlState.style.color = running ? 'var(--green)' : 'var(--text-dim)';
+  }
+  setTextIfExists('ctrl-invt-vdc', `${Math.round(vdc)}V`);
+  setTextIfExists('ctrl-invt-freq', `${freq}Hz`);
+  setTextIfExists('ctrl-invt-load', `${load}%`);
+  setTextIfExists('sys-invt-freq', `${freq}`);
+  setTextIfExists('sys-invt-load', `${load}`);
 
   const err = document.getElementById('invt-err');
   if(error) {
@@ -5590,6 +5618,8 @@ function updateINVT(vdc, freq, power, amp, vac, solar, error) {
 }
 
 function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
+  floatBas = !!floatBas;
+  pumpOn = !!pumpOn;
   const hasAmp = Number.isFinite(Number(amp)) && Number(amp) > 0;
   const cur = pumpOn && hasAmp ? Number(amp) : 0;
   document.getElementById('s-amp').innerHTML = hasAmp ? `${cur}<span class="metric-unit">A</span>` : `--<span class="metric-unit">A</span>`;
@@ -5617,6 +5647,10 @@ function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
   st.style.color = pumpOn?'var(--green)':'var(--text-dim)';
   document.getElementById('stat-forage').textContent = pumpOn?'🟢 ON':'🔴 OFF';
 
+  setTextIfExists('sys-forage-current', hasAmp ? cur : 0);
+  setTextIfExists('ctrl-forage-flow', '0m3/h');
+  setTextIfExists('sys-forage-flow', '0');
+
   const err = document.getElementById('s-err');
   if(error) {
     setAlarm('SALMSON', error.desc || 'Défaut Salmson', true);
@@ -5628,11 +5662,16 @@ function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
 }
 
 function updateWilo(pressure, flow, pumpOn) {
-  document.getElementById('w-press').innerHTML = `${pressure}<span style="font-size:11px;color:var(--text-dim)">bar</span>`;
-  document.getElementById('w-flow').innerHTML = `${flow}<span style="font-size:11px;color:var(--text-dim)">m³/h</span>`;
+  const pressureValue = numOrNull(pressure);
+  const flowValue = numOrNull(flow);
+  pumpOn = !!pumpOn;
+  const pressureDisplay = pressureValue === null ? '--' : pressureValue;
+  const flowDisplay = flowValue === null ? '--' : flowValue;
+  document.getElementById('w-press').innerHTML = `${pressureDisplay}<span style="font-size:11px;color:var(--text-dim)">bar</span>`;
+  document.getElementById('w-flow').innerHTML = `${flowDisplay}<span style="font-size:11px;color:var(--text-dim)">m³/h</span>`;
   document.getElementById('w-p1').innerHTML = pumpOn?'<span style="color:var(--green)">ON</span>':'<span style="color:var(--text-dim)">OFF</span>';
   document.getElementById('w-p2').innerHTML = '<span style="color:var(--text-dim)">STANDBY</span>';
-  const pct = Math.min(100, pressure/16*100);
+  const pct = Math.min(100, (pressureValue || 0)/16*100);
   const bar = document.getElementById('w-press-bar');
   bar.style.width = pct+'%';
   bar.className = 'progress-fill '+(pct>90?'red':pct>70?'yellow':'green');
@@ -5644,8 +5683,12 @@ function updateWilo(pressure, flow, pumpOn) {
   ind.className = 'pump-indicator '+(pumpOn?'on':'off');
   st.textContent = pumpOn?'EN MARCHE':'ARRÊTÉ';
   st.style.color = pumpOn?'var(--green)':'var(--text-dim)';
-  if(pumpOn && flow <= 0.2) setAlarm('WILO_DEBIT', 'Pompe Wilo en marche sans débit détecté', true); else clearAlarm('WILO_DEBIT');
-  if(pressure > 14.5) setAlarm('WILO_PRESSION', 'Pression Wilo trop élevée', true); else clearAlarm('WILO_PRESSION');
+  setTextIfExists('ctrl-wilo-pressure', `${pressureDisplay} bar`);
+  setTextIfExists('ctrl-wilo-active', pumpOn ? 'P1' : '--');
+  setTextIfExists('sys-wilo-pressure', pressureDisplay);
+  setTextIfExists('sys-wilo-current', 0);
+  if(pumpOn && (flowValue || 0) <= 0.2) setAlarm('WILO_DEBIT', 'Pompe Wilo en marche sans débit détecté', true); else clearAlarm('WILO_DEBIT');
+  if((pressureValue || 0) > 14.5) setAlarm('WILO_PRESSION', 'Pression Wilo trop élevée', true); else clearAlarm('WILO_PRESSION');
 }
 
 function updateReservoir(level) {
@@ -5899,12 +5942,16 @@ function fetchRealData() {
       else if(d.mode === 'http_push' && agentOnline && !dataFresh) updateConnStatus(edge.ws_connected ? 'WS OK / MODBUS...' : 'AGENT OK / MODBUS...', 'badge-warn');
       else if(edge.ws_connected) updateConnStatus('WS CONNECTÉ ✅', 'badge-on');
       else updateConnStatus('CONNECTÉ ✅', 'badge-on');
-      updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
-      const salmsonWaterOk = typeof salmson.dry_run === 'boolean' ? !salmson.dry_run : salmson.float_low===1;
+      updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null, invt.power_pct);
+      const salmsonWaterOk = typeof salmson.water_ok === 'boolean' ? salmson.water_ok : (typeof salmson.dry_run === 'boolean' ? !salmson.dry_run : salmson.float_low===1);
       updateSalmson(salmson.current_a, salmsonWaterOk, salmson.level_cm, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
-      updateWilo(wilo.pressure||0, wilo.flow||0, wilo.running||false);
+      updateWilo(('pressure' in wilo) ? wilo.pressure : null, ('flow' in wilo) ? wilo.flow : null, wilo.running||false);
       updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
       addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
+      setTextIfExists('stat-solar', `${Math.round(numOrNull(invt.dc_bus_v) || 0)}V`);
+      setTextIfExists('stat-power', `${numOrNull(invt.power_kw) ?? 0}kW`);
+      setTextIfExists('stat-kwh', `${runHours.kwh.toFixed(1)}kWh`);
+      setTextIfExists('last-update-label', 'Mis a jour: ' + new Date().toLocaleTimeString('fr-FR'));
     })
     .catch(e => {
       setAlarm('COM', 'Perte communication serveur', false);

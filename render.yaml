@@ -86,6 +86,10 @@ services:
         value: "0x5000"
       - key: SALMSON_FLOAT_LOW_OK_VALUE
         value: "1"
+      - key: SALMSON_FLOAT_LOW_BIT
+        value: "0"
+      - key: SALMSON_HIGH_WATER_BIT
+        value: "4"
       - key: SALMSON_COMMAND_ENABLED
         value: "false"
       - key: SALMSON_CMD_REG

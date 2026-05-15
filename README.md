@@ -89,6 +89,8 @@ INVT_REG_CURRENT_A=0x3004
 INVT_REG_POWER_PCT=0x3006
 INVT_REG_FAULT_CODE=0x5000
 SALMSON_FLOAT_LOW_OK_VALUE=1
+SALMSON_FLOAT_LOW_BIT=0
+SALMSON_HIGH_WATER_BIT=4
 SALMSON_COMMAND_ENABLED=false
 SALMSON_CMD_REG=14
 SALMSON_REG_LEVEL_CM=25
@@ -287,7 +289,7 @@ Avant le premier demarrage reel :
 3. Confirmer INVT : commande `0x2000`, marche `1`, arret `5`, lectures `0x3000` a `0x3006`.
 4. Confirmer Wilo EC-B : 40015/40026/40041/40042/40062/40139-40140. D'apres la notice 43587401, les menus Wilo d'usine sont 2.02=19200, 2.03=10, 2.04=even, 2.05=1 : regler le coffret sur 9600 / adresse 3 / parite none si le bus DR302 reste en 9600 8N1.
 5. Confirmer Salmson EC-L / EC-Lift : 40015 commande, 40026 niveau, 40041/40042 modes pompes, 40062 etat coffret, 40139-40140 defauts, 40198 flotteurs. La fiche EC-Lift fournie confirme l'interface Modbus mais pas la table complete; la table utilisee vient de la Fieldbuslist Modbus EC Wilo.
-6. Confirmer le sens terrain du manque d'eau : le code mappe le bit dry-run de 40198 vers `float_low`; si le test reel indique une logique differente, ajuster `SALMSON_FLOAT_LOW_OK_VALUE`.
+6. Confirmer le sens terrain du manque d'eau : le code lit le bit `SALMSON_FLOAT_LOW_BIT` de 40198, le compare a `SALMSON_FLOAT_LOW_OK_VALUE`, puis calcule `water_ok` et `dry_run`; si le test reel indique une logique differente, ajuster `SALMSON_FLOAT_LOW_OK_VALUE` ou `SALMSON_FLOAT_LOW_BIT`.
 7. Laisser `SALMSON_COMMAND_ENABLED=false` jusqu'au test qModMaster, meme si `SALMSON_CMD_REG=14` est maintenant renseigne.
 8. Corriger les variables Render (`INVT_OFF_VALUE`, `SALMSON_CMD_REG`, `WILO_CMD_REG`, `*_REG_*`) si le test terrain donne d'autres valeurs.
 9. Faire un essai manuel local on/off avec les securites locales actives.

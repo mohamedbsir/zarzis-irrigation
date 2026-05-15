@@ -85,6 +85,8 @@ OFFLINE_MAX_ITEMS = max(100, env_int("EDGE_OFFLINE_MAX_ITEMS", 10000))
 EDGE_ALLOW_START = env_bool("EDGE_ALLOW_START", False)
 SALMSON_COMMAND_ENABLED = env_bool("SALMSON_COMMAND_ENABLED", False)
 SALMSON_FLOAT_LOW_OK_VALUE = env_int("SALMSON_FLOAT_LOW_OK_VALUE", 1)
+SALMSON_FLOAT_LOW_BIT = env_int("SALMSON_FLOAT_LOW_BIT", 0)
+SALMSON_HIGH_WATER_BIT = env_int("SALMSON_HIGH_WATER_BIT", 4)
 INVT_NOMINAL_KW = env_float("INVT_NOMINAL_KW", 5.5)
 
 ADDR_INVT = env_int("ADDR_INVT", 1)
@@ -129,6 +131,13 @@ WILO_REGS = {
     "pump2_mode": env_int("WILO_REG_PUMP2_MODE", 41),
     "switch_state": env_int("WILO_REG_SWITCH_STATE", 61),
     "error_code": env_int("WILO_REG_ERROR_CODE", 138),
+}
+
+COFFRET4_REGS = {
+    "input_1": env_int("COFFRET4_REG_INPUT_1", 0x0001),
+    "input_2": env_int("COFFRET4_REG_INPUT_2", 0x0002),
+    "analog_1": env_int("COFFRET4_REG_ANALOG_1", 0x0010),
+    "error_code": env_int("COFFRET4_REG_ERROR_CODE", 0x0020),
 }
 
 RELAY_ENABLED = env_bool("RELAY_ENABLED", True)
@@ -334,11 +343,13 @@ def enrich_salmson_data(data: dict) -> dict:
     data["running_source"] = "Salmson EC-L switch_box_state"
     if "float_state" in data:
         float_state = int(data.get("float_state") or 0)
-        dry_run = bool(float_state & (1 << 0))
-        high_water = bool(float_state & (1 << 4))
-        data["dry_run"] = dry_run
+        float_low = 1 if float_state & (1 << SALMSON_FLOAT_LOW_BIT) else 0
+        water_ok = float_low == SALMSON_FLOAT_LOW_OK_VALUE
+        high_water = bool(float_state & (1 << SALMSON_HIGH_WATER_BIT))
+        data["float_low"] = float_low
+        data["water_ok"] = water_ok
+        data["dry_run"] = not water_ok
         data["high_water"] = high_water
-        data["float_low"] = 0 if dry_run else SALMSON_FLOAT_LOW_OK_VALUE
         data["float_high"] = 1 if high_water else 0
     data["current_a"] = data.get("current_a", 0)
     return data
@@ -386,7 +397,21 @@ def read_wilo() -> dict:
 
 
 def read_coffret4() -> dict:
-    return {"status": "NON CONFIGURE", "last_seen": now_iso()}
+    data: dict[str, int | str | None] = {}
+    for name, reg in COFFRET4_REGS.items():
+        if reg < 0:
+            continue
+        values = read_regs(ADDR_COFFRET4, reg)
+        if not values:
+            continue
+        data[name] = values[0]
+    if not data:
+        return unavailable("Coffret4")
+    error = int(data.get("error_code") or 0)
+    data["status"] = "ERREUR" if error else "OK"
+    data["error_text"] = f"Defaut coffret4 {error}" if error else None
+    data["last_seen"] = now_iso()
+    return data
 
 
 def set_relay_state_local(zone: int, active: bool) -> None:
