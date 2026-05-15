@@ -3034,262 +3034,6 @@ let autoConnectInProgress = false;
 let cloudConnectFailureLogged = false;
 let lastStatusErrorAt = 0;
 
-/* ============ PATCH TERRAIN — NORMALISATION MODBUS RÉELLE ============ */
-const FIELD_PATCH_VERSION = '2026-05-15-modbus-real-v1';
-const INVT_MODBUS_MAP = Object.freeze({
-  slave: 1,
-  statusBase: 0x3000,
-  command: 0x1000,
-  frequency_hz:     { address: 0x3000, scale: 0.01 },
-  set_frequency_hz: { address: 0x3001, scale: 0.01 },
-  dc_bus_v:         { address: 0x3002, scale: 0.1  },
-  ac_voltage_v:     { address: 0x3003, scale: 1    },
-  current_a:        { address: 0x3004, scale: 0.1  },
-  motor_speed_raw:  { address: 0x3005, scale: 1    },
-  load_raw:         { address: 0x3006, scale: 1    },
-  temp_raw:         { address: 0x3007, scale: 1    }
-});
-
-const SALMSON_MODBUS_MAP = Object.freeze({
-  slave: 2,
-  holdingBase: 0,
-  known: {
-    signature: 0,
-    mode: 2,
-    stateA: 13,
-    stateB: 14,
-    dryRunOrLevel: 24,
-    pump1State: 40,
-    pump2State: 42
-  }
-});
-
-const WILO_MODBUS_MAP = Object.freeze({
-  slave: 3,
-  holdingBase: 0,
-  known: {
-    signature: 0,
-    mode: 2,
-    stateA: 13,
-    stateB: 14,
-    pressureOrSetpointA: 25,
-    pressureOrSetpointB: 26,
-    pump1State: 40,
-    pump2State: 41,
-    extA: 61,
-    extB: 76,
-    extC: 79
-  }
-});
-
-let lastTelemetry = {
-  invt: {},
-  salmson: {},
-  wilo: {},
-  reservoirPct: null,
-  updatedAt: null,
-  stale: true,
-  missing: []
-};
-
-function isFiniteNumber(v) {
-  return Number.isFinite(Number(v));
-}
-
-function finiteOrNull(v) {
-  const x = Number(v);
-  return Number.isFinite(x) ? x : null;
-}
-
-function roundTo(v, digits=1) {
-  const x = finiteOrNull(v);
-  if(x === null) return null;
-  const m = Math.pow(10, digits);
-  return Math.round(x * m) / m;
-}
-
-function fmt(v, digits=1, empty='--') {
-  const x = roundTo(v, digits);
-  return x === null ? empty : String(x);
-}
-
-function firstFinite(...vals) {
-  for(const v of vals) {
-    const x = finiteOrNull(v);
-    if(x !== null) return x;
-  }
-  return null;
-}
-
-function pickPath(obj, paths) {
-  for(const path of paths) {
-    const parts = path.split('.');
-    let cur = obj;
-    let ok = true;
-    for(const part of parts) {
-      if(cur && Object.prototype.hasOwnProperty.call(cur, part)) cur = cur[part];
-      else { ok = false; break; }
-    }
-    if(ok && cur !== undefined && cur !== null) return cur;
-  }
-  return undefined;
-}
-
-function getDevicePayload(d, name) {
-  return d?.[name] || d?.devices?.[name] || d?.modbus?.[name] || d?.telemetry?.[name] || d?.data?.[name] || {};
-}
-
-function asRegisters(src) {
-  if(!src) return null;
-  if(Array.isArray(src)) return src;
-  if(Array.isArray(src.registers)) return src.registers;
-  if(Array.isArray(src.holding)) return src.holding;
-  if(Array.isArray(src.holding_registers)) return src.holding_registers;
-  if(Array.isArray(src.raw)) return src.raw;
-  if(src.holding && typeof src.holding === 'object') return src.holding;
-  if(src.registers && typeof src.registers === 'object') return src.registers;
-  return null;
-}
-
-function readReg(device, offset, fallback=null) {
-  const regs = asRegisters(device);
-  if(!regs) return fallback;
-  let v;
-  if(Array.isArray(regs)) v = regs[offset];
-  else v = regs[offset] ?? regs[String(offset)] ?? regs['reg_'+offset];
-  const x = finiteOrNull(v);
-  return x === null ? fallback : x;
-}
-
-function readAddr(device, address, base=0, fallback=null) {
-  const regs = asRegisters(device);
-  if(!regs) return fallback;
-  let v;
-  if(Array.isArray(regs)) {
-    const idx = address - base;
-    v = idx >= 0 && idx < regs.length ? regs[idx] : undefined;
-  } else {
-    const hex = '0x' + address.toString(16).toUpperCase();
-    const hexLow = '0x' + address.toString(16).toLowerCase();
-    v = regs[address] ?? regs[String(address)] ?? regs[hex] ?? regs[hexLow] ?? regs['reg_'+hex] ?? regs['reg_'+address];
-  }
-  const x = finiteOrNull(v);
-  return x === null ? fallback : x;
-}
-
-function hasAnyTelemetry(obj, keys=[]) {
-  if(!obj) return false;
-  const regs = asRegisters(obj);
-  if(Array.isArray(regs)) return regs.some(v => finiteOrNull(v) !== null);
-  if(regs && typeof regs === 'object') return Object.values(regs).some(v => finiteOrNull(v) !== null);
-  return keys.some(k => finiteOrNull(obj[k]) !== null || typeof obj[k] === 'boolean');
-}
-
-function decodeINVT(invt={}) {
-  const hasRegs = !!asRegisters(invt);
-  const freq = hasRegs ? readAddr(invt, 0x3000, 0x3000, null) * 0.01 : firstFinite(invt.freq_hz, invt.frequency_hz, invt.frequency, invt.output_frequency_hz);
-  const setFreq = hasRegs ? readAddr(invt, 0x3001, 0x3000, null) * 0.01 : firstFinite(invt.set_frequency_hz, invt.target_freq_hz, invt.set_freq_hz);
-  const dcBus = hasRegs ? readAddr(invt, 0x3002, 0x3000, null) * 0.1 : firstFinite(invt.dc_bus_v, invt.vdc, invt.dc_voltage_v, invt.dc_v);
-  const acVolt = hasRegs ? readAddr(invt, 0x3003, 0x3000, null) : firstFinite(invt.ac_voltage_v, invt.voltage_v, invt.vac, invt.output_voltage_v);
-  const amp = hasRegs ? readAddr(invt, 0x3004, 0x3000, null) * 0.1 : firstFinite(invt.current_a, invt.amp_a, invt.amp, invt.output_current_a);
-  const loadRaw = hasRegs ? readAddr(invt, 0x3006, 0x3000, null) : firstFinite(invt.load_raw, invt.power_raw, invt.load_pct);
-  const cmd = firstFinite(invt.command_state, invt.command, invt.reg_0x1000, invt.run_cmd);
-  const cosPhi = finiteOrNull(invt.cos_phi) ?? 0.8;
-  const estimatedKw = acVolt !== null && amp !== null && acVolt > 0 && amp > 0 ? Math.sqrt(3) * acVolt * amp * cosPhi / 1000 : null;
-  const providedKw = firstFinite(invt.power_kw, invt.kw, invt.power);
-  let powerKw = providedKw;
-  if(estimatedKw !== null && (providedKw === null || Math.abs(providedKw - estimatedKw) > Math.max(0.75, estimatedKw * 0.65))) powerKw = estimatedKw;
-  const explicitRun = typeof invt.running === 'boolean' ? invt.running : (typeof invt.run === 'boolean' ? invt.run : null);
-  const running = explicitRun !== null ? explicitRun : Boolean((freq ?? 0) > 0.2 || (amp ?? 0) > 0.2 || cmd === 1);
-  const solarPct = dcBus !== null ? Math.max(0, Math.min(100, dcBus / 7)) : null;
-  return {
-    valid: hasAnyTelemetry(invt, ['freq_hz','frequency_hz','dc_bus_v','vdc','current_a','voltage_v']),
-    freq_hz: roundTo(freq, 2),
-    set_frequency_hz: roundTo(setFreq, 2),
-    dc_bus_v: roundTo(dcBus, 1),
-    ac_voltage_v: roundTo(acVolt, 0),
-    current_a: roundTo(amp, 1),
-    power_kw: roundTo(powerKw, 2),
-    load_raw: loadRaw,
-    command_state: cmd,
-    running,
-    solar_pct: roundTo(solarPct, 0),
-    error: invt.error_text ? {code:'INVT', desc:invt.error_text} : null
-  };
-}
-
-function decodePumpPack(dev={}, kind='wilo') {
-  const isWilo = kind === 'wilo';
-  const pressureRaw = isWilo ? (readReg(dev, 25, null) ?? readReg(dev, 26, null)) : firstFinite(dev.pressure_raw);
-  const pressure = firstFinite(dev.pressure_bar, dev.pressure, pressureRaw !== null && pressureRaw >= 10 && pressureRaw <= 200 ? pressureRaw / 10 : null);
-  const flow = firstFinite(dev.flow_m3h, dev.flow, dev.flow_m3_h);
-  const p1 = firstFinite(dev.pump1_state, dev.p1, readReg(dev, 40, null));
-  const p2 = firstFinite(dev.pump2_state, dev.p2, readReg(dev, isWilo ? 41 : 42, null));
-  const drySignal = firstFinite(dev.dry_run_signal, dev.float_low, readReg(dev, isWilo ? -1 : 24, null));
-  const current = firstFinite(dev.current_a, dev.amp, dev.motor_current_a);
-  const explicitRun = typeof dev.running === 'boolean' ? dev.running : (typeof dev.run === 'boolean' ? dev.run : null);
-  const running = explicitRun !== null ? explicitRun : Boolean(p1 === 1 || p2 === 1 || (current ?? 0) > 0.2 || (flow ?? 0) > 0.2);
-  const waterOk = typeof dev.dry_run === 'boolean' ? !dev.dry_run : (drySignal === null ? null : drySignal !== 0);
-  return {
-    valid: hasAnyTelemetry(dev, ['pressure_bar','flow_m3h','current_a','pump1_state','pump2_state','float_low']),
-    pressure_bar: roundTo(pressure, 1),
-    flow_m3h: roundTo(flow, 1),
-    current_a: roundTo(current, 1),
-    p1,
-    p2,
-    running,
-    water_ok: waterOk,
-    level_cm: firstFinite(dev.level_cm, dev.level, dev.level_raw),
-    error: dev.error_text ? {code:kind.toUpperCase(), desc:dev.error_text} : null
-  };
-}
-
-function decodeReservoir(d={}, salmson={}) {
-  const configured = (typeof getReservoirSummary === 'function') ? getReservoirSummary() : null;
-  const fromApi = firstFinite(d.reservoir_pct, d.reservoir?.level_pct, d.reservoir?.level, d.tank?.level_pct);
-  const fromSalmson = firstFinite(salmson.level_pct);
-  const fromLocal = configured ? firstFinite(configured.primaryLevel, configured.level, configured.averageLevel) : null;
-  const level = fromApi !== null ? fromApi : fromSalmson !== null ? fromSalmson : fromLocal;
-  return level === null ? null : Math.max(0, Math.min(100, roundTo(level, 0)));
-}
-
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if(el) el.textContent = value;
-}
-
-function applyTelemetryStatus(d={}) {
-  window.zarzisLastStatus = d;
-  const invt = decodeINVT(getDevicePayload(d, 'invt'));
-  const salmson = decodePumpPack(getDevicePayload(d, 'salmson'), 'salmson');
-  const wilo = decodePumpPack(getDevicePayload(d, 'wilo'), 'wilo');
-  if(!salmson.valid && invt.valid) {
-    salmson.current_a = invt.current_a;
-    salmson.running = invt.running;
-  }
-  const reservoirPct = decodeReservoir(d, salmson);
-  const missing = [];
-  if(!invt.valid) missing.push('INVT');
-  if(!salmson.valid) missing.push('SALMSON');
-  if(!wilo.valid) missing.push('WILO');
-  const edge = d.edge || {};
-  const stale = Boolean(edge.data_fresh === false || d.data_fresh === false || missing.includes('INVT'));
-  lastTelemetry = {invt, salmson, wilo, reservoirPct, updatedAt: Date.now(), stale, missing};
-
-  if(stale || missing.length) setAlarm('MODBUS_DATA', `Données Modbus partielles/non lues: ${missing.join(', ') || 'timestamp ancien'}`, false);
-  else clearAlarm('MODBUS_DATA');
-
-  updateINVT(invt.dc_bus_v, invt.freq_hz, invt.power_kw, invt.current_a, invt.ac_voltage_v, invt.solar_pct, invt.error, invt.valid);
-  updateSalmson(salmson.current_a, salmson.water_ok, salmson.level_cm, salmson.running, salmson.error, salmson.valid || invt.valid);
-  updateWilo(wilo.pressure_bar, wilo.flow_m3h, wilo.running, {p1:wilo.p1, p2:wilo.p2}, wilo.valid);
-  if(reservoirPct !== null) updateReservoir(reservoirPct);
-  else setText('stat-reservoir', '--%');
-  updateSolarBar(invt.solar_pct ?? 0);
-  updateGlobalStats(invt.dc_bus_v ?? 0, invt.power_kw ?? 0, salmson.running, reservoirPct ?? 0, invt.solar_pct ?? 0);
-  addChartPoint(invt.dc_bus_v ?? 0, invt.power_kw ?? 0, wilo.pressure_bar ?? 0);
-}
-
-
 function apiHeaders(extra={}) {
   const headers = {'Content-Type':'application/json', ...extra};
   if(apiToken) {
@@ -5816,181 +5560,92 @@ function updateGlobalStats(vdc, power, pumpOn, reservoir, solar) {
 }
 
 // ============ UI UPDATE FUNCTIONS ============
-function updateINVT(vdc, freq, power, amp, vac, solar, error, valid=true) {
-  const dc = roundTo(vdc, 1);
-  const hz = roundTo(freq, 2);
-  const kw = roundTo(power, 2);
-  const current = roundTo(amp, 1);
-  const ac = roundTo(vac, 0);
-  const sun = Math.max(0, Math.min(100, Number(solar) || 0));
+function updateINVT(vdc, freq, power, amp, vac, solar, error) {
+  document.getElementById('invt-vdc').innerHTML = `${vdc}<span class="metric-unit">V</span>`;
+  document.getElementById('invt-freq').innerHTML = `${freq}<span style="font-size:11px;color:var(--text-dim)">Hz</span>`;
+  document.getElementById('invt-power').innerHTML = `${power}<span style="font-size:11px;color:var(--text-dim)">kW</span>`;
+  document.getElementById('invt-amp').innerHTML = `${amp}<span style="font-size:11px;color:var(--text-dim)">A</span>`;
+  document.getElementById('invt-vac').innerHTML = `${vac}<span style="font-size:11px;color:var(--text-dim)">V</span>`;
 
-  document.getElementById('invt-vdc').innerHTML = `${fmt(dc,1)}<span class="metric-unit">V</span>`;
-  document.getElementById('invt-freq').innerHTML = `${fmt(hz,2)}<span style="font-size:11px;color:var(--text-dim)">Hz</span>`;
-  document.getElementById('invt-power').innerHTML = `${fmt(kw,2)}<span style="font-size:11px;color:var(--text-dim)">kW</span>`;
-  document.getElementById('invt-amp').innerHTML = `${fmt(current,1)}<span style="font-size:11px;color:var(--text-dim)">A</span>`;
-  document.getElementById('invt-vac').innerHTML = `${fmt(ac,0)}<span style="font-size:11px;color:var(--text-dim)">V</span>`;
-
-  const pct = dc === null ? 0 : Math.min(100, dc / 900 * 100);
+  const pct = Math.min(100, vdc/800*100);
   const bar = document.getElementById('invt-vdc-bar');
-  if(bar) {
-    bar.style.width = pct + '%';
-    bar.className = 'progress-fill ' + (dc === null ? 'red' : dc < 250 ? 'red' : dc < 500 ? 'yellow' : 'blue');
-  }
+  bar.style.width = pct+'%';
+  bar.className = 'progress-fill ' + (vdc<300?'red':vdc<500?'yellow':'blue');
 
-  const running = valid && Boolean((hz ?? 0) > 0.2 || (current ?? 0) > 0.2);
+  const running = freq > 0;
   const badge = document.getElementById('invt-badge');
-  if(badge) {
-    badge.textContent = !valid ? 'NON LU' : running ? 'EN MARCHE' : (dc !== null && dc < 250 ? 'SOLAIRE BAS' : 'PRÊT');
-    badge.className = 'badge ' + (!valid ? 'badge-warn' : running ? 'badge-on' : dc !== null && dc < 250 ? 'badge-off' : 'badge-warn');
-  }
-
-  const ind = document.getElementById('ctrl-invt-ind');
-  const st = document.getElementById('ctrl-invt-state');
-  if(ind) ind.className = 'pump-indicator ' + (running ? 'on' : 'off');
-  if(st) {
-    st.textContent = !valid ? 'NON LU' : running ? 'EN MARCHE' : 'VEILLE';
-    st.style.color = running ? 'var(--green)' : (!valid ? 'var(--yellow)' : 'var(--text-dim)');
-  }
-
-  const loadPct = kw === null ? '--' : Math.round(Math.min(100, kw / 5.5 * 100));
-  const pairs = {
-    'ctrl-invt-vdc': dc === null ? '--V' : `${dc}V`,
-    'ctrl-invt-freq': hz === null ? '--Hz' : `${hz}Hz`,
-    'ctrl-invt-load': loadPct === '--' ? '--%' : `${loadPct}%`,
-    'sys-invt-freq': hz === null ? '--' : hz,
-    'sys-invt-load': loadPct,
-    'sys-solar-power': kw === null ? '--' : Math.round(kw * 1000),
-    'sys-solar-volt': dc === null ? '--' : dc,
-    'sys-invt-status': !valid ? 'NON LU' : running ? 'ON' : 'VEILLE'
-  };
-  Object.entries(pairs).forEach(([id, val]) => setText(id, val));
+  badge.textContent = running ? 'EN MARCHE' : (vdc<250 ? 'VEILLE' : 'ATTENTE');
+  badge.className = 'badge ' + (running ? 'badge-on' : vdc<250 ? 'badge-off' : 'badge-warn');
 
   const err = document.getElementById('invt-err');
   if(error) {
     setAlarm('INVT', error.desc || 'Défaut variateur', true);
-    if(err) err.classList.add('show');
-    setText('invt-err-code', error.code || 'INVT');
-    setText('invt-err-desc', error.desc || 'Défaut variateur');
+    err.classList.add('show');
+    document.getElementById('invt-err-code').textContent = error.code;
+    document.getElementById('invt-err-desc').textContent = error.desc;
     sendNotif('Alerte INVT', `${error.code}: ${error.desc}`);
     playAlert();
     addLog(`🚨 INVT ${error.code}: ${error.desc}`, 'err');
-  } else {
-    if(valid && dc !== null && dc > 250) clearAlarm('INVT');
-    if(err) err.classList.remove('show');
-  }
+  } else { clearAlarm('INVT'); err.classList.remove('show'); }
 }
 
-function updateSalmson(amp, floatBas, levelCm, pumpOn, error, valid=true) {
-  const current = roundTo(amp, 1);
-  const isOn = valid && Boolean(pumpOn || (current ?? 0) > 0.2);
-  const cur = isOn && current !== null ? current : current;
-
-  document.getElementById('s-amp').innerHTML = `${fmt(cur,1)}<span class="metric-unit">A</span>`;
-  const pct = current === null ? 0 : Math.min(100, current / 6 * 100);
+function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
+  const hasAmp = Number.isFinite(Number(amp)) && Number(amp) > 0;
+  const cur = pumpOn && hasAmp ? Number(amp) : 0;
+  document.getElementById('s-amp').innerHTML = hasAmp ? `${cur}<span class="metric-unit">A</span>` : `--<span class="metric-unit">A</span>`;
+  const pct = Math.min(100, cur/6*100);
   const bar = document.getElementById('s-amp-bar');
-  if(bar) {
-    bar.style.width = pct + '%';
-    bar.className = 'progress-fill ' + (current === null ? 'red' : current > 5.5 ? 'red' : current > 4.8 ? 'yellow' : 'green');
-  }
+  bar.style.width = pct+'%';
+  bar.className = 'progress-fill ' + (cur>5.5?'red':cur>4.8?'yellow':'green');
 
   const badge = document.getElementById('salmson-badge');
-  if(badge) {
-    badge.textContent = !valid ? 'NON LU' : isOn ? 'EN MARCHE' : 'ARRÊTÉE';
-    badge.className = 'badge ' + (!valid ? 'badge-warn' : isOn ? 'badge-on' : 'badge-off');
-  }
+  badge.textContent = pumpOn ? 'EN MARCHE' : 'ARRÊTÉE';
+  badge.className = 'badge '+(pumpOn?'badge-on':'badge-off');
 
-  const waterKnown = typeof floatBas === 'boolean';
-  const waterOk = floatBas === true;
-  setText('f-bas-badge', waterKnown ? (waterOk ? 'OK' : 'MANQUE EAU') : 'NON LU');
-  const fb = document.getElementById('f-bas-badge');
-  if(fb) fb.className = 'badge ' + (!waterKnown ? 'badge-warn' : waterOk ? 'badge-on' : 'badge-off');
-  setText('f-bas-icon', !waterKnown ? '⚠️' : waterOk ? '🟢' : '⛔');
+  document.getElementById('f-bas-badge').textContent = floatBas?'OK':'MANQUE EAU';
+  document.getElementById('f-bas-badge').className = 'badge '+(floatBas?'badge-on':'badge-off');
+  document.getElementById('f-bas-icon').textContent = floatBas?'🟢':'⛔';
+  document.getElementById('f-haut-badge').textContent = Number.isFinite(Number(levelCm)) ? `${Number(levelCm)} cm` : '---';
+  document.getElementById('f-haut-badge').className = 'badge badge-info';
+  document.getElementById('f-haut-icon').textContent = '🌊';
 
-  const level = Number(levelCm);
-  setText('f-haut-badge', Number.isFinite(level) && level > 0 ? `${roundTo(level, 0)} cm` : 'NON LU');
-  const fh = document.getElementById('f-haut-badge');
-  if(fh) fh.className = 'badge badge-info';
-  setText('f-haut-icon', '🌊');
-
+  // Contrôle tab
   const ind = document.getElementById('ctrl-forage-ind');
   const st = document.getElementById('ctrl-forage-state');
-  if(ind) ind.className = 'pump-indicator ' + (isOn ? 'on' : 'off');
-  if(st) {
-    st.textContent = !valid ? 'NON LU' : isOn ? 'EN MARCHE' : 'ARRÊTÉE';
-    st.style.color = isOn ? 'var(--green)' : (!valid ? 'var(--yellow)' : 'var(--text-dim)');
-  }
-
-  setText('sys-forage-current', current === null ? '--' : current);
-  setText('sys-forage-flow', lastTelemetry?.wilo?.flow_m3h ?? '--');
-  setText('ctrl-forage-current', current === null ? '--A' : `${current}A`);
-  setText('ctrl-forage-flow', lastTelemetry?.wilo?.flow_m3h === null || lastTelemetry?.wilo?.flow_m3h === undefined ? '--m³/h' : `${lastTelemetry.wilo.flow_m3h}m³/h`);
-  setText('sys-forage-status', !valid ? 'NON LU' : isOn ? 'ON' : 'OFF');
-  const statForage = document.getElementById('stat-forage');
-  if(statForage) {
-    statForage.textContent = !valid ? '⚠️ NON LU' : isOn ? '🟢 ON' : '🔴 OFF';
-    statForage.style.color = !valid ? 'var(--yellow)' : isOn ? 'var(--green)' : 'var(--red)';
-  }
-
-  if(waterKnown && !waterOk) setAlarm('SALMSON_EAU', 'Manque d’eau Salmson / contact 21-22 ou dry-run', true);
-  else clearAlarm('SALMSON_EAU');
+  ind.className = 'pump-indicator '+(pumpOn?'on':'off');
+  st.textContent = pumpOn?'EN MARCHE':'ARRÊTÉE';
+  st.style.color = pumpOn?'var(--green)':'var(--text-dim)';
+  document.getElementById('stat-forage').textContent = pumpOn?'🟢 ON':'🔴 OFF';
 
   const err = document.getElementById('s-err');
   if(error) {
     setAlarm('SALMSON', error.desc || 'Défaut Salmson', true);
-    if(err) err.classList.add('show');
-    setText('s-err-code', error.code || 'SALMSON');
-    setText('s-err-desc', error.desc || 'Défaut Salmson');
+    err.classList.add('show');
+    document.getElementById('s-err-code').textContent = error.code;
+    document.getElementById('s-err-desc').textContent = error.desc;
     addLog(`🚨 Salmson ${error.code}: ${error.desc}`, 'err');
-  } else {
-    clearAlarm('SALMSON');
-    if(err) err.classList.remove('show');
-  }
+  } else { clearAlarm('SALMSON'); err.classList.remove('show'); }
 }
 
-function updateWilo(pressure, flow, pumpOn, states={}, valid=true) {
-  const p = roundTo(pressure, 1);
-  const f = roundTo(flow, 1);
-  const p1Raw = finiteOrNull(states.p1);
-  const p2Raw = finiteOrNull(states.p2);
-  const isOn = valid && Boolean(pumpOn || p1Raw === 1 || p2Raw === 1 || (f ?? 0) > 0.2);
-
-  document.getElementById('w-press').innerHTML = `${fmt(p,1)}<span style="font-size:11px;color:var(--text-dim)">bar</span>`;
-  document.getElementById('w-flow').innerHTML = `${fmt(f,1)}<span style="font-size:11px;color:var(--text-dim)">m³/h</span>`;
-  document.getElementById('w-p1').innerHTML = p1Raw === 1 ? '<span style="color:var(--green)">ON</span>' : p1Raw === 2 ? '<span style="color:var(--yellow)">AUTO</span>' : p1Raw === null ? '<span style="color:var(--yellow)">NON LU</span>' : '<span style="color:var(--text-dim)">OFF</span>';
-  document.getElementById('w-p2').innerHTML = p2Raw === 1 ? '<span style="color:var(--green)">ON</span>' : p2Raw === 2 ? '<span style="color:var(--yellow)">AUTO</span>' : p2Raw === null ? '<span style="color:var(--yellow)">NON LU</span>' : '<span style="color:var(--text-dim)">OFF</span>';
-
-  const pct = p === null ? 0 : Math.min(100, p / 16 * 100);
+function updateWilo(pressure, flow, pumpOn) {
+  document.getElementById('w-press').innerHTML = `${pressure}<span style="font-size:11px;color:var(--text-dim)">bar</span>`;
+  document.getElementById('w-flow').innerHTML = `${flow}<span style="font-size:11px;color:var(--text-dim)">m³/h</span>`;
+  document.getElementById('w-p1').innerHTML = pumpOn?'<span style="color:var(--green)">ON</span>':'<span style="color:var(--text-dim)">OFF</span>';
+  document.getElementById('w-p2').innerHTML = '<span style="color:var(--text-dim)">STANDBY</span>';
+  const pct = Math.min(100, pressure/16*100);
   const bar = document.getElementById('w-press-bar');
-  if(bar) {
-    bar.style.width = pct + '%';
-    bar.className = 'progress-fill ' + (p === null ? 'red' : pct > 90 ? 'red' : pct > 70 ? 'yellow' : 'green');
-  }
-
+  bar.style.width = pct+'%';
+  bar.className = 'progress-fill '+(pct>90?'red':pct>70?'yellow':'green');
   const badge = document.getElementById('wilo-badge');
-  if(badge) {
-    badge.textContent = !valid ? 'NON LU' : isOn ? 'EN MARCHE' : 'ARRÊTÉ';
-    badge.className = 'badge ' + (!valid ? 'badge-warn' : isOn ? 'badge-on' : 'badge-off');
-  }
-
+  badge.textContent = pumpOn?'EN MARCHE':'ARRÊTÉ';
+  badge.className = 'badge '+(pumpOn?'badge-on':'badge-off');
   const ind = document.getElementById('ctrl-wilo-ind');
   const st = document.getElementById('ctrl-wilo-state');
-  if(ind) ind.className = 'pump-indicator ' + (isOn ? 'on' : 'off');
-  if(st) {
-    st.textContent = !valid ? 'NON LU' : isOn ? 'EN MARCHE' : 'ARRÊTÉ';
-    st.style.color = isOn ? 'var(--green)' : (!valid ? 'var(--yellow)' : 'var(--text-dim)');
-  }
-
-  const pairs = {
-    'ctrl-wilo-pressure': p === null ? '-- bar' : `${p} bar`,
-    'ctrl-wilo-active': p1Raw === 1 ? 'P1' : p2Raw === 1 ? 'P2' : '-',
-    'sys-wilo-pressure': p === null ? '--' : p,
-    'sys-wilo-current': '--',
-    'sys-wilo-status': !valid ? 'NON LU' : isOn ? 'ON' : 'OFF'
-  };
-  Object.entries(pairs).forEach(([id, val]) => setText(id, val));
-
-  if(valid && isOn && (f ?? 0) <= 0.2) setAlarm('WILO_DEBIT', 'Pompe Wilo en marche sans débit détecté', true); else clearAlarm('WILO_DEBIT');
-  if(valid && p !== null && p > 14.5) setAlarm('WILO_PRESSION', 'Pression Wilo trop élevée', true); else clearAlarm('WILO_PRESSION');
+  ind.className = 'pump-indicator '+(pumpOn?'on':'off');
+  st.textContent = pumpOn?'EN MARCHE':'ARRÊTÉ';
+  st.style.color = pumpOn?'var(--green)':'var(--text-dim)';
+  if(pumpOn && flow <= 0.2) setAlarm('WILO_DEBIT', 'Pompe Wilo en marche sans débit détecté', true); else clearAlarm('WILO_DEBIT');
+  if(pressure > 14.5) setAlarm('WILO_PRESSION', 'Pression Wilo trop élevée', true); else clearAlarm('WILO_PRESSION');
 }
 
 function updateReservoir(level) {
@@ -6034,27 +5689,6 @@ function updateSafetyPanel() {
 }
 
 function canExecutePumpCommand(pump, action) {
-  if(action !== 'on') return { ok:true };
-  const blocking = getBlockingAlarms();
-  if(blocking.length) return { ok:false, reason:blocking.join(' | ') };
-
-  const invt = lastTelemetry?.invt || {};
-  const salmson = lastTelemetry?.salmson || {};
-  const reservoirPct = lastTelemetry?.reservoirPct;
-
-  if(pump === 'forage') {
-    if(Number(invt.dc_bus_v || 0) < 250) return { ok:false, reason:'Tension DC INVT insuffisante (<250V)' };
-    if(salmson.water_ok === false) return { ok:false, reason:'Sécurité manque d’eau Salmson active' };
-    if(Number(reservoirPct) >= 98) return { ok:false, reason:'Réservoir déjà plein' };
-  }
-
-  if(pump === 'wilo') {
-    const summary = (typeof getReservoirSummary === 'function') ? getReservoirSummary() : {criticalPct:15};
-    if(Number.isFinite(Number(reservoirPct)) && Number(reservoirPct) <= Number(summary.criticalPct || 15)) {
-      return { ok:false, reason:'Réservoir critique — surpresseur bloqué' };
-    }
-  }
-
   return { ok:true };
 }
 
@@ -6253,19 +5887,24 @@ function fetchRealData() {
       lastStatusErrorAt = 0;
       clearAlarm('COM');
       handleCommandAcks(d.recent_command_acks || (d.last_command_ack ? [d.last_command_ack] : []));
-
+      const invt = d.invt || {};
+      const salmson = d.salmson || {};
+      const wilo = d.wilo || {};
       const agentInput = document.getElementById('agent-ip');
       if(agentInput) agentInput.value = d.agent_ip || d.edge_agent || '';
-
       const edge = d.edge || {};
       const agentOnline = !!(edge.agent_online ?? d.agent_online ?? d.connected);
       const dataFresh = !!(edge.data_fresh ?? d.data_fresh ?? d.connected);
-      applyTelemetryStatus(d);
       if(d.mode === 'http_push' && !agentOnline) updateConnStatus('AGENT ATTENTE', 'badge-warn');
-      else if(lastTelemetry.missing && lastTelemetry.missing.length) updateConnStatus('MODBUS PARTIEL', 'badge-warn');
       else if(d.mode === 'http_push' && agentOnline && !dataFresh) updateConnStatus(edge.ws_connected ? 'WS OK / MODBUS...' : 'AGENT OK / MODBUS...', 'badge-warn');
       else if(edge.ws_connected) updateConnStatus('WS CONNECTÉ ✅', 'badge-on');
       else updateConnStatus('CONNECTÉ ✅', 'badge-on');
+      updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null);
+      const salmsonWaterOk = typeof salmson.dry_run === 'boolean' ? !salmson.dry_run : salmson.float_low===1;
+      updateSalmson(salmson.current_a, salmsonWaterOk, salmson.level_cm, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
+      updateWilo(wilo.pressure||0, wilo.flow||0, wilo.running||false);
+      updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
+      addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
     })
     .catch(e => {
       setAlarm('COM', 'Perte communication serveur', false);
