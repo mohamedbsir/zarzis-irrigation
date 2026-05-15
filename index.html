@@ -33,14 +33,7 @@
   --shadow: 0 4px 24px rgba(0,0,0,0.4);
 }
 
-[data-theme="light"] {
-  --bg: #f0f7f2; --surface: #ffffff; --surface2: #e8f5ec; --surface3: #dff0e5;
-  --border: #c8e0ce; --border2: #b0ceb8;
-  --text: #1a3020; --text-dim: #6a9070; --text-mid: #3a6045;
-  --green-glow: rgba(0,168,85,0.12);
-  --green-dark: rgba(0,168,85,0.06);
-  --shadow: 0 4px 24px rgba(0,0,0,0.1);
-}
+
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
@@ -66,7 +59,7 @@ body::before {
   transition: opacity 0.3s;
 }
 
-[data-theme="light"] body::before { opacity: 0.4; }
+body::before { opacity: 0.4; }
 
 /* ============ LOGIN SCREEN ============ */
 #login-screen {
@@ -677,12 +670,12 @@ main {
 
 /* V5 SUNNODE PROFESSIONAL SKIN */
 :root{--bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;--border:#e2e8f0;--border2:#cbd5e1;--green:#10b981;--green-dim:#059669;--green-glow:rgba(16,185,129,.18);--green-dark:rgba(16,185,129,.08);--yellow:#f59e0b;--red:#ef4444;--blue:#2563eb;--purple:#7c3aed;--text:#0f172a;--text-dim:#64748b;--text-mid:#334155;--font:'Outfit','Exo 2',sans-serif;--mono:'Share Tech Mono',monospace;--display:'Outfit','Rajdhani',sans-serif;--radius:18px;--shadow:0 18px 45px rgba(15,23,42,.08)}
-html:not([data-theme="light"]){--bg:#020617;--surface:#0f172a;--surface2:#111c30;--surface3:#17223a;--border:rgba(148,163,184,.18);--border2:rgba(148,163,184,.28);--text:#e5eefb;--text-dim:#94a3b8;--text-mid:#cbd5e1;--shadow:0 24px 60px rgba(0,0,0,.34)}
+
 body{background:radial-gradient(circle at 8% -10%,rgba(37,99,235,.18),transparent 32%),radial-gradient(circle at 96% 4%,rgba(124,58,237,.14),transparent 28%),var(--bg);letter-spacing:-.01em}body::before{opacity:.28;background-size:64px 64px;background-image:linear-gradient(rgba(37,99,235,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.045) 1px,transparent 1px)}
 #sunnode-splash{position:fixed;inset:0;z-index:99999;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .75s ease,visibility .75s ease,transform .75s ease}#sunnode-splash.loader-hidden{opacity:0;visibility:hidden;pointer-events:none;transform:scale(1.04)}.splash-ring{position:relative;width:132px;height:132px;display:flex;align-items:center;justify-content:center}.splash-ring::before,.splash-ring::after{content:'';position:absolute;border-radius:999px;animation:sunnode-spin 1.7s linear infinite}.splash-ring::before{inset:0;border-top:2px solid #2563eb;border-left:2px solid transparent}.splash-ring::after{inset:16px;border-bottom:2px solid #7c3aed;border-right:2px solid transparent;animation-direction:reverse;animation-duration:2.2s}.splash-logo{width:76px;height:76px;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:36px;background:linear-gradient(135deg,#2563eb,#7c3aed);box-shadow:0 0 55px rgba(37,99,235,.45);position:relative;z-index:1}.splash-title{margin-top:24px;color:white;font-weight:900;letter-spacing:.22em;font-size:30px}.splash-sub{margin-top:8px;color:#93c5fd;font-size:11px;font-weight:800;letter-spacing:.28em;text-transform:uppercase}.splash-dots{display:flex;gap:8px;margin-top:28px}.splash-dots span{width:8px;height:8px;border-radius:999px;background:#2563eb;animation:sunnode-bounce 1s infinite}.splash-dots span:nth-child(2){background:#7c3aed;animation-delay:.15s}.splash-dots span:nth-child(3){background:#10b981;animation-delay:.3s}@keyframes sunnode-spin{to{transform:rotate(360deg)}}@keyframes sunnode-bounce{0%,100%{transform:translateY(0);opacity:.65}50%{transform:translateY(-8px);opacity:1}}
 #login-screen{background:rgba(2,6,23,.76);backdrop-filter:blur(18px)}.login-box{border-radius:32px;border:1px solid var(--border);box-shadow:0 30px 90px rgba(0,0,0,.30);padding:44px 34px}.login-logo{width:76px;height:76px;border-radius:24px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2563eb,#7c3aed);box-shadow:0 20px 60px rgba(37,99,235,.30)}.login-title{color:var(--text);letter-spacing:-.02em;text-transform:none;font-size:30px}.login-sub{letter-spacing:.18em}.login-input{border-radius:16px;background:var(--surface2);border-color:var(--border2)}.login-btn{border-radius:16px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;box-shadow:0 15px 35px rgba(37,99,235,.25)}.login-btn:hover{background:linear-gradient(135deg,#1d4ed8,#6d28d9)}
-header{background:rgba(15,23,42,.84);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);padding:14px 22px}html[data-theme="light"] header{background:rgba(255,255,255,.88)}.logo-icon{border:0;background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;border-radius:14px;box-shadow:0 14px 28px rgba(37,99,235,.20)}.logo-text h1{color:var(--text);text-transform:none;letter-spacing:-.01em;font-size:20px}.logo-text h1::after{content:'.Control';color:var(--blue)}.logo-text p{font-family:var(--font);letter-spacing:.04em}.icon-btn{border-radius:14px;background:var(--surface2);border-color:var(--border);box-shadow:0 8px 20px rgba(15,23,42,.05)}.icon-btn:hover{transform:translateY(-1px);border-color:rgba(37,99,235,.45);background:rgba(37,99,235,.08)}
-.nav-tabs{top:65px;padding:12px 18px;gap:8px;background:rgba(15,23,42,.84);backdrop-filter:blur(20px)}html[data-theme="light"] .nav-tabs{background:rgba(255,255,255,.88)}.nav-tab{border-radius:999px;padding:9px 15px;font-family:var(--font);font-size:12px;font-weight:800;letter-spacing:.02em;text-transform:none;background:var(--surface2);color:var(--text-dim)}.nav-tab.active{color:#fff;border-color:transparent;background:linear-gradient(135deg,#2563eb,#7c3aed);box-shadow:0 12px 28px rgba(37,99,235,.22)}.nav-tab:hover{color:var(--text);border-color:rgba(37,99,235,.45)}
+header{background:rgba(15,23,42,.84);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);padding:14px 22px}header{background:rgba(255,255,255,.88)}.logo-icon{border:0;background:linear-gradient(135deg,#2563eb,#7c3aed);color:white;border-radius:14px;box-shadow:0 14px 28px rgba(37,99,235,.20)}.logo-text h1{color:var(--text);text-transform:none;letter-spacing:-.01em;font-size:20px}.logo-text h1::after{content:'.Control';color:var(--blue)}.logo-text p{font-family:var(--font);letter-spacing:.04em}.icon-btn{border-radius:14px;background:var(--surface2);border-color:var(--border);box-shadow:0 8px 20px rgba(15,23,42,.05)}.icon-btn:hover{transform:translateY(-1px);border-color:rgba(37,99,235,.45);background:rgba(37,99,235,.08)}
+.nav-tabs{top:65px;padding:12px 18px;gap:8px;background:rgba(15,23,42,.84);backdrop-filter:blur(20px)}.nav-tabs{background:rgba(255,255,255,.88)}.nav-tab{border-radius:999px;padding:9px 15px;font-family:var(--font);font-size:12px;font-weight:800;letter-spacing:.02em;text-transform:none;background:var(--surface2);color:var(--text-dim)}.nav-tab.active{color:#fff;border-color:transparent;background:linear-gradient(135deg,#2563eb,#7c3aed);box-shadow:0 12px 28px rgba(37,99,235,.22)}.nav-tab:hover{color:var(--text);border-color:rgba(37,99,235,.45)}
 main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px solid var(--border);box-shadow:var(--shadow);padding:22px;background:var(--surface)}.card::before{height:0}.card:hover{transform:translateY(-2px);border-color:rgba(37,99,235,.35);box-shadow:0 24px 70px rgba(15,23,42,.12)}.card-title{font-family:var(--font);text-transform:none;letter-spacing:-.01em;font-size:17px;font-weight:850;color:var(--text)}.card-subtitle{font-family:var(--font)}.badge{border-radius:999px;padding:5px 10px;font-family:var(--font);letter-spacing:.04em}.metric-value{font-size:34px}.progress-bar{height:8px;border-radius:999px;background:var(--surface3)}.progress-fill{border-radius:999px}.mini-metric,.stat-card,.pump-ctrl-card,.zone-card,.float-row,.weather-row,.equipment-card,.command-card,.pro-status-card{border-radius:18px;background:var(--surface2);border-color:var(--border)}.stat-icon{font-size:28px}.btn,.mini-btn,.big-btn,.param-btn-read,.param-btn-write{border-radius:14px;font-family:var(--font);font-weight:850;text-transform:none;letter-spacing:.02em}.btn-green{background:linear-gradient(135deg,#10b981,#059669);color:#fff}.btn-ghost{background:var(--surface2)}.big-btn-on{border-color:rgba(16,185,129,.45);color:var(--green);background:rgba(16,185,129,.08)}.big-btn-off{border-color:rgba(239,68,68,.45);color:var(--red);background:rgba(239,68,68,.08)}
 .pro-hero{border-radius:28px;background:linear-gradient(135deg,rgba(37,99,235,.12),rgba(124,58,237,.10)),var(--surface)}.pro-title{font-family:var(--font);font-size:30px;text-transform:none;color:var(--text);letter-spacing:-.02em}.pro-kicker{color:var(--blue)}.pro-lead{font-size:14px;line-height:1.6}
 @media(max-width:760px){header{padding:12px 14px}.logo-text p{display:none}.logo-text h1{font-size:18px}.header-actions{gap:6px}.icon-btn{width:38px;height:38px}.nav-tabs{top:63px;padding:10px 12px}.nav-tab{padding:9px 12px;font-size:11px}main{grid-template-columns:1fr;padding:12px;gap:12px}.card{border-radius:20px;padding:16px}.metric-value{font-size:28px}.stats-row{grid-template-columns:repeat(2,1fr)}.grid-2{grid-template-columns:1fr}.ctrl-btns{flex-direction:column}.big-btn{font-size:14px;padding:12px}}
@@ -707,7 +700,7 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 
 <!-- V5 : logique visuelle SUNNODE intégrée au dashboard Zarzis terrain -->
 </head>
-<body>
+<body data-theme="light">
 
 <div id="sunnode-splash">
   <div class="splash-ring"><div class="splash-logo">🌱</div></div>
@@ -729,6 +722,11 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     <button class="login-btn" id="login-submit" onclick="checkLogin()">SE CONNECTER</button>
     <div class="login-error" id="login-err">Email ou mot de passe incorrect</div>
     <div class="login-hint">Session protégée côté serveur. Le mot de passe n'est jamais stocké dans cette application.</div>
+    <div id="bypass-hint" style="display:none;margin-top:14px;padding:10px 14px;background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:8px;font-family:var(--mono);font-size:11px;color:#b07d00;line-height:1.9;text-align:left">
+      <strong>⚡ MODE DÉMO</strong><br>
+      Email : demo@zarzis.local<br>
+      Mot de passe : zarzis2024
+    </div>
   </div>
 </div>
 
@@ -742,7 +740,8 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
     </div>
   </div>
   <div class="header-actions">
-    <div class="icon-btn" onclick="toggleTheme()" title="Thème">🌙</div>
+    <div id="demo-badge" style="display:none;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;background:rgba(245,200,66,0.15);border:1px solid rgba(245,200,66,0.4);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;color:#8a6200;text-transform:uppercase">⚡ DÉMO</div>
+    
     <div class="icon-btn" onclick="requestNotifPermission()" title="Alertes" id="notif-btn">🔔</div>
     <div class="icon-btn" onclick="toggleSound()" title="Son" id="sound-btn">🔊</div>
     <div class="icon-btn" onclick="logout()" title="Déconnexion">🔒</div>
@@ -760,7 +759,6 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
   <div class="nav-tab" onclick="switchTab('fertigation')">🧪 Fertigation</div>
   <div class="nav-tab" onclick="switchTab('historique')">📋 Historique</div>
   <div class="nav-tab" onclick="switchTab('assistant')">🤖 Assistant IA</div>
-  <div class="nav-tab" onclick="switchTab('parametres')">🔧 Paramètres</div>
   <div class="nav-tab" onclick="switchTab('connexion')">⚙️ Connexion</div>
 </div>
 
@@ -2112,805 +2110,6 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
 </div>
 
 <!-- ============ TAB: PARAMÈTRES ============ -->
-<div class="tab-content" id="tab-parametres">
-<main>
-
-  <!-- AVERTISSEMENT -->
-  <div class="card card-full">
-    <div class="alert-panel alert-warn" style="margin:0">
-      ⚠️ <strong>ATTENTION</strong> — La modification des paramètres agit directement sur les coffrets via Modbus.
-      Assurez-vous que les pompes sont à l'ARRÊT avant de modifier les paramètres critiques.
-      Un mauvais réglage peut endommager les équipements.
-    </div>
-  </div>
-
-  <!-- MATÉRIEL INSTALLÉ -->
-  <div class="card card-full">
-    <div class="card-header">
-      <div><div class="card-title">🧰 Matériel installé</div><div class="card-subtitle">Modifier ici les modèles et caractéristiques affichés sur le Dashboard</div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-green" onclick="saveEquipmentConfig()">💾 Sauvegarder</button>
-        <button class="btn btn-ghost" onclick="resetEquipmentConfig()">↺ Réinitialiser</button>
-      </div>
-    </div>
-    <div class="alert-panel alert-ok" style="margin-bottom:12px">✅ Les informations ci-dessous sont stockées dans le navigateur et se répercutent automatiquement dans Tableau de bord, Exploitation et Contrôle.</div>
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">⚡ Variateur solaire</div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Nom affiché</div><div class="param-desc">Exemple : Variateur INVT</div></div><input class="fert-input" id="eq-invt-title" style="max-width:260px;margin:0" value="Variateur INVT"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Modèle</div><div class="param-desc">Référence commerciale ou technique</div></div><input class="fert-input" id="eq-invt-model" style="max-width:260px;margin:0" value="GD100-5R5G-4-PV"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Caractéristiques</div><div class="param-desc">Puissance, tension, courant, usage</div></div><input class="fert-input" id="eq-invt-specs" style="max-width:480px;margin:0" value="5.5 kW · DC 250-900V → AC 380V 3ph · I max 19.5A"></div>
-    </div>
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🔴 Pompe forage / coffret Salmson</div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Nom affiché</div><div class="param-desc">Exemple : Pompe Forage</div></div><input class="fert-input" id="eq-forage-title" style="max-width:260px;margin:0" value="Pompe Forage"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Coffret / commande</div><div class="param-desc">Exemple : Salmson Easy Control</div></div><input class="fert-input" id="eq-forage-controller" style="max-width:260px;margin:0" value="Salmson Easy Control"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Modèle pompe</div><div class="param-desc">Exemple : Pedrollo 4PD/2</div></div><input class="fert-input" id="eq-forage-model" style="max-width:260px;margin:0" value="Pedrollo 4PD/2"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Caractéristiques</div><div class="param-desc">Puissance, intensité, tension, profondeur</div></div><input class="fert-input" id="eq-forage-specs" style="max-width:480px;margin:0" value="1.5 kW · 4.8 A · 380V · IP68 · 60 m de profondeur"></div>
-    </div>
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">💧 Surpresseur / coffret Wilo</div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Nom affiché</div><div class="param-desc">Exemple : Surpresseur</div></div><input class="fert-input" id="eq-wilo-title" style="max-width:260px;margin:0" value="Surpresseur"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Marque / coffret</div><div class="param-desc">Exemple : Wilo</div></div><input class="fert-input" id="eq-wilo-brand" style="max-width:260px;margin:0" value="Wilo"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Modèle</div><div class="param-desc">Exemple : CO-2Helix V604/EC</div></div><input class="fert-input" id="eq-wilo-model" style="max-width:260px;margin:0" value="CO-2Helix V604/EC"></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Caractéristiques</div><div class="param-desc">Nombre de pompes, puissance, pression, consigne</div></div><input class="fert-input" id="eq-wilo-specs" style="max-width:480px;margin:0" value="2 × 0.75 kW · 16 bar max · Pression cible 3.5 bar"></div>
-    </div>
-    <div class="param-status" id="equipment-config-msg"></div>
-  </div>
-
-
-  <!-- RÉSERVOIRS / PARAMÈTRES EXPLOITATION -->
-  <div class="card card-full">
-    <div class="card-header">
-      <div><div class="card-title">🌊 Paramètres réservoirs</div><div class="card-subtitle">Même configuration que dans Exploitation, synchronisée partout</div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="switchTab('exploitation')">↗️ Ouvrir Exploitation</button>
-        <button class="btn btn-green" onclick="saveReservoirs()">💾 Sauvegarder</button>
-      </div>
-    </div>
-    <div class="alert-panel alert-info" style="margin-bottom:12px">ℹ️ La capacité totale et les seuils sont utilisés pour les cartes Dashboard, les alertes niveau bas et les calculs d’autonomie.</div>
-    <div class="exploit-zone-wrap">
-      <table class="exploit-zone-table">
-        <thead>
-          <tr><th>Nom</th><th>Capacité L</th><th>Niveau %</th><th>Type capteur</th><th>Seuil bas %</th><th>Très bas %</th><th>Rôle</th><th>Volume</th><th>Action</th></tr>
-        </thead>
-        <tbody id="reservoirs-body-param"></tbody>
-      </table>
-    </div>
-    <div class="param-status ok" id="reservoir-config-msg" style="display:block">Configuration réservoirs prête.</div>
-  </div>
-
-  <!-- INVT PARAMÈTRES -->
-  <div class="card card-full">
-    <div class="card-header">
-      <div><div class="card-title">⚡ Variateur INVT GD100-PV</div><div class="card-subtitle">Adresse Modbus: 1 · Registres P00 → P17</div></div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost" onclick="readAllParams('invt')">📖 LIRE TOUT</button>
-        <span class="badge badge-info" id="invt-param-status-badge">EN ATTENTE</span>
-      </div>
-    </div>
-
-    <!-- Groupe: Moteur -->
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🔧 Paramètres Moteur</div>
-
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Fréquence maximale</div>
-          <div class="param-desc">Fréquence de sortie maximale du variateur</div>
-          <div class="param-reg">P00.03 · Reg: 0x0003</div>
-        </div>
-        <div class="param-val-display" id="pv-invt-0003">--</div>
-        <input type="number" class="param-input" id="pi-invt-0003" value="50" min="0" max="500" step="0.01">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">Hz</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x0003,'invt-0003',100,'Hz')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x0003,'invt-0003',100,'Hz')">✏️ ÉCRIRE</button>
-      </div>
-
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Courant nominal moteur</div>
-          <div class="param-desc">Courant de protection thermique (Pedrollo 4PD/2 = 4.8A)</div>
-          <div class="param-reg">P02.01 · Reg: 0x0201</div>
-        </div>
-        <div class="param-val-display" id="pv-invt-0201">--</div>
-        <input type="number" class="param-input" id="pi-invt-0201" value="4.8" min="0" max="16" step="0.1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">A</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x0201,'invt-0201',10,'A')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x0201,'invt-0201',10,'A')">✏️ ÉCRIRE</button>
-      </div>
-
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Temps d'accélération</div>
-          <div class="param-desc">Durée pour atteindre la fréquence max (évite surintensité)</div>
-          <div class="param-reg">P00.11 · Reg: 0x000B</div>
-        </div>
-        <div class="param-val-display" id="pv-invt-000B">--</div>
-        <input type="number" class="param-input" id="pi-invt-000B" value="10" min="0" max="600" step="0.1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x000B,'invt-000B',10,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x000B,'invt-000B',10,'sec')">✏️ ÉCRIRE</button>
-      </div>
-
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Temps de décélération</div>
-          <div class="param-desc">Durée pour arrêt progressif du moteur</div>
-          <div class="param-reg">P00.12 · Reg: 0x000C</div>
-        </div>
-        <div class="param-val-display" id="pv-invt-000C">--</div>
-        <input type="number" class="param-input" id="pi-invt-000C" value="10" min="0" max="600" step="0.1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x000C,'invt-000C',10,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x000C,'invt-000C',10,'sec')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-
-    <!-- Groupe: Solaire PV -->
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">☀️ Paramètres Solaire PV</div>
-
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Seuil sous-tension PV (UV)</div>
-          <div class="param-desc">P15.37 — Tension DC minimale avant déclenchement UV. Valeur usine modèle -4 = 240V. Réduire prudemment si panneaux insuffisants.</div>
-          <div class="param-reg">P15.37 · Reg: 0x0F25 · Valeur usine modèle -4 : 240V</div>
-        </div>
-        <div class="param-val-display" id="pv-invt-0F25">--</div>
-        <input type="number" class="param-input" id="pi-invt-0F25" value="240" min="70" max="400" step="5">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">V</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x0F25,'invt-0F25',1,'V')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x0F25,'invt-0F25',1,'V')">✏️ ÉCRIRE</button>
-      </div>
-
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Délai redémarrage après alarme A-LS</div>
-          <div class="param-desc">P15.24 — Attente avant redémarrage après alarme faible luminosité. Usine : 300s. Augmenter si cycles A-LS trop fréquents le matin.</div>
-          <div class="param-reg">P15.24 · Reg: 0x0F18 · Valeur usine : 300 sec</div>
-        </div>
-        <div class="param-val-display" id="pv-invt-0F18">--</div>
-        <input type="number" class="param-input" id="pi-invt-0F18" value="300" min="0" max="3600" step="60">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x0F18,'invt-0F18',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x0F18,'invt-0F18',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Adresse Modbus esclave</div>
-          <div class="param-desc">Adresse de l'appareil sur le bus RS485</div>
-          <div class="param-reg">P14.00 · Reg: 0x0E00</div>
-        </div>
-        <div class="param-val-display" id="pv-invt-0E00">--</div>
-        <input type="number" class="param-input" id="pi-invt-0E00" value="1" min="1" max="247" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)"></span>
-        <button class="param-btn-read" onclick="readParam('invt',1,0x0E00,'invt-0E00',1,'')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('invt',1,0x0E00,'invt-0E00',1,'')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-
-    <div class="param-status" id="invt-param-msg"></div>
-  </div>
-
-  <!-- SALMSON PARAMÈTRES -->
-  <div class="card card-full">
-    <div class="card-header">
-      <div><div class="card-title">🔴 Salmson Control EC-L forage</div><div class="card-subtitle">Adresse Modbus: 2 · Menus 1.00 → 7.00 · configuration issue de votre notice papier</div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="readAllParams('salmson')">📖 LIRE TOUT</button>
-        <span class="badge badge-info" id="salmson-param-status-badge">EN ATTENTE</span>
-      </div>
-    </div>
-
-    <div class="alert-panel alert-warn" style="margin-bottom:14px">
-      ⚠️ Les adresses Modbus Salmson restent provisoires. Le serveur et l'agent bloquent les commandes Salmson tant que la table EC-L exacte n'est pas validée sur site.
-    </div>
-
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🔌 Bornes terrain importantes</div>
-      <div class="grid-2">
-        <div class="mini-metric"><div class="lbl">21-22</div><div class="val err" style="font-size:14px">Extern OFF</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px">Arrêt externe prioritaire. Contact ouvert = pompes arrêtées.</div></div>
-        <div class="mini-metric"><div class="lbl">25-26</div><div class="val warn" style="font-size:14px">FS1 Dry-run</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px">Protection manque d'eau / marche à sec.</div></div>
-        <div class="mini-metric"><div class="lbl">45-46</div><div class="val info" style="font-size:14px">4-20 mA</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px">Capteur niveau analogique si mode LEVEL.</div></div>
-        <div class="mini-metric"><div class="lbl">1-18</div><div class="val" style="font-size:14px">EBM / ESM / SBM / SSM</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px">Reports marche et défaut individuels/centralisés.</div></div>
-      </div>
-    </div>
-
-    <!-- Groupe: Régulation -->
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">📏 Régulation niveaux / temporisations (Menu 1)</div>
-
-      <div class="param-row"><div class="param-info"><div class="param-name">Tempo désactivation pompe principale</div><div class="param-desc">1.09 — délai d'arrêt de la pompe principale</div><div class="param-reg">Menu 1.09 · Reg provisoire: 0x0109</div></div><div class="param-val-display" id="pv-salm-0109">--</div><input type="number" class="param-input" id="pi-salm-0109" value="5" min="0" max="60"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0109,'salm-0109',1,'sec')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0109,'salm-0109',1,'sec')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Tempo activation pompe d'appoint</div><div class="param-desc">1.10 — délai avant démarrage pompe d'appoint</div><div class="param-reg">Menu 1.10 · Reg provisoire: 0x0110</div></div><div class="param-val-display" id="pv-salm-0110">--</div><input type="number" class="param-input" id="pi-salm-0110" value="3" min="1" max="30"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0110,'salm-0110',1,'sec')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0110,'salm-0110',1,'sec')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Tempo désactivation pompe d'appoint</div><div class="param-desc">1.11 — délai d'arrêt pompe d'appoint</div><div class="param-reg">Menu 1.11 · Reg provisoire: 0x0111</div></div><div class="param-val-display" id="pv-salm-0111">--</div><input type="number" class="param-input" id="pi-salm-0111" value="1" min="0" max="30"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0111,'salm-0111',1,'sec')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0111,'salm-0111',1,'sec')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Pompe principale MARCHE</div><div class="param-desc">1.12 — niveau de démarrage pompe principale</div><div class="param-reg">Menu 1.12 · Reg provisoire: 0x0112</div></div><div class="param-val-display" id="pv-salm-0112">--</div><input type="number" class="param-input" id="pi-salm-0112" value="0.50" min="0" max="12.5" step="0.01"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">m</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0112,'salm-0112',100,'m')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0112,'salm-0112',100,'m')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Pompe principale ARRÊT</div><div class="param-desc">1.13 — niveau d'arrêt pompe principale</div><div class="param-reg">Menu 1.13 · Reg provisoire: 0x0113</div></div><div class="param-val-display" id="pv-salm-0113">--</div><input type="number" class="param-input" id="pi-salm-0113" value="0.25" min="0" max="12.5" step="0.01"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">m</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0113,'salm-0113',100,'m')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0113,'salm-0113',100,'m')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Pompe appoint 1 MARCHE</div><div class="param-desc">1.14 — seuil marche pompe d'appoint 1</div><div class="param-reg">Menu 1.14 · Reg provisoire: 0x0114</div></div><div class="param-val-display" id="pv-salm-0114">--</div><input type="number" class="param-input" id="pi-salm-0114" value="0.75" min="0" max="12.5" step="0.01"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">m</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0114,'salm-0114',100,'m')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0114,'salm-0114',100,'m')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Pompe appoint 1 ARRÊT</div><div class="param-desc">1.15 — seuil arrêt pompe d'appoint 1</div><div class="param-reg">Menu 1.15 · Reg provisoire: 0x0115</div></div><div class="param-val-display" id="pv-salm-0115">--</div><input type="number" class="param-input" id="pi-salm-0115" value="0.50" min="0" max="12.5" step="0.01"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">m</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0115,'salm-0115',100,'m')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0115,'salm-0115',100,'m')">✏️ ÉCRIRE</button></div>
-    </div>
-
-    <!-- Groupe: Modes pompes -->
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🎛️ Modes pompes (Menu 3)</div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Validation pompe</div><div class="param-desc">3.01 — autorisation générale pompe</div><div class="param-reg">Menu 3.01 · Reg provisoire: 0x0301</div></div><div class="param-val-display" id="pv-salm-0301">--</div><select class="param-input-select" id="pi-salm-0301"><option value="0">OFF</option><option value="1" selected>ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0301,'salm-0301',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0301,'salm-0301')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Mode pompe 1</div><div class="param-desc">3.02 — OFF / manuel / automatique</div><div class="param-reg">Menu 3.02 · Reg provisoire: 0x0302</div></div><div class="param-val-display" id="pv-salm-0302">--</div><select class="param-input-select" id="pi-salm-0302"><option value="0">OFF</option><option value="1">HAND</option><option value="2" selected>AUTO</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0302,'salm-0302',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0302,'salm-0302')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Mode pompe 2</div><div class="param-desc">3.03 — OFF / manuel / automatique</div><div class="param-reg">Menu 3.03 · Reg provisoire: 0x0303</div></div><div class="param-val-display" id="pv-salm-0303">--</div><select class="param-input-select" id="pi-salm-0303"><option value="0">OFF</option><option value="1">HAND</option><option value="2" selected>AUTO</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0303,'salm-0303',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0303,'salm-0303')">✏️ ÉCRIRE</button></div>
-    </div>
-
-    <!-- Groupe: Installation -->
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">⚙️ Installation / sécurité (Menu 5)</div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Mode FILL / DRAIN</div><div class="param-desc">5.01 — FILL = remplir réservoir, DRAIN = vider</div><div class="param-reg">Menu 5.01 · Reg provisoire: 0x0501</div></div><div class="param-val-display" id="pv-salm-0501">--</div><select class="param-input-select" id="pi-salm-0501"><option value="0">DRAIN</option><option value="1" selected>FILL</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0501,'salm-0501',{0:'DRAIN',1:'FILL'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0501,'salm-0501')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Nombre de pompes</div><div class="param-desc">5.02 — nombre de pompes raccordées</div><div class="param-reg">Menu 5.02 · Reg provisoire: 0x0502</div></div><div class="param-val-display" id="pv-salm-0502">--</div><input type="number" class="param-input" id="pi-salm-0502" value="1" min="1" max="3"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">pompe(s)</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0502,'salm-0502',1,'')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0502,'salm-0502',1,'')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Pompe de réserve</div><div class="param-desc">5.03 — définit une pompe comme réserve</div><div class="param-reg">Menu 5.03 · Reg provisoire: 0x0503</div></div><div class="param-val-display" id="pv-salm-0503">--</div><select class="param-input-select" id="pi-salm-0503"><option value="0" selected>OFF</option><option value="1">Pompe 1</option><option value="2">Pompe 2</option><option value="3">Pompe 3</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0503,'salm-0503',{0:'OFF',1:'P1',2:'P2',3:'P3'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0503,'salm-0503')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Type capteur niveau</div><div class="param-desc">5.07 — FLOAT / LEVEL 4-20mA / BELL / Opto1</div><div class="param-reg">Menu 5.07 · Reg provisoire: 0x0507</div></div><div class="param-val-display" id="pv-salm-0507">--</div><select class="param-input-select" id="pi-salm-0507"><option value="0" selected>FLOAT</option><option value="1">LEVEL 4-20mA</option><option value="2">BELL</option><option value="3">OPTO1</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0507,'salm-0507',{0:'FLOAT',1:'LEVEL',2:'BELL',3:'OPTO1'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0507,'salm-0507')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Plage capteur niveau</div><div class="param-desc">5.09 — champ de mesure capteur 0.25 à 12.50 m</div><div class="param-reg">Menu 5.09 · Reg provisoire: 0x0509</div></div><div class="param-val-display" id="pv-salm-0509">--</div><input type="number" class="param-input" id="pi-salm-0509" value="2.50" min="0.25" max="12.5" step="0.01"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">m</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0509,'salm-0509',100,'m')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0509,'salm-0509',100,'m')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Alerte sur Extern OFF</div><div class="param-desc">5.39 — affiche alerte si arrêt externe bornes 21/22</div><div class="param-reg">Menu 5.39 · Reg provisoire: 0x0539</div></div><div class="param-val-display" id="pv-salm-0539">--</div><select class="param-input-select" id="pi-salm-0539"><option value="0" selected>OFF</option><option value="1">ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0539,'salm-0539',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0539,'salm-0539')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Kick pompe anti-grippage</div><div class="param-desc">5.40 — test cyclique après arrêt prolongé</div><div class="param-reg">Menu 5.40 · Reg provisoire: 0x0540</div></div><div class="param-val-display" id="pv-salm-0540">--</div><select class="param-input-select" id="pi-salm-0540"><option value="0" selected>OFF</option><option value="1">ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0540,'salm-0540',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0540,'salm-0540')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Kick autorisé si Extern OFF</div><div class="param-desc">5.41 — autorise le kick même après désactivation externe</div><div class="param-reg">Menu 5.41 · Reg provisoire: 0x0541</div></div><div class="param-val-display" id="pv-salm-0541">--</div><select class="param-input-select" id="pi-salm-0541"><option value="0">OFF</option><option value="1" selected>ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0541,'salm-0541',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0541,'salm-0541')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Intervalle kick pompe</div><div class="param-desc">5.42 — délai entre deux kicks</div><div class="param-reg">Menu 5.42 · Reg provisoire: 0x0542</div></div><div class="param-val-display" id="pv-salm-0542">--</div><input type="number" class="param-input" id="pi-salm-0542" value="24" min="0" max="336"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">h</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0542,'salm-0542',1,'h')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0542,'salm-0542',1,'h')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Durée kick pompe</div><div class="param-desc">5.43 — durée du test anti-grippage</div><div class="param-reg">Menu 5.43 · Reg provisoire: 0x0543</div></div><div class="param-val-display" id="pv-salm-0543">--</div><input type="number" class="param-input" id="pi-salm-0543" value="5" min="0" max="60"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0543,'salm-0543',1,'sec')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0543,'salm-0543',1,'sec')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Tempo après coupure courant</div><div class="param-desc">5.44 — redémarrage différé après coupure</div><div class="param-reg">Menu 5.44 · Reg provisoire: 0x0544</div></div><div class="param-val-display" id="pv-salm-0544">--</div><input type="number" class="param-input" id="pi-salm-0544" value="3" min="0" max="180"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0544,'salm-0544',1,'sec')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0544,'salm-0544',1,'sec')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Niveau marche à sec / minimum</div><div class="param-desc">5.50 — seuil minimum / fonctionnement à sec</div><div class="param-reg">Menu 5.50 · Reg provisoire: 0x0550</div></div><div class="param-val-display" id="pv-salm-0550">--</div><input type="number" class="param-input" id="pi-salm-0550" value="0.15" min="0" max="12.5" step="0.01"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">m</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0550,'salm-0550',100,'m')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0550,'salm-0550',100,'m')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Niveau de submersion</div><div class="param-desc">5.51 — seuil haut / submersion</div><div class="param-reg">Menu 5.51 · Reg provisoire: 0x0551</div></div><div class="param-val-display" id="pv-salm-0551">--</div><input type="number" class="param-input" id="pi-salm-0551" value="0.46" min="0" max="12.5" step="0.01"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">m</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0551,'salm-0551',100,'m')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0551,'salm-0551',100,'m')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Durée max pompe individuelle</div><div class="param-desc">5.57 — fonctionnement maximal d'une pompe</div><div class="param-reg">Menu 5.57 · Reg provisoire: 0x0557</div></div><div class="param-val-display" id="pv-salm-0557">--</div><input type="number" class="param-input" id="pi-salm-0557" value="10" min="0" max="60"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">min</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0557,'salm-0557',1,'min')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0557,'salm-0557',1,'min')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Report marche centralisé SBM</div><div class="param-desc">5.58 — ON = coffret opérationnel, RUN = au moins une pompe active</div><div class="param-reg">Menu 5.58 · Reg provisoire: 0x0558</div></div><div class="param-val-display" id="pv-salm-0558">--</div><select class="param-input-select" id="pi-salm-0558"><option value="0">ON</option><option value="1" selected>RUN</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0558,'salm-0558',{0:'ON',1:'RUN'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0558,'salm-0558')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Report défaut centralisé SSM</div><div class="param-desc">5.59 — FALL logique négative / RAISE logique positive</div><div class="param-reg">Menu 5.59 · Reg provisoire: 0x0559</div></div><div class="param-val-display" id="pv-salm-0559">--</div><select class="param-input-select" id="pi-salm-0559"><option value="0">FALL</option><option value="1" selected>RAISE</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0559,'salm-0559',{0:'FALL',1:'RAISE'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0559,'salm-0559')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Retard protection marche à sec</div><div class="param-desc">5.62 — délai avant alarme marche à sec</div><div class="param-reg">Menu 5.62 · Reg provisoire: 0x0562</div></div><div class="param-val-display" id="pv-salm-0562">--</div><input type="number" class="param-input" id="pi-salm-0562" value="60" min="0" max="180"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span><button class="param-btn-read" onclick="readParam('salmson',2,0x0562,'salm-0562',1,'sec')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0562,'salm-0562',1,'sec')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Mode Ex</div><div class="param-desc">5.64 — fonctionnement spécial zone ATEX. À laisser OFF hors zone EX.</div><div class="param-reg">Menu 5.64 · Reg provisoire: 0x0564</div></div><div class="param-val-display" id="pv-salm-0564">--</div><select class="param-input-select" id="pi-salm-0564"><option value="0" selected>OFF</option><option value="1">ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0564,'salm-0564',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0564,'salm-0564')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Reset auto défaut marche à sec</div><div class="param-desc">5.65 — réinitialisation automatique de l'erreur fonctionnement à sec</div><div class="param-reg">Menu 5.65 · Reg provisoire: 0x0565</div></div><div class="param-val-display" id="pv-salm-0565">--</div><select class="param-input-select" id="pi-salm-0565"><option value="0" selected>OFF</option><option value="1">ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0565,'salm-0565',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0565,'salm-0565')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Buzzer intégré</div><div class="param-desc">5.66 — vibreur / avertisseur intégré</div><div class="param-reg">Menu 5.66 · Reg provisoire: 0x0566</div></div><div class="param-val-display" id="pv-salm-0566">--</div><select class="param-input-select" id="pi-salm-0566"><option value="0" selected>OFF</option><option value="1">ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0566,'salm-0566',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0566,'salm-0566')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Sortie rapport externe ON/OFF</div><div class="param-desc">5.67 — sortie pour appareil de report externe</div><div class="param-reg">Menu 5.67 · Reg provisoire: 0x0567</div></div><div class="param-val-display" id="pv-salm-0567">--</div><select class="param-input-select" id="pi-salm-0567"><option value="0" selected>OFF</option><option value="1">ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0567,'salm-0567',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0567,'salm-0567')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Contrôle champ rotatif</div><div class="param-desc">5.68 — contrôle ordre des phases alimentation</div><div class="param-reg">Menu 5.68 · Reg provisoire: 0x0568</div></div><div class="param-val-display" id="pv-salm-0568">--</div><select class="param-input-select" id="pi-salm-0568"><option value="0">OFF</option><option value="1" selected>ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0568,'salm-0568',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0568,'salm-0568')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Mesure courant moteur interne</div><div class="param-desc">5.69 — surveillance courant moteur interne ON/OFF</div><div class="param-reg">Menu 5.69 · Reg provisoire: 0x0569</div></div><div class="param-val-display" id="pv-salm-0569">--</div><select class="param-input-select" id="pi-salm-0569"><option value="0">OFF</option><option value="1" selected>ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0569,'salm-0569',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0569,'salm-0569')">✏️ ÉCRIRE</button></div>
-    </div>
-
-    <!-- Groupe: Communication -->
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">📡 Communication Modbus (Menu 2)</div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Modbus ON/OFF</div><div class="param-desc">2.01 — activation communication Modbus</div><div class="param-reg">Menu 2.01 · Reg provisoire: 0x0201</div></div><div class="param-val-display" id="pv-salm-0201">--</div><select class="param-input-select" id="pi-salm-0201"><option value="0">OFF</option><option value="1" selected>ON</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0201,'salm-0201',{0:'OFF',1:'ON'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0201,'salm-0201')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Vitesse Baud Rate</div><div class="param-desc">2.02 — 9600 / 19200 / 38400 / 76800</div><div class="param-reg">Menu 2.02 · Reg provisoire: 0x0202</div></div><div class="param-val-display" id="pv-salm-0202">--</div><select class="param-input-select" id="pi-salm-0202"><option value="0" selected>9600</option><option value="1">19200</option><option value="2">38400</option><option value="3">76800</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0202,'salm-0202',{0:'9600',1:'19200',2:'38400',3:'76800'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0202,'salm-0202')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Adresse Modbus</div><div class="param-desc">2.03 — adresse esclave RS485</div><div class="param-reg">Menu 2.03 · Reg provisoire: 0x0203</div></div><div class="param-val-display" id="pv-salm-0203">--</div><input type="number" class="param-input" id="pi-salm-0203" value="2" min="1" max="254"><span></span><button class="param-btn-read" onclick="readParam('salmson',2,0x0203,'salm-0203',1,'')">📖 LIRE</button><button class="param-btn-write" onclick="writeParam('salmson',2,0x0203,'salm-0203',1,'')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Parité Modbus</div><div class="param-desc">2.04 — none / even / odd</div><div class="param-reg">Menu 2.04 · Reg provisoire: 0x0204</div></div><div class="param-val-display" id="pv-salm-0204">--</div><select class="param-input-select" id="pi-salm-0204"><option value="0" selected>NONE</option><option value="1">EVEN</option><option value="2">ODD</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0204,'salm-0204',{0:'NONE',1:'EVEN',2:'ODD'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0204,'salm-0204')">✏️ ÉCRIRE</button></div>
-      <div class="param-row"><div class="param-info"><div class="param-name">Bits d'arrêt</div><div class="param-desc">2.05 — nombre de bits d'arrêt</div><div class="param-reg">Menu 2.05 · Reg provisoire: 0x0205</div></div><div class="param-val-display" id="pv-salm-0205">--</div><select class="param-input-select" id="pi-salm-0205"><option value="1" selected>1</option><option value="2">2</option></select><button class="param-btn-read" onclick="readParamSelect('salmson',2,0x0205,'salm-0205',{1:'1',2:'2'})">📖 LIRE</button><button class="param-btn-write" onclick="writeParamSelect('salmson',2,0x0205,'salm-0205')">✏️ ÉCRIRE</button></div>
-    </div>
-
-    <!-- Groupe: Informations lecture seule -->
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">📊 Informations lecture seule (Menu 4)</div>
-      <div class="grid-2">
-        <div class="mini-metric"><div class="lbl">4.01 Niveau actuel</div><div class="val info" id="pv-salm-info-0401">-- m</div></div>
-        <div class="mini-metric"><div class="lbl">4.12 Heures coffret</div><div class="val" id="pv-salm-info-0412">-- h</div></div>
-        <div class="mini-metric"><div class="lbl">4.13 Heures pompe 1</div><div class="val" id="pv-salm-info-0413">-- h</div></div>
-        <div class="mini-metric"><div class="lbl">4.18 Cycles pompe 1</div><div class="val" id="pv-salm-info-0418">--</div></div>
-        <div class="mini-metric"><div class="lbl">4.24 Version logiciel</div><div class="val info" id="pv-salm-info-0424">--</div></div>
-        <div class="mini-metric"><div class="lbl">4.29 Courant pompe 1</div><div class="val warn" id="pv-salm-info-0429">-- A</div></div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="readSalmsonInfos()">📖 LIRE INFOS SALMSON</button>
-        <button class="btn btn-red" onclick="readParamSelect('salmson',2,0x0601,'salm-0601',{0:'OFF',1:'ACK'});">↺ ACQUITTER ALARME 6.01</button>
-      </div>
-    </div>
-
-    <div class="param-status" id="salmson-param-msg"></div>
-  </div>
-
-
-  <!-- WILO PARAMÈTRES -->
-  <div class="card card-full">
-    <div class="card-header">
-      <div><div class="card-title">💧 Wilo W-CTRL-EC-B2 Booster</div><div class="card-subtitle">Adresse Modbus: 3 · SW 1.02.x · paramètres exploitables depuis l'application</div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="readAllParams('wilo')">📖 LIRE TOUT</button>
-        <span class="badge badge-info" id="wilo-param-status-badge">EN ATTENTE</span>
-      </div>
-    </div>
-    <div class="alert-panel alert-warn" style="margin-bottom:14px">
-      ⚠️ Les écritures Wilo restent protégées par le serveur. Vérifier les valeurs sur l'écran du coffret après modification.
-      Ton coffret EC-B2 pilote des pompes à vitesse fixe : les paramètres de vitesse variable ECe ne sont pas activés ici.
-    </div>
-    <div class="alert-panel alert-ok" style="margin-bottom:14px">
-      Registres Wilo confirmés notice : 40015 marche/arret, 40026 pression actuelle, 40041/40042 modes pompes, 40062 etat coffret, 40139-40140 defauts.
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🎯 Pression & seuils de régulation</div>
-      
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Consigne pression</div>
-          <div class="param-desc">1.01 — Pression cible du surpresseur. Max selon plage capteur 5.11.</div>
-          <div class="param-reg">Menu 1.01 · Reg: 0x0101</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0101">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0101" value="4.0" min="0.1" max="25" step="0.1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">bar</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0101,'wilo-0101',10,'bar')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0101,'wilo-0101',10,'bar')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Seuil démarrage pompe</div>
-          <div class="param-desc">1.04 — Démarrage en % de la consigne. Exemple 95% = démarre sous 3,8 bar si consigne 4 bar.</div>
-          <div class="param-reg">Menu 1.04 · Reg: 0x0104</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0104">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0104" value="95" min="75" max="99" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">%</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0104,'wilo-0104',1,'%')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0104,'wilo-0104',1,'%')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Arrêt pompe principale</div>
-          <div class="param-desc">1.07 — Arrêt de la pompe principale en % de la consigne.</div>
-          <div class="param-reg">Menu 1.07 · Reg: 0x0107</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0107">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0107" value="115" min="101" max="125" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">%</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0107,'wilo-0107',1,'%')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0107,'wilo-0107',1,'%')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Arrêt pompe appoint</div>
-          <div class="param-desc">1.08 — Arrêt pompe 2 / pic de charge en % de la consigne.</div>
-          <div class="param-reg">Menu 1.08 · Reg: 0x0108</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0108">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0108" value="110" min="101" max="125" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">%</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0108,'wilo-0108',1,'%')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0108,'wilo-0108',1,'%')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">⏱️ Temporisations pompes</div>
-      
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Tempo arrêt pompe principale</div>
-          <div class="param-desc">1.09 — Délai avant arrêt quand le seuil haut est atteint.</div>
-          <div class="param-reg">Menu 1.09 · Reg: 0x0109</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0109">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0109" value="10" min="0" max="180" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0109,'wilo-0109',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0109,'wilo-0109',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Tempo démarrage pompe appoint</div>
-          <div class="param-desc">1.10 — Délai avant démarrage de la pompe 2 si besoin.</div>
-          <div class="param-reg">Menu 1.10 · Reg: 0x0110</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0110">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0110" value="3" min="0" max="30" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0110,'wilo-0110',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0110,'wilo-0110',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Tempo arrêt pompe appoint</div>
-          <div class="param-desc">1.11 — Délai avant arrêt pompe 2 quand la pression est remontée.</div>
-          <div class="param-reg">Menu 1.11 · Reg: 0x0111</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0111">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0111" value="3" min="0" max="30" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0111,'wilo-0111',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0111,'wilo-0111',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🎛️ Déclenchement & mode pompes</div>
-      <div class="alert-panel alert-warn" style="margin-bottom:12px">Pour l’exploitation normale : 3.01 = ON, pompe 1 = AUTO, pompe 2 = AUTO.</div>
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Déclenchement général pompes</div>
-          <div class="param-desc">3.01 — Autorise ou verrouille toutes les pompes.</div>
-          <div class="param-reg">Protocole Wilo · 40015 / Reg: 0x000E</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0301">--</div>
-        <select class="param-input-select" id="pi-wilo-0301">
-          <option value="0">OFF — pompes verrouillées</option> <option value="1" selected>ON — pompes autorisées</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x000E,'wilo-0301',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x000E,'wilo-0301')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Mode pompe 1</div>
-          <div class="param-desc">3.02 — OFF / Manuel / Auto.</div>
-          <div class="param-reg">Protocole Wilo · 40041 / Reg: 0x0028</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0302">--</div>
-        <select class="param-input-select" id="pi-wilo-0302">
-          <option value="0">OFF</option> <option value="1">HAND</option> <option value="2" selected>AUTO</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0028,'wilo-0302',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0028,'wilo-0302')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Mode pompe 2</div>
-          <div class="param-desc">3.03 — OFF / Manuel / Auto.</div>
-          <div class="param-reg">Protocole Wilo · 40042 / Reg: 0x0029</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0303">--</div>
-        <select class="param-input-select" id="pi-wilo-0303">
-          <option value="0">OFF</option> <option value="1">HAND</option> <option value="2" selected>AUTO</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0029,'wilo-0303',{0:'OFF',1:'HAND',2:'AUTO'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0029,'wilo-0303')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Durée marche manuelle</div>
-          <div class="param-desc">3.10 — Durée du mode manuel. 0 = tant que bouton actif, 999 = maintenu.</div>
-          <div class="param-reg">Menu 3.10 · Reg: 0x0310</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0310">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0310" value="0" min="0" max="999" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0310,'wilo-0310',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0310,'wilo-0310',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🧩 Configuration coffret / capteur</div>
-      
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Nombre de pompes raccordées</div>
-          <div class="param-desc">5.02 — Ton coffret est un B2 : valeur normale = 2.</div>
-          <div class="param-reg">Menu 5.02 · Reg: 0x0502</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0502">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0502" value="2" min="1" max="3" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)"></span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0502,'wilo-0502',1,'')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0502,'wilo-0502',1,'')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Pompe de secours</div>
-          <div class="param-desc">5.03 — Une pompe peut être gardée en réserve.</div>
-          <div class="param-reg">Menu 5.03 · Reg: 0x0503</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0503">--</div>
-        <select class="param-input-select" id="pi-wilo-0503">
-          <option value="0" selected>OFF</option> <option value="1">ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0503,'wilo-0503',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0503,'wilo-0503')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Plage capteur pression</div>
-          <div class="param-desc">5.11 — Champ de mesure du capteur 4-20 mA.</div>
-          <div class="param-reg">Menu 5.11 · Reg: 0x0511</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0511">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0511" value="16" min="1" max="25" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">bar</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0511,'wilo-0511',1,'bar')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0511,'wilo-0511',1,'bar')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🛡️ Sécurités pression</div>
-      
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Seuil surpression</div>
-          <div class="param-desc">5.17 — Alarme si pression supérieure au seuil.</div>
-          <div class="param-reg">Menu 5.17 · Reg: 0x0517</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0517">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0517" value="10.0" min="0" max="16" step="0.1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">bar</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0517,'wilo-0517',10,'bar')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0517,'wilo-0517',10,'bar')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Seuil dépression</div>
-          <div class="param-desc">5.18 — Alarme si pression inférieure au seuil quand une pompe tourne. 0 = désactivé.</div>
-          <div class="param-reg">Menu 5.18 · Reg: 0x0518</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0518">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0518" value="0.0" min="0" max="16" step="0.1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">bar</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0518,'wilo-0518',10,'bar')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0518,'wilo-0518',10,'bar')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Réaction dépression</div>
-          <div class="param-desc">5.73 — CONT = alerte seulement, OFF = arrêt pompes.</div>
-          <div class="param-reg">Menu 5.73 · Reg: 0x0573</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0573">--</div>
-        <select class="param-input-select" id="pi-wilo-0573">
-          <option value="0">OFF — arrêt pompes</option> <option value="1" selected>CONT — continue + défaut</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0573,'wilo-0573',{0:'OFF',1:'CONT'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0573,'wilo-0573')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Tempo pression mini/maxi</div>
-          <div class="param-desc">5.74 — Retard avant déclenchement alarme surpression/dépression.</div>
-          <div class="param-reg">Menu 5.74 · Reg: 0x0574</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0574">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0574" value="1" min="0" max="60" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0574,'wilo-0574',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0574,'wilo-0574',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🚱 Manque d’eau & débit nul</div>
-      <div class="alert-panel alert-warn" style="margin-bottom:12px">L’entrée manque d’eau du Wilo est câblée sur le coffret. Si elle s’ouvre, arrêt forcé des pompes.</div>
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Tempo arrêt manque eau</div>
-          <div class="param-desc">5.62 — Délai avant arrêt forcé si manque d’eau actif.</div>
-          <div class="param-reg">Menu 5.62 · Reg: 0x0562</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0562">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0562" value="15" min="0" max="180" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0562,'wilo-0562',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0562,'wilo-0562',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Tempo redémarrage après eau OK</div>
-          <div class="param-desc">5.63 — Délai avant autoriser redémarrage après retour niveau eau.</div>
-          <div class="param-reg">Menu 5.63 · Reg: 0x0563</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0563">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0563" value="10" min="0" max="1800" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0563,'wilo-0563',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0563,'wilo-0563',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Test à débit nul</div>
-          <div class="param-desc">5.61 — Détection fonctionnement sans débit.</div>
-          <div class="param-reg">Menu 5.61 · Reg: 0x0561</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0561">--</div>
-        <select class="param-input-select" id="pi-wilo-0561">
-          <option value="0">OFF</option> <option value="1" selected>ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0561,'wilo-0561',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0561,'wilo-0561')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🔁 Alternance & anti-grippage</div>
-      
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Kick pompe</div>
-          <div class="param-desc">5.40 — Test cyclique anti-grippage.</div>
-          <div class="param-reg">Menu 5.40 · Reg: 0x0540</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0540">--</div>
-        <select class="param-input-select" id="pi-wilo-0540">
-          <option value="0">OFF</option> <option value="1" selected>ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0540,'wilo-0540',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0540,'wilo-0540')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Kick autorisé en Extern OFF</div>
-          <div class="param-desc">5.41 — Autorise le test même si Extern OFF est actif.</div>
-          <div class="param-reg">Menu 5.41 · Reg: 0x0541</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0541">--</div>
-        <select class="param-input-select" id="pi-wilo-0541">
-          <option value="0">OFF</option> <option value="1" selected>ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0541,'wilo-0541',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0541,'wilo-0541')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Intervalle kick pompe</div>
-          <div class="param-desc">5.42 — Intervalle entre deux tests cycliques.</div>
-          <div class="param-reg">Menu 5.42 · Reg: 0x0542</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0542">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0542" value="24" min="1" max="336" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">h</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0542,'wilo-0542',1,'h')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0542,'wilo-0542',1,'h')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Durée kick pompe</div>
-          <div class="param-desc">5.43 — Durée du test cyclique.</div>
-          <div class="param-reg">Menu 5.43 · Reg: 0x0543</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0543">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0543" value="5" min="0" max="60" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">sec</span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0543,'wilo-0543',1,'sec')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0543,'wilo-0543',1,'sec')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Permutation cyclique</div>
-          <div class="param-desc">5.60 — Alternance automatique pompe 1 / pompe 2.</div>
-          <div class="param-reg">Menu 5.60 · Reg: 0x0560</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0560">--</div>
-        <select class="param-input-select" id="pi-wilo-0560">
-          <option value="0">OFF</option> <option value="1" selected>ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0560,'wilo-0560',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0560,'wilo-0560')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">📡 Reports, champ rotatif & surveillance moteur</div>
-      
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Report marche centralisé SBM</div>
-          <div class="param-desc">5.58 — RUN = au moins une pompe tourne, ON = coffret opérationnel.</div>
-          <div class="param-reg">Menu 5.58 · Reg: 0x0558</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0558">--</div>
-        <select class="param-input-select" id="pi-wilo-0558">
-          <option value="0">ON</option> <option value="1" selected>RUN</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0558,'wilo-0558',{0:'ON',1:'RUN'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0558,'wilo-0558')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Report défaut centralisé SSM</div>
-          <div class="param-desc">5.59 — Sens du relais défaut.</div>
-          <div class="param-reg">Menu 5.59 · Reg: 0x0559</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0559">--</div>
-        <select class="param-input-select" id="pi-wilo-0559">
-          <option value="0">FALL</option> <option value="1" selected>RAISE</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0559,'wilo-0559',{0:'FALL',1:'RAISE'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0559,'wilo-0559')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Contrôle champ rotatif</div>
-          <div class="param-desc">5.68 — À garder ON en triphasé. OFF seulement en monophasé.</div>
-          <div class="param-reg">Menu 5.68 · Reg: 0x0568</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0568">--</div>
-        <select class="param-input-select" id="pi-wilo-0568">
-          <option value="0">OFF</option> <option value="1" selected>ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0568,'wilo-0568',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0568,'wilo-0568')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Surveillance courant minimal</div>
-          <div class="param-desc">5.69 — Surveille courant mini. Le courant maxi reste actif.</div>
-          <div class="param-reg">Menu 5.69 · Reg: 0x0569</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0569">--</div>
-        <select class="param-input-select" id="pi-wilo-0569">
-          <option value="0">OFF</option> <option value="1" selected>ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0569,'wilo-0569',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0569,'wilo-0569')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    
-    <div class="param-section">
-      <div style="font-size:11px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--border)">🔌 Modbus RTU RS485</div>
-      <div class="alert-panel alert-warn" style="margin-bottom:12px">À modifier seulement si la passerelle RS485 utilise une autre adresse/vitesse/parité.</div>
-      
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Modbus RTU</div>
-          <div class="param-desc">2.01 — Activation communication RS485.</div>
-          <div class="param-reg">Menu 2.01 · Reg: 0x0201</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0201">--</div>
-        <select class="param-input-select" id="pi-wilo-0201">
-          <option value="0">OFF</option> <option value="1" selected>ON</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0201,'wilo-0201',{0:'OFF',1:'ON'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0201,'wilo-0201')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Vitesse Modbus</div>
-          <div class="param-desc">2.02 — Baud rate.</div>
-          <div class="param-reg">Menu 2.02 · Reg: 0x0202</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0202">--</div>
-        <select class="param-input-select" id="pi-wilo-0202">
-          <option value="0" selected>9600</option> <option value="1">19200</option> <option value="2">38400</option> <option value="3">76800</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0202,'wilo-0202',{0:'9600',1:'19200',2:'38400',3:'76800'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0202,'wilo-0202')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Adresse Modbus Wilo</div>
-          <div class="param-desc">2.03 — Adresse esclave du coffret.</div>
-          <div class="param-reg">Menu 2.03 · Reg: 0x0203</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0203">--</div>
-        <input type="number" class="param-input" id="pi-wilo-0203" value="3" min="1" max="254" step="1">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)"></span>
-        <button class="param-btn-read" onclick="readParam('wilo',3,0x0203,'wilo-0203',1,'')">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParam('wilo',3,0x0203,'wilo-0203',1,'')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Parité Modbus</div>
-          <div class="param-desc">2.04 — Parité communication.</div>
-          <div class="param-reg">Menu 2.04 · Reg: 0x0204</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0204">--</div>
-        <select class="param-input-select" id="pi-wilo-0204">
-          <option value="0" selected>NONE</option> <option value="1">EVEN</option> <option value="2">ODD</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0204,'wilo-0204',{0:'NONE',1:'EVEN',2:'ODD'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0204,'wilo-0204')">✏️ ÉCRIRE</button>
-      </div>
-      <div class="param-row">
-        <div class="param-info">
-          <div class="param-name">Bits stop Modbus</div>
-          <div class="param-desc">2.05 — Nombre de bits stop.</div>
-          <div class="param-reg">Menu 2.05 · Reg: 0x0205</div>
-        </div>
-        <div class="param-val-display" id="pv-wilo-0205">--</div>
-        <select class="param-input-select" id="pi-wilo-0205">
-          <option value="1" selected>1</option> <option value="2">2</option>
-        </select>
-        <button class="param-btn-read" onclick="readParamSelect('wilo',3,0x0205,'wilo-0205',{1:'1',2:'2'})">📖 LIRE</button>
-        <button class="param-btn-write" onclick="writeParamSelect('wilo',3,0x0205,'wilo-0205')">✏️ ÉCRIRE</button>
-      </div>
-    </div>
-    <div class="param-status" id="wilo-param-msg"></div>
-  </div>
-
-
-</main>
-</div>
-
 <div class="tab-content" id="tab-connexion">
 <main>
   <div class="card card-full">
@@ -3025,12 +2224,22 @@ let history_vdc = [];
 let history_power = [];
 let history_pressure = [];
 let chartVdc, chartPower, chartPressure;
-const ENABLE_PLANNING_UI = false;
+const ENABLE_PLANNING_UI = true;
 let activeAlarms = {};
 let seenCommandAckIds = new Set();
 let commandAckNotifyAfter = Date.now() - 30000;
 let appInitialized = false;
 let autoConnectInProgress = false;
+
+// ── BYPASS / DÉMO ─────────────────────────────────────────
+// Mettre enabled:false avant déploiement prod
+const BYPASS = {
+  enabled: false, // Remettre true pour tests locaux
+  email: 'demo@zarzis.local',
+  password: 'zarzis2024',
+  token: 'bypass-demo-local-token'
+};
+let bypassMode = false;
 let cloudConnectFailureLogged = false;
 let lastStatusErrorAt = 0;
 
@@ -3044,6 +2253,11 @@ function apiHeaders(extra={}) {
 }
 
 async function postApiJson(path, payload={}, timeout=5000) {
+  // En mode bypass : simuler les commandes localement
+  if(bypassMode) {
+    addLog('[DEMO] ' + path + ' ' + JSON.stringify(payload), 'info');
+    return {success:true, simulation:true};
+  }
   const res = await fetch(`${apiUrl}${path}`, {
     method: 'POST',
     headers: apiHeaders(),
@@ -3213,6 +2427,12 @@ function persistSession(token, email, remember) {
 
 async function validateStoredSession() {
   if(!apiToken) return false;
+  if(BYPASS.enabled && apiToken === BYPASS.token) {
+    bypassMode = true;
+    const db = document.getElementById('demo-badge'); if(db) db.style.display = 'inline-flex';
+    const bh = document.getElementById('bypass-hint'); if(bh) bh.style.display = 'none';
+    return true;
+  }
   try {
     const res = await fetch(`${apiUrl}/api/auth/session`, {
       headers: apiHeaders(),
@@ -3248,6 +2468,23 @@ async function checkLogin() {
     showLoginError('Email et mot de passe requis');
     return;
   }
+  // ── BYPASS ──
+  if(BYPASS.enabled && email === BYPASS.email && password === BYPASS.password) {
+    setLoginBusy(true);
+    await new Promise(r => setTimeout(r, 350));
+    bypassMode = true;
+    apiToken = BYPASS.token;
+    sessionStorage.setItem(SESSION_TOKEN_KEY, apiToken);
+    document.getElementById('login-screen').style.display = 'none';
+    const db = document.getElementById('demo-badge'); if(db) db.style.display = 'inline-flex';
+    const bh = document.getElementById('bypass-hint'); if(bh) bh.style.display = 'none';
+    setLoginBusy(false);
+    toast('Mode démo actif — données simulées', 'info');
+    addLog('Bypass démo activé', 'info');
+    initApp();
+    return;
+  }
+
   setLoginBusy(true);
   try {
     const res = await fetch(`${apiUrl}/api/auth/login`, {
@@ -3280,6 +2517,9 @@ async function resumeLoginIfPossible() {
 }
 
 function logout() {
+  bypassMode = false;
+  const db = document.getElementById('demo-badge'); if(db) db.style.display = 'none';
+  const bh = document.getElementById('bypass-hint'); if(bh) bh.style.display = 'block';
   apiToken = '';
   connected = false;
   if(fetchInterval){clearInterval(fetchInterval);fetchInterval=null;}
@@ -3299,6 +2539,7 @@ function changePw() {
   addLog('Changement mot de passe: modifier APP_LOGIN_PASSWORD_HASH côté Render', 'info');
 }
 
+document.documentElement.setAttribute('data-theme','light');
 document.addEventListener('DOMContentLoaded', resumeLoginIfPossible);
 if(document.readyState !== 'loading') resumeLoginIfPossible();
 
@@ -3353,6 +2594,10 @@ function initApp() {
 // Pas de boucle qui "cherche" l'agent: l'agent est declare present par Render/WS.
 async function autoConnect(options={}) {
   const manual = !!options.manual;
+  if(bypassMode) {
+    if(manual) toast('Mode démo — serveur non requis', 'info');
+    return;
+  }
   if(connected || autoConnectInProgress) {
     if(manual && connected) toast('Deja connecte au serveur cloud', 'ok');
     return;
@@ -3423,12 +2668,7 @@ function switchTab(id) {
 }
 
 // ============ THEME ============
-function toggleTheme() {
-  const cur = document.documentElement.getAttribute('data-theme');
-  const next = cur === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', next === 'dark' ? '' : 'light');
-  document.querySelector('[onclick="toggleTheme()"]').textContent = next === 'light' ? '☀️' : '🌙';
-}
+function toggleTheme() { /* Mode clair fixe — thème sombre désactivé */ }
 
 // ============ SOUND ============
 function toggleSound() {
@@ -5524,9 +4764,10 @@ function runSim() {
   let salmsonErr = null;
   if(manqueEau && solar > 30) salmsonErr = {code:'E040', desc:'Manque d’eau coffret Salmson — contact 21/22 ouvert'};
 
-  updateINVT(vdc, freq, power, amp, vac, solar, invtErr);
-  updateSalmson(amp, !manqueEau, reservoir, pumpOn, salmsonErr);
-  updateWilo(pressure, flow, pumpOn);
+  const solarPctSim = Math.min(100, vdc / 9);
+  updateINVT(vdc, freq, power, amp, vac, solarPctSim, invtErr);
+  updateSalmson(null, !manqueEau, reservoir, pumpOn, salmsonErr, false);
+  updateWilo(pumpOn ? pressure : null, null, pumpOn, null);
   updateReservoir(reservoir);
   updateSolarBar(solar);
   addChartPoint(vdc, power);
@@ -5617,25 +4858,31 @@ function updateINVT(vdc, freq, power, amp, vac, solar, error, loadPct=null) {
   } else { clearAlarm('INVT'); err.classList.remove('show'); }
 }
 
-function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
+function updateSalmson(amp, floatBas, levelCm, pumpOn, error, dryRun) {
   floatBas = !!floatBas;
   pumpOn = !!pumpOn;
-  const hasAmp = Number.isFinite(Number(amp)) && Number(amp) > 0;
-  const cur = pumpOn && hasAmp ? Number(amp) : 0;
-  document.getElementById('s-amp').innerHTML = hasAmp ? `${cur}<span class="metric-unit">A</span>` : `--<span class="metric-unit">A</span>`;
-  const pct = Math.min(100, cur/6*100);
+  dryRun = !!dryRun;
+  // Courant moteur non disponible sur coffret Salmson — afficher "--"
+  document.getElementById('s-amp').innerHTML = `--<span class="metric-unit">A</span>`;
   const bar = document.getElementById('s-amp-bar');
-  bar.style.width = pct+'%';
-  bar.className = 'progress-fill ' + (cur>5.5?'red':cur>4.8?'yellow':'green');
+  bar.style.width = '0%';
+  bar.className = 'progress-fill green';
 
   const badge = document.getElementById('salmson-badge');
-  badge.textContent = pumpOn ? 'EN MARCHE' : 'ARRÊTÉE';
-  badge.className = 'badge '+(pumpOn?'badge-on':'badge-off');
+  if(dryRun) {
+    // Réservoir plein = arrêt automatique normal → badge bleu info
+    badge.textContent = 'NIVEAU HAUT';
+    badge.className = 'badge badge-info';
+  } else {
+    badge.textContent = pumpOn ? 'EN MARCHE' : 'ARRÊTÉE';
+    badge.className = 'badge '+(pumpOn?'badge-on':'badge-off');
+  }
 
-  document.getElementById('f-bas-badge').textContent = floatBas?'OK':'MANQUE EAU';
-  document.getElementById('f-bas-badge').className = 'badge '+(floatBas?'badge-on':'badge-off');
-  document.getElementById('f-bas-icon').textContent = floatBas?'🟢':'⛔';
-  document.getElementById('f-haut-badge').textContent = Number.isFinite(Number(levelCm)) ? `${Number(levelCm)} cm` : '---';
+  // Flotteur bas : ok si pas dry_run
+  document.getElementById('f-bas-badge').textContent = dryRun ? 'RÉSERVOIR PLEIN' : floatBas ? 'POMPAGE OK' : 'MANQUE EAU';
+  document.getElementById('f-bas-badge').className = 'badge '+(dryRun?'badge-info':floatBas?'badge-on':'badge-off');
+  document.getElementById('f-bas-icon').textContent = dryRun?'💧':floatBas?'🟢':'⛔';
+  document.getElementById('f-haut-badge').textContent = '— cm';
   document.getElementById('f-haut-badge').className = 'badge badge-info';
   document.getElementById('f-haut-icon').textContent = '🌊';
 
@@ -5661,14 +4908,14 @@ function updateSalmson(amp, floatBas, levelCm, pumpOn, error) {
   } else { clearAlarm('SALMSON'); err.classList.remove('show'); }
 }
 
-function updateWilo(pressure, flow, pumpOn) {
+function updateWilo(pressure, flow, pumpOn, error) {
   const pressureValue = numOrNull(pressure);
-  const flowValue = numOrNull(flow);
   pumpOn = !!pumpOn;
-  const pressureDisplay = pressureValue === null ? '--' : pressureValue;
-  const flowDisplay = flowValue === null ? '--' : flowValue;
-  document.getElementById('w-press').innerHTML = `${pressureDisplay}<span style="font-size:11px;color:var(--text-dim)">bar</span>`;
-  document.getElementById('w-flow').innerHTML = `${flowDisplay}<span style="font-size:11px;color:var(--text-dim)">m³/h</span>`;
+  // Pression "—" si surpresseur arrêté (pas de valeur significative)
+  const pressureDisplay = (!pumpOn || pressureValue === null) ? '—' : pressureValue;
+  // Débit jamais disponible (pas de débitmètre installé)
+  document.getElementById('w-press').innerHTML = `${pressureDisplay}<span style="font-size:11px;color:var(--text-dim)">${pumpOn ? ' bar' : ''}</span>`;
+  document.getElementById('w-flow').innerHTML = `--<span style="font-size:11px;color:var(--text-dim)">m³/h</span>`;
   document.getElementById('w-p1').innerHTML = pumpOn?'<span style="color:var(--green)">ON</span>':'<span style="color:var(--text-dim)">OFF</span>';
   document.getElementById('w-p2').innerHTML = '<span style="color:var(--text-dim)">STANDBY</span>';
   const pct = Math.min(100, (pressureValue || 0)/16*100);
@@ -5687,8 +4934,18 @@ function updateWilo(pressure, flow, pumpOn) {
   setTextIfExists('ctrl-wilo-active', pumpOn ? 'P1' : '--');
   setTextIfExists('sys-wilo-pressure', pressureDisplay);
   setTextIfExists('sys-wilo-current', 0);
-  if(pumpOn && (flowValue || 0) <= 0.2) setAlarm('WILO_DEBIT', 'Pompe Wilo en marche sans débit détecté', true); else clearAlarm('WILO_DEBIT');
+  // Pas d'alarme débit — aucun débitmètre installé
+  clearAlarm('WILO_DEBIT');
   if((pressureValue || 0) > 14.5) setAlarm('WILO_PRESSION', 'Pression Wilo trop élevée', true); else clearAlarm('WILO_PRESSION');
+  // Gestion défaut via error_code
+  const wErr = document.getElementById('w-err');
+  if(error && wErr) {
+    setAlarm('WILO', error.desc || 'Défaut Wilo', true);
+    wErr.classList.add('show');
+    const wec = document.getElementById('w-err-code'); if(wec) wec.textContent = error.code;
+    const wed = document.getElementById('w-err-desc'); if(wed) wed.textContent = error.desc;
+    addLog('🚨 Wilo ' + error.code + ': ' + error.desc, 'err');
+  } else { clearAlarm('WILO'); if(wErr) wErr.classList.remove('show'); }
 }
 
 function updateReservoir(level) {
@@ -5942,11 +5199,35 @@ function fetchRealData() {
       else if(d.mode === 'http_push' && agentOnline && !dataFresh) updateConnStatus(edge.ws_connected ? 'WS OK / MODBUS...' : 'AGENT OK / MODBUS...', 'badge-warn');
       else if(edge.ws_connected) updateConnStatus('WS CONNECTÉ ✅', 'badge-on');
       else updateConnStatus('CONNECTÉ ✅', 'badge-on');
-      updateINVT(invt.dc_bus_v||0, invt.freq_hz||0, invt.power_kw||0, invt.current_a||0, invt.voltage_v||0, Math.min(100,(invt.dc_bus_v||0)/7), invt.error_text?{code:'ERR',desc:invt.error_text}:null, invt.power_pct);
-      const salmsonWaterOk = typeof salmson.water_ok === 'boolean' ? salmson.water_ok : (typeof salmson.dry_run === 'boolean' ? !salmson.dry_run : salmson.float_low===1);
-      updateSalmson(salmson.current_a, salmsonWaterOk, salmson.level_cm, salmson.running||false, salmson.error_text?{code:'ERR',desc:salmson.error_text}:null);
-      updateWilo(('pressure' in wilo) ? wilo.pressure : null, ('flow' in wilo) ? wilo.flow : null, wilo.running||false);
-      updateSolarBar(Math.min(100,(invt.dc_bus_v||0)/7));
+      // ── Logique métier conforme au prompt ──
+      // ensoleillement : dc_bus_v / 900 (max 900V)
+      const solarPct = Math.min(100, (invt.dc_bus_v||0) / 9);
+      // vraimentEnMarche : running ET courant > 0.5A
+      const vraimentEnMarche = !!(invt.running && (invt.current_a||0) > 0.5);
+      // fault_code != 0 = défaut
+      const faultCode = invt.fault_code || 0;
+      const invtError = faultCode !== 0 ? {code:'E'+String(faultCode).padStart(3,'0'), desc:'Défaut variateur INVT — code '+faultCode} : null;
+      // Passer freq=0 si pas vraiment en marche (pour badge VEILLE/ATTENTE)
+      updateINVT(
+        invt.dc_bus_v||0,
+        vraimentEnMarche ? (invt.freq_hz||0) : 0,
+        vraimentEnMarche ? (invt.power_kw||0) : 0,
+        invt.current_a||0,
+        invt.voltage_v||0,
+        solarPct,
+        invtError,
+        invt.power_pct
+      );
+      // dry_run=true = RÉSERVOIR PLEIN = arrêt normal (pas une erreur)
+      const dryRun = salmson.dry_run === true;
+      const salmsonErrCode = salmson.error_code || 0;
+      const salmsonError = salmsonErrCode !== 0 ? {code:'E'+String(salmsonErrCode).padStart(3,'0'), desc:'Défaut coffret Salmson — code '+salmsonErrCode} : null;
+      updateSalmson(null, !dryRun, salmson.level_cm, salmson.running||false, salmsonError, dryRun);
+      // Wilo : pression "—" si arrêté, débit jamais disponible
+      const wiloErrCode = wilo.error_code || 0;
+      const wiloError = wiloErrCode !== 0 ? {code:'E'+String(wiloErrCode).padStart(3,'0'), desc:'Défaut coffret Wilo — code '+wiloErrCode} : null;
+      updateWilo(wilo.running ? (wilo.pressure ?? null) : null, null, wilo.running||false, wiloError);
+      updateSolarBar(solarPct);
       addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
       setTextIfExists('stat-solar', `${Math.round(numOrNull(invt.dc_bus_v) || 0)}V`);
       setTextIfExists('stat-power', `${numOrNull(invt.power_kw) ?? 0}kW`);
@@ -5999,7 +5280,7 @@ sendModbusCmd = async function(pump, action) {
     addLog('[SIM] Commande simulee localement', 'info');
     return {success:true, simulation:true};
   }
-  const data = await postApiJson('/api/control', {pump, device:pump, action});
+  const data = await postApiJson('/api/command', {device:pump, action});
   if(data.queued) {
     addLog(`Commande mise en file: ${pump} ${action} - attente ACK agent`, 'warn');
   } else if(data.executed) {
@@ -6029,7 +5310,7 @@ controlInverter = async function(action) {
   }
 
   try {
-    const data = await postApiJson('/api/inverter', {action});
+    const data = await postApiJson('/api/command', {device:'invt', action});
     if(data.queued) {
       toast('INVT en attente agent', 'warn');
       addLog(`INVT ${action} mis en file - attente ACK agent`, 'warn');
