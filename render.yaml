@@ -4,7 +4,7 @@ services:
     env: python
     plan: starter
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn modbus_proxy_cloud:app --bind 0.0.0.0:$PORT --worker-class gthread --workers 1 --threads 10 --timeout 300
+    startCommand: gunicorn modbus_proxy_cloud:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0
     disk:
       name: zarzis-data
       mountPath: /var/data
@@ -21,7 +21,7 @@ services:
       - key: EDGE_AGENT_STALE_SEC
         value: "20"
       - key: EDGE_WS_ENABLED
-        value: "false"
+        value: "true"
       - key: EDGE_WS_HEARTBEAT_SEC
         value: "5"
       - key: EDGE_WS_COMMAND_PUSH_SEC
@@ -32,8 +32,6 @@ services:
         value: "300"
       - key: EDGE_ACK_TIMEOUT_SEC
         value: "10"
-      - key: EDGE_ALLOW_START
-        value: "true"
       - key: HISTORY_MAX_ITEMS
         value: "2000"
       - key: HISTORY_SAVE_MIN_INTERVAL_SEC
@@ -53,23 +51,23 @@ services:
       - key: CORS_ORIGINS
         value: "https://zarzis-irrigation-1.onrender.com"
       - key: SERVER_SAFETY_ENABLED
-        value: "false"
+        value: "true"
       - key: ALLOW_PARAM_WRITE
         value: "false"
       - key: MODBUS_REGISTERS_VALIDATED
         value: "false"
       - key: COMMAND_MIN_INTERVAL_SEC
-        value: "0"
+        value: "30"
       - key: COMMAND_RESTART_DELAY_SEC
-        value: "0"
+        value: "60"
       - key: ALLOW_REMOTE_CONNECT
         value: "false"
       - key: INVT_CMD_REG
-        value: "0x1000"
+        value: "0x2000"
       - key: INVT_ON_VALUE
         value: "1"
       - key: INVT_OFF_VALUE
-        value: "0"
+        value: "5"
       - key: INVT_NOMINAL_KW
         value: "5.5"
       - key: INVT_REG_FREQ_HZ
@@ -87,13 +85,13 @@ services:
       - key: INVT_REG_FAULT_CODE
         value: "0x5000"
       - key: SALMSON_FLOAT_LOW_OK_VALUE
-        value: "0"
+        value: "1"
       - key: SALMSON_COMMAND_ENABLED
-        value: "true"
+        value: "false"
       - key: SALMSON_CMD_REG
         value: "14"
       - key: SALMSON_REG_LEVEL_CM
-        value: "0"
+        value: "25"
       - key: SALMSON_REG_PUMP1_MODE
         value: "40"
       - key: SALMSON_REG_PUMP2_MODE
@@ -176,11 +174,3 @@ services:
         value: "12"
       - key: APP_LOGIN_REMEMBER_TTL_DAYS
         value: "3650"
-      - key: WILO_COMMAND_ENABLED
-        value: "true"
-      - key: INVT_COMMAND_ENABLED
-        value: "true"
-      - key: INVT_REG_POWER_W
-        value: "0x3005"
-      - key: INVT_REG_TEMP_C
-        value: "0x3007"
