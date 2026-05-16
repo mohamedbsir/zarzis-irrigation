@@ -6046,8 +6046,8 @@ function updateINVT(dcV, freqHz, powerKw, currentA, voltageAc, solarPct, error, 
   if(bar) bar.style.width = Math.min(100, dcV/9) + '%';
   _set('invt-freq', freqHz > 0 ? freqHz.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">Hz</span>' : '--', true);
   _set('invt-power', powerKw > 0 ? powerKw.toFixed(2) + '<span style="font-size:11px;color:var(--text-dim)">kW</span>' : '--', true);
-  _set('invt-amp', currentA > 0 ? currentA.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">A</span>' : '--', true);
-  _set('invt-vac', voltageAc > 0 ? voltageAc + '<span style="font-size:11px;color:var(--text-dim)">V</span>' : '--', true);
+  _set('invt-amp', enMarche && currentA > 0 ? currentA.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">A</span>' : '--', true);
+  _set('invt-vac', enMarche && voltageAc > 0 ? voltageAc + '<span style="font-size:11px;color:var(--text-dim)">V</span>' : '--', true);
   const ep = document.getElementById('invt-err');
   if(ep) ep.style.display = error ? 'block' : 'none';
   if(error) { _set('invt-err-code', error.code); _set('invt-err-desc', error.desc); }
