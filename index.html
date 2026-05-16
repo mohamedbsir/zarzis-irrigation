@@ -6164,7 +6164,7 @@ function updateWilo(pressure, flow, running, error, pump1Mode, pump2Mode) {
   const stateCls   = running ? 'on' : 'off';
   const p1Active = running && pump2Mode == 2;
   const p1Str = p1Active ? 'ON' : (pump1Mode == 2 ? 'VEILLE' : '—');
-  const p2Str = pump2Mode == 2 ? 'STANDBY' : (running && pump1Mode == 2 ? 'ON' : '—');
+  const p2Str = running ? (pump2Mode == 2 ? 'STANDBY' : 'ON') : '—';
 
   // ── Tableau de bord ──
   _badge('wilo-badge', stateLabel, stateCls);
