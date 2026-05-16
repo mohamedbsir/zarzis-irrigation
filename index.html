@@ -4651,7 +4651,7 @@ function fetchRealData() {
       // ensoleillement : dc_bus_v / 900 (max 900V)
       const solarPct = Math.min(100, (invt.dc_bus_v||0) / 9);
       // vraimentEnMarche : running ET courant > 0.5A
-      const vraimentEnMarche = !!(invt.running && (invt.current_a||0) > 0.5);
+      const vraimentEnMarche = !!(invt.freq_hz && invt.freq_hz > 0);
       // fault_code != 0 = défaut
       const faultCode = invt.fault_code || 0;
       const invtError = faultCode !== 0 ? {code:'E'+String(faultCode).padStart(3,'0'), desc:'Défaut variateur INVT — code '+faultCode} : null;
