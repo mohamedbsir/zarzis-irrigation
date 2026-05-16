@@ -4652,7 +4652,7 @@ function fetchRealData() {
       // Wilo : pression "—" si arrêté, débit jamais disponible
       const wiloErrCode = wilo.error_code || 0;
       const wiloError = wiloErrCode !== 0 ? {code:'E'+String(wiloErrCode).padStart(3,'0'), desc:'Défaut coffret Wilo — code '+wiloErrCode} : null;
-      updateWilo(wilo.running ? (wilo.pressure ?? null) : null, null, wilo.running||false, wiloError);
+      updateWilo(wilo.running ? (wilo.pressure ?? null) : null, null, wilo.running||false, wiloError, wilo.pump1_mode, wilo.pump2_mode);
       updateSolarBar(solarPct);
       addChartPoint(invt.dc_bus_v||0, invt.power_kw||0, wilo.pressure||0);
       setTextIfExists('stat-solar', `${Math.round(numOrNull(invt.dc_bus_v) || 0)}V`);
@@ -6116,16 +6116,19 @@ function updateSalmson(currentA, waterOk, levelCm, running, error, reservoirPlei
   if(sfHeader) sfHeader.style.color = running ? 'var(--green)' : 'var(--text-dim)';
 }
 
-function updateWilo(pressure, flow, running, error) {
+function updateWilo(pressure, flow, running, error, pump1Mode, pump2Mode) {
   const pStr     = pressure !== null && pressure !== undefined ? pressure.toFixed(1) + ' bar' : '—';
   const pStrShort= pressure !== null && pressure !== undefined ? pressure.toFixed(1) : '—';
   const stateLabel = running ? 'EN MARCHE' : 'ARRÊTÉ';
   const stateCls   = running ? 'on' : 'off';
+  const p1Str = pump1Mode == 2 ? (running ? 'ON' : 'VEILLE') : '—';
+  const p2Str = pump2Mode == 2 ? 'STANDBY' : '—';
 
   // ── Tableau de bord ──
   _badge('wilo-badge', stateLabel, stateCls);
-  const wPres = document.getElementById('wilo-pressure') || document.getElementById('dash-wilo-pressure');
-  if(wPres) wPres.textContent = pStr;
+  _set('w-press', pStrShort + '<span style="font-size:11px;color:var(--text-dim)">bar</span>', true);
+  _set('w-p1', p1Str);
+  _set('w-p2', p2Str);
 
   // ── Contrôle — État Système ──
   _set('sys-wilo-status', running ? 'ON' : 'OFF');
@@ -6140,6 +6143,10 @@ function updateWilo(pressure, flow, running, error) {
   const cwState = document.getElementById('ctrl-wilo-state');
   if(cwState) cwState.style.color = running ? 'var(--green)' : 'var(--text-dim)';
   _set('ctrl-wilo-pressure', pStr);
+  _set('ctrl-wilo-active', pump1Mode == 2 ? 'P1' : 'P2');
+
+  // ── Sécurités ──
+  _set('sec-thermal', running ? 'Wilo EN MARCHE' : 'Wilo arrêté');
 
   if(error) addLog('⚠️ ' + error.desc, 'warn');
 }
