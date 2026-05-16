@@ -4648,7 +4648,7 @@ function fetchRealData() {
       const dryRun = salmson.dry_run === true;
       const salmsonErrCode = salmson.error_code || 0;
       const salmsonError = salmsonErrCode !== 0 ? {code:'E'+String(salmsonErrCode).padStart(3,'0'), desc:'Défaut coffret Salmson — code '+salmsonErrCode} : null;
-      updateSalmson(null, !dryRun, salmson.level_cm, salmson.running||false, salmsonError, dryRun);
+      updateSalmson(null, !dryRun, salmson.level_cm, salmson.running||false, salmsonError, dryRun, salmson.high_water||false);
       // Wilo : pression "—" si arrêté, débit jamais disponible
       const wiloErrCode = wilo.error_code || 0;
       const wiloError = wiloErrCode !== 0 ? {code:'E'+String(wiloErrCode).padStart(3,'0'), desc:'Défaut coffret Wilo — code '+wiloErrCode} : null;
@@ -6084,16 +6084,53 @@ function updateINVT(dcV, freqHz, powerKw, currentA, voltageAc, solarPct, error, 
   _set('stat-power', powerKw > 0 ? powerKw.toFixed(2) + 'kW' : '--');
 }
 
-function updateSalmson(currentA, waterOk, levelCm, running, error, reservoirPlein) {
+function updateSalmson(currentA, waterOk, levelCm, running, error, reservoirPlein, highWater) {
   const stateLabel = running ? 'EN MARCHE' : 'ARRÊTÉE';
   const stateCls   = running ? 'on' : 'off';
-  const floatLabel = reservoirPlein ? 'Arrêt niveau haut' : 'Pompage possible';
-  const floatColor = reservoirPlein ? 'var(--info)' : 'var(--green)';
 
-  // ── Tableau de bord ──
+  // ── Tableau de bord — Badge état ──
   _badge('salmson-badge', stateLabel, stateCls);
-  const floatEl = document.getElementById('salmson-float') || document.getElementById('dash-forage-float');
-  if(floatEl) { floatEl.textContent = floatLabel; floatEl.style.color = floatColor; }
+
+  // ── Courant (non dispo Salmson) ──
+  _set('s-amp', '—<span class="metric-unit">A</span>', true);
+  const sBar = document.getElementById('s-amp-bar');
+  if(sBar) sBar.style.width = '0%';
+
+  // ── Float BAS (bornes 21/22) — sécurité ──
+  // dry_run=true = réservoir PLEIN = arrêt NORMAL, PAS une erreur
+  const fBasIcon  = document.getElementById('f-bas-icon');
+  const fBasBadge = document.getElementById('f-bas-badge');
+  if(fBasBadge) {
+    if(reservoirPlein) {
+      if(fBasIcon) fBasIcon.textContent = '🔵';
+      fBasBadge.textContent = 'ARRÊT NIVEAU HAUT';
+      fBasBadge.className = 'badge badge-info';
+    } else {
+      if(fBasIcon) fBasIcon.textContent = '🟢';
+      fBasBadge.textContent = 'OK';
+      fBasBadge.className = 'badge badge-on';
+    }
+  }
+
+  // ── Float HAUT (high water) ──
+  const fHautIcon  = document.getElementById('f-haut-icon');
+  const fHautBadge = document.getElementById('f-haut-badge');
+  if(fHautBadge) {
+    if(highWater) {
+      if(fHautIcon) fHautIcon.textContent = '🔵';
+      fHautBadge.textContent = 'RÉSERVOIR PLEIN';
+      fHautBadge.className = 'badge badge-info';
+    } else {
+      if(fHautIcon) fHautIcon.textContent = '🟢';
+      fHautBadge.textContent = 'NORMAL';
+      fHautBadge.className = 'badge badge-on';
+    }
+  }
+
+  // ── Erreur ──
+  const sErrPanel = document.getElementById('s-err');
+  if(sErrPanel) sErrPanel.style.display = error ? 'block' : 'none';
+  if(error) { _set('s-err-code', error.code); _set('s-err-desc', error.desc); }
 
   // ── Contrôle — État Système ──
   _set('sys-forage-status', running ? 'ON' : 'OFF');
@@ -6114,11 +6151,16 @@ function updateSalmson(currentA, waterOk, levelCm, running, error, reservoirPlei
   _set('stat-forage', running ? 'ON' : 'OFF');
   const sfHeader = document.getElementById('stat-forage');
   if(sfHeader) sfHeader.style.color = running ? 'var(--green)' : 'var(--text-dim)';
+
+  // ── Sécurité panneau ──
+  _set('sec-water', reservoirPlein ? 'Salmson 21/22 Arrêt niveau haut' : 'Salmson 21/22 OK');
 }
 
 function updateWilo(pressure, flow, running, error, pump1Mode, pump2Mode) {
-  const pStr     = pressure !== null && pressure !== undefined ? pressure.toFixed(1) + ' bar' : '—';
-  const pStrShort= pressure !== null && pressure !== undefined ? pressure.toFixed(1) : '—';
+  const hasP    = pressure !== null && pressure !== undefined;
+  const pStr    = hasP ? pressure.toFixed(1) + ' bar' : '—';
+  const pShort  = hasP ? pressure.toFixed(1) : '—';
+  const pPct    = hasP ? Math.min(100, (pressure / 16) * 100) : 0;
   const stateLabel = running ? 'EN MARCHE' : 'ARRÊTÉ';
   const stateCls   = running ? 'on' : 'off';
   const p1Str = pump1Mode == 2 ? (running ? 'ON' : 'VEILLE') : '—';
@@ -6126,15 +6168,23 @@ function updateWilo(pressure, flow, running, error, pump1Mode, pump2Mode) {
 
   // ── Tableau de bord ──
   _badge('wilo-badge', stateLabel, stateCls);
-  _set('w-press', pStrShort + '<span style="font-size:11px;color:var(--text-dim)">bar</span>', true);
+  // w-press : remplace innerHTML pour garder le span unité
+  const wPress = document.getElementById('w-press');
+  if(wPress) wPress.innerHTML = pShort + '<span style="font-size:11px;color:var(--text-dim)">bar</span>';
+  _set('w-flow', '—<span style="font-size:11px;color:var(--text-dim)">m³/h</span>', true);
   _set('w-p1', p1Str);
   _set('w-p2', p2Str);
+  const wBar = document.getElementById('w-press-bar');
+  if(wBar) wBar.style.width = pPct + '%';
+  const wErrPanel = document.getElementById('w-err');
+  if(wErrPanel) wErrPanel.style.display = error ? 'block' : 'none';
+  if(error) { _set('w-err-code', error.code); _set('w-err-desc', error.desc); }
 
   // ── Contrôle — État Système ──
   _set('sys-wilo-status', running ? 'ON' : 'OFF');
   const swEl = document.getElementById('sys-wilo-status');
   if(swEl) swEl.style.color = running ? 'var(--green)' : 'var(--text-dim)';
-  _set('sys-wilo-pressure', pStrShort);
+  _set('sys-wilo-pressure', pShort);
   _set('sys-wilo-current', '—');
 
   // ── Contrôle — Commandes ──
@@ -6145,10 +6195,8 @@ function updateWilo(pressure, flow, running, error, pump1Mode, pump2Mode) {
   _set('ctrl-wilo-pressure', pStr);
   _set('ctrl-wilo-active', pump1Mode == 2 ? 'P1' : 'P2');
 
-  // ── Sécurités ──
+  // ── Sécurité panneau ──
   _set('sec-thermal', running ? 'Wilo EN MARCHE' : 'Wilo arrêté');
-
-  if(error) addLog('⚠️ ' + error.desc, 'warn');
 }
 </script>
 
