@@ -125,12 +125,12 @@ SALMSON_REGS = {
 
 WILO_CMD = env_int("WILO_CMD_REG", 14)
 WILO_REGS = {
-    "pressure": env_int("WILO_REG_PRESSURE", 25),
     "flow": env_int("WILO_REG_FLOW", -1),
     "pump1_mode": env_int("WILO_REG_PUMP1_MODE", 40),
     "pump2_mode": env_int("WILO_REG_PUMP2_MODE", 41),
     "switch_state": env_int("WILO_REG_SWITCH_STATE", 61),
     "error_code": env_int("WILO_REG_ERROR_CODE", 138),
+    "pressure": env_int("WILO_REG_PRESSURE", 25),
 }
 
 COFFRET4_REGS = {
