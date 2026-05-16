@@ -18,19 +18,19 @@
 
 /* ============ CSS VARIABLES ============ */
 :root {
-  --bg: #080d0a; --surface: #0f1a12; --surface2: #152019; --surface3: #1a2820;
-  --border: #1e3024; --border2: #263d2e;
+  --bg: #0b0d1a; --surface: #111328; --surface2: #181b35; --surface3: #1e2240;
+  --border: #252a52; --border2: #2e3560;
   --green: #00e87a; --green-dim: #00a855; --green-glow: rgba(0,232,122,0.15);
   --green-dark: rgba(0,232,122,0.08);
   --yellow: #f5c842; --yellow-dim: #c49d1a;
   --red: #ff4d4d; --red-dim: #cc2020;
-  --blue: #42b4f5; --purple: #a855f7;
-  --text: #c8e6d0; --text-dim: #5a7a62; --text-mid: #8aaa92;
+  --blue: #42b4f5; --purple: #7c3aed; --info: #38bdf8;
+  --text: #e2e8f0; --text-dim: #64748b; --text-mid: #94a3b8;
   --font: 'Exo 2', sans-serif;
   --mono: 'Share Tech Mono', monospace;
   --display: 'Rajdhani', sans-serif;
   --radius: 12px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow: 0 4px 24px rgba(0,0,0,0.5);
 }
 
 
@@ -52,8 +52,8 @@ body::before {
   content:'';
   position:fixed; inset:0;
   background-image:
-    linear-gradient(rgba(0,232,122,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,232,122,0.025) 1px, transparent 1px);
+    linear-gradient(rgba(124,58,237,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,58,237,0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none; z-index:0;
   transition: opacity 0.3s;
@@ -76,7 +76,7 @@ body::before { opacity: 0.4; }
   padding: 48px 40px;
   width: 90%; max-width: 380px;
   text-align: center;
-  box-shadow: 0 0 60px rgba(0,232,122,0.1);
+  box-shadow: 0 0 60px rgba(124,58,237,0.15);
   animation: fadeUp 0.5s ease;
 }
 
@@ -142,7 +142,7 @@ header {
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
   font-size: 18px;
-  box-shadow: 0 0 16px var(--green-glow);
+  box-shadow: 0 0 16px rgba(124,58,237,0.3);
 }
 .logo-text h1 {
   font-family: var(--display); font-size: 18px; font-weight: 700;
@@ -1282,72 +1282,98 @@ main{max-width:1480px;gap:18px;padding:20px}.card{border-radius:24px;border:1px 
       </div>
     </div>
 
-    <!-- VARIATEUR INVT -->
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="font-size:32px">⚡</div>
+    <!-- VARIATEUR INVT — LECTURE SEULE -->
+    <div style="background:linear-gradient(135deg,rgba(245,200,66,0.06),var(--surface2));border:1px solid rgba(245,200,66,0.25);border-radius:14px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="font-size:28px">⚡</div>
         <div style="flex:1">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:700" id="ctrl-invt-name">Variateur INVT GD100-PV 5.5kW</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-invt-specs">DC 250-900V → AC 380V 3ph · I max 19.5A</div>
+          <div style="font-family:var(--font);font-size:14px;color:var(--text);font-weight:800">Variateur INVT GD100-5R5G-4-PV</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">5.5 kW · DC 250–900V → AC 380V 3ph · I max 19.5A</div>
         </div>
         <div style="text-align:right">
-          <div class="pump-indicator off" id="ctrl-invt-ind" style="margin:0 0 4px auto;width:42px;height:42px;font-size:18px">⚡</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-invt-state">VEILLE</div>
+          <div class="pump-indicator off" id="ctrl-invt-ind" style="margin:0 0 4px auto;width:44px;height:44px;font-size:20px">⚡</div>
+          <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim)" id="ctrl-invt-state">VEILLE</div>
         </div>
       </div>
-
-      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text-dim)">
-        <span>Tension DC : <strong style="color:var(--yellow)" id="ctrl-invt-vdc">0V</strong></span>
-        <span>Fréquence : <strong style="color:var(--green)" id="ctrl-invt-freq">0Hz</strong></span>
-        <span>Charge : <strong style="color:var(--info)" id="ctrl-invt-load">0%</strong></span>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--surface);border:1px solid rgba(245,200,66,0.2);border-radius:10px;padding:10px 8px;text-align:center">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Tension DC</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--yellow)" id="ctrl-invt-vdc">--</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid rgba(0,232,122,0.2);border-radius:10px;padding:10px 8px;text-align:center">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Fréquence</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--green)" id="ctrl-invt-freq">--</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid rgba(56,189,248,0.2);border-radius:10px;padding:10px 8px;text-align:center">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Charge</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:800;color:var(--info)" id="ctrl-invt-load">--</div>
+        </div>
       </div>
     </div>
 
     <!-- Pompe Forage Pedrollo -->
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="font-size:32px">💧</div>
+    <div style="background:linear-gradient(135deg,rgba(0,232,122,0.06),var(--surface2));border:1px solid rgba(0,232,122,0.2);border-radius:14px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="font-size:28px">💧</div>
         <div style="flex:1">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:700" id="ctrl-forage-name">Pompe Forage Pedrollo 4PD/2</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-forage-specs">1.5 kW · 4.8 A · 380V · IP68 · 60m de profondeur</div>
+          <div style="font-family:var(--font);font-size:14px;color:var(--text);font-weight:800">Pompe Forage Pedrollo 4PD/2</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">1.5 kW · 4.8 A · 380V · IP68 · 60 m de profondeur</div>
         </div>
         <div style="text-align:right">
-          <div class="pump-indicator off" id="ctrl-forage-ind" style="margin:0 0 4px auto;width:42px;height:42px;font-size:18px">💧</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-forage-state">ARRÊTÉE</div>
+          <div class="pump-indicator off" id="ctrl-forage-ind" style="margin:0 0 4px auto;width:44px;height:44px;font-size:20px">💧</div>
+          <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim)" id="ctrl-forage-state">ARRÊTÉE</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button class="mini-btn mini-on" onclick="controlPump('forage','on')">▶ MARCHE</button>
-        <button class="mini-btn mini-off" onclick="controlPump('forage','off')">■ ARRÊT</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <button onclick="controlPump('forage','on')" style="padding:14px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 15px rgba(16,185,129,0.35)">▶ MARCHE</button>
+        <button onclick="controlPump('forage','off')" style="padding:14px;background:rgba(239,68,68,0.1);border:2px solid rgba(239,68,68,0.4);border-radius:12px;color:#ef4444;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer">■ ARRÊT</button>
       </div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text-dim)">
-        <span>Heures : <strong style="color:var(--green)" id="ctrl-forage-hours">0h</strong></span>
-        <span>Courant : <strong style="color:var(--info)" id="ctrl-forage-current">0A</strong></span>
-        <span>Débit : <strong style="color:var(--blue)" id="ctrl-forage-flow">0m³/h</strong></span>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:3px">HEURES</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--green)" id="ctrl-forage-hours">0h</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:3px">COURANT</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--info)" id="ctrl-forage-current">— A</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:3px">DÉBIT</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--blue)" id="ctrl-forage-flow">— m³/h</div>
+        </div>
       </div>
     </div>
 
     <!-- Surpresseur Wilo -->
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div style="font-size:32px">⚙️</div>
+    <div style="background:linear-gradient(135deg,rgba(56,189,248,0.06),var(--surface2));border:1px solid rgba(56,189,248,0.2);border-radius:14px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="font-size:28px">⚙️</div>
         <div style="flex:1">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:700" id="ctrl-wilo-name">Surpresseur Wilo CO-2 Helix V604/EC</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-wilo-specs">2 × 0.75kW · 16 bar max · Pression cible 3.5 bar</div>
+          <div style="font-family:var(--font);font-size:14px;color:var(--text);font-weight:800">Surpresseur Wilo CO-2Helix V604/EC</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">2 × 0.75 kW · 16 bar max · Pression cible 2 bar</div>
         </div>
         <div style="text-align:right">
-          <div class="pump-indicator off" id="ctrl-wilo-ind" style="margin:0 0 4px auto;width:42px;height:42px;font-size:18px">⚙️</div>
-          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)" id="ctrl-wilo-state">ARRÊTÉ</div>
+          <div class="pump-indicator off" id="ctrl-wilo-ind" style="margin:0 0 4px auto;width:44px;height:44px;font-size:20px">⚙️</div>
+          <div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim)" id="ctrl-wilo-state">ARRÊTÉ</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button class="mini-btn mini-on" onclick="controlPump('wilo','on')">▶ MARCHE</button>
-        <button class="mini-btn mini-off" onclick="controlPump('wilo','off')">■ ARRÊT</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <button onclick="controlPump('wilo','on')" style="padding:14px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 15px rgba(16,185,129,0.35)">▶ MARCHE</button>
+        <button onclick="controlPump('wilo','off')" style="padding:14px;background:rgba(239,68,68,0.1);border:2px solid rgba(239,68,68,0.4);border-radius:12px;color:#ef4444;font-family:var(--font);font-size:14px;font-weight:800;cursor:pointer">■ ARRÊT</button>
       </div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text-dim)">
-        <span>Heures : <strong style="color:var(--green)" id="ctrl-wilo-hours">0h</strong></span>
-        <span>Pression : <strong style="color:var(--info)" id="ctrl-wilo-pressure">0 bar</strong></span>
-        <span>Pompe active : <strong style="color:var(--yellow)" id="ctrl-wilo-active">P1</strong></span>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:3px">HEURES</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--green)" id="ctrl-wilo-hours">0h</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:3px">PRESSION</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--info)" id="ctrl-wilo-pressure">— bar</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:var(--surface);border-radius:8px">
+          <div style="font-size:9px;color:var(--text-dim);font-family:var(--mono);margin-bottom:3px">POMPE</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--yellow)" id="ctrl-wilo-active">—</div>
+        </div>
       </div>
     </div>
 
@@ -4625,7 +4651,7 @@ function fetchRealData() {
       // ensoleillement : dc_bus_v / 900 (max 900V)
       const solarPct = Math.min(100, (invt.dc_bus_v||0) / 9);
       // vraimentEnMarche : running ET courant > 0.5A
-      const vraimentEnMarche = !!(invt.freq_hz && invt.freq_hz > 0);
+      const vraimentEnMarche = !!(invt.running && (invt.current_a||0) > 0.5);
       // fault_code != 0 = défaut
       const faultCode = invt.fault_code || 0;
       const invtError = faultCode !== 0 ? {code:'E'+String(faultCode).padStart(3,'0'), desc:'Défaut variateur INVT — code '+faultCode} : null;
@@ -6028,7 +6054,7 @@ function _ind(id, on) {
 }
 
 function updateINVT(dcV, freqHz, powerKw, currentA, voltageAc, solarPct, error, powerPct) {
-  const enMarche = freqHz > 0;
+  const enMarche = currentA > 0.5 && freqHz > 0;
   const stateLabel = enMarche ? 'EN MARCHE' : (dcV > 200 ? 'VEILLE' : 'ARRÊT');
   const stateCls   = enMarche ? 'on' : (dcV > 200 ? 'warn' : 'off');
   const freqStr    = freqHz > 0 ? freqHz.toFixed(1) + 'Hz' : '--';
@@ -6043,8 +6069,8 @@ function updateINVT(dcV, freqHz, powerKw, currentA, voltageAc, solarPct, error, 
   if(bar) bar.style.width = Math.min(100, dcV/9) + '%';
   _set('invt-freq', freqHz > 0 ? freqHz.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">Hz</span>' : '--', true);
   _set('invt-power', powerKw > 0 ? powerKw.toFixed(2) + '<span style="font-size:11px;color:var(--text-dim)">kW</span>' : '--', true);
-  _set('invt-amp', enMarche && currentA > 0 ? currentA.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">A</span>' : '--', true);
-  _set('invt-vac', enMarche && voltageAc > 0 ? voltageAc + '<span style="font-size:11px;color:var(--text-dim)">V</span>' : '--', true);
+  _set('invt-amp', currentA > 0 ? currentA.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">A</span>' : '--', true);
+  _set('invt-vac', voltageAc > 0 ? voltageAc + '<span style="font-size:11px;color:var(--text-dim)">V</span>' : '--', true);
   const ep = document.getElementById('invt-err');
   if(ep) ep.style.display = error ? 'block' : 'none';
   if(error) { _set('invt-err-code', error.code); _set('invt-err-desc', error.desc); }
@@ -6159,9 +6185,8 @@ function updateWilo(pressure, flow, running, error, pump1Mode, pump2Mode) {
   const pPct    = hasP ? Math.min(100, (pressure / 16) * 100) : 0;
   const stateLabel = running ? 'EN MARCHE' : 'ARRÊTÉ';
   const stateCls   = running ? 'on' : 'off';
-  const p1Active = running && pump2Mode == 2;
-  const p1Str = p1Active ? 'ON' : (pump1Mode == 2 ? 'VEILLE' : '—');
-  const p2Str = running ? (pump2Mode == 2 ? 'STANDBY' : 'ON') : '—';
+  const p1Str = pump1Mode == 2 ? (running ? 'ON' : 'VEILLE') : '—';
+  const p2Str = pump2Mode == 2 ? 'STANDBY' : '—';
 
   // ── Tableau de bord ──
   _badge('wilo-badge', stateLabel, stateCls);
