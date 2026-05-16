@@ -4679,7 +4679,7 @@ function fetchRealData() {
 }
 
 sendModbusCmd = async function(pump, action) {
-  const data = await postApiJson('/api/command', {device:pump, action});
+  const data = await postApiJson('/api/control', {device:pump, action});
   if(data.queued) {
     addLog(`Commande mise en file: ${pump} ${action} - attente ACK agent`, 'warn');
   } else if(data.executed) {
@@ -4694,7 +4694,7 @@ controlInverter = async function(action) {
   addLog(`Commande INVT demandee: ${action}`, 'cmd');
 
   try {
-    const data = await postApiJson('/api/command', {device:'invt', action});
+    const data = await postApiJson('/api/control', {device:'invt', action});
     if(data.queued) {
       toast('INVT en attente agent', 'warn');
       addLog(`INVT ${action} mis en file - attente ACK agent`, 'warn');
@@ -5988,6 +5988,127 @@ function generateDripLinesFromExploitation(){
   document.addEventListener('DOMContentLoaded', function(){ applyReservoirConfig(true); });
   if(document.readyState !== 'loading') applyReservoirConfig(true);
 })();
+
+// ═══════════════════════════════════════════════
+// FONCTIONS MANQUANTES — AUTO-GÉNÉRÉES
+// ═══════════════════════════════════════════════
+
+function setPwaBadge(text, cls) {
+  const el = document.getElementById('pwa-badge') || document.getElementById('conn-badge');
+  if(el){ el.textContent = text; el.className = 'badge ' + (cls||'badge-on'); }
+}
+
+function createPwaManifest() {}
+
+function isStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+}
+
+function setAlarm(id, msg, critical) {
+  console.warn('[Alarm]', id, msg);
+  addLog('⚠️ ' + msg, 'warn');
+}
+
+function clearAlarm(id) {}
+
+function numOrNull(v) {
+  return (v === null || v === undefined || isNaN(v)) ? null : Number(v);
+}
+
+function setTextIfExists(id, text) {
+  const el = document.getElementById(id);
+  if(el) el.textContent = text;
+}
+
+function updateINVT(dcV, freqHz, powerKw, currentA, voltageAc, solarPct, error, powerPct) {
+  // Badge état
+  const badge = document.getElementById('invt-badge');
+  if(badge) {
+    const enMarche = currentA > 0.5 && freqHz > 0;
+    badge.textContent = enMarche ? 'EN MARCHE' : (dcV > 200 ? 'VEILLE' : 'ARRÊT');
+    badge.className = 'badge ' + (enMarche ? 'badge-on' : (dcV > 200 ? 'badge-warn' : 'badge-off'));
+  }
+  // Tension DC
+  const vdc = document.getElementById('invt-vdc');
+  if(vdc) vdc.innerHTML = Math.round(dcV) + '<span class="metric-unit">V</span>';
+  const vdcBar = document.getElementById('invt-vdc-bar');
+  if(vdcBar) vdcBar.style.width = Math.min(100, dcV/9) + '%';
+  // Fréquence
+  const freq = document.getElementById('invt-freq');
+  if(freq) freq.innerHTML = freqHz > 0 ? freqHz.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">Hz</span>' : '--';
+  // Puissance
+  const pwr = document.getElementById('invt-power');
+  if(pwr) pwr.innerHTML = powerKw > 0 ? powerKw.toFixed(2) + '<span style="font-size:11px;color:var(--text-dim)">kW</span>' : '--';
+  // Courant
+  const amp = document.getElementById('invt-amp');
+  if(amp) amp.innerHTML = currentA > 0 ? currentA.toFixed(1) + '<span style="font-size:11px;color:var(--text-dim)">A</span>' : '--';
+  // Tension AC
+  const vac = document.getElementById('invt-vac');
+  if(vac) vac.innerHTML = voltageAc > 0 ? voltageAc + '<span style="font-size:11px;color:var(--text-dim)">V</span>' : '--';
+  // Erreur
+  const errPanel = document.getElementById('invt-err');
+  if(errPanel) errPanel.style.display = error ? 'block' : 'none';
+  if(error) {
+    const ec = document.getElementById('invt-err-code'); if(ec) ec.textContent = error.code;
+    const ed = document.getElementById('invt-err-desc'); if(ed) ed.textContent = error.desc;
+  }
+  // Statuts système
+  const sysInvt = document.getElementById('sys-invt-status');
+  if(sysInvt) { sysInvt.textContent = currentA > 0.5 ? 'ON' : 'OFF'; sysInvt.style.color = currentA > 0.5 ? 'var(--green)' : 'var(--text-dim)'; }
+}
+
+function updateSalmson(currentA, waterOk, levelCm, running, error, reservoirPlein) {
+  // Badge état
+  const badge = document.getElementById('salmson-badge');
+  if(badge) {
+    badge.textContent = running ? 'EN MARCHE' : 'ARRÊTÉE';
+    badge.className = 'badge ' + (running ? 'badge-on' : 'badge-off');
+  }
+  // Flotteur 21/22 - réservoir plein = arrêt NORMAL (pas une erreur)
+  const floatEl = document.getElementById('salmson-float') || document.getElementById('dash-forage-float');
+  if(floatEl) {
+    floatEl.textContent = reservoirPlein ? 'Arrêt niveau haut' : 'Pompage possible';
+    floatEl.style.color = reservoirPlein ? 'var(--info)' : 'var(--green)';
+  }
+  // Niveau
+  const lvl = document.getElementById('salmson-level') || document.getElementById('dash-forage-level');
+  if(lvl && levelCm !== null && levelCm !== undefined) lvl.textContent = levelCm + ' cm';
+  // Statuts contrôle
+  const ctrlInd = document.getElementById('ctrl-forage-ind');
+  if(ctrlInd) ctrlInd.className = 'pump-indicator ' + (running ? 'on' : 'off');
+  const ctrlState = document.getElementById('ctrl-forage-state');
+  if(ctrlState) { ctrlState.textContent = running ? 'EN MARCHE' : 'ARRÊTÉE'; ctrlState.style.color = running ? 'var(--green)' : 'var(--text-dim)'; }
+  // Statut système
+  const sysFg = document.getElementById('sys-forage-status');
+  if(sysFg) { sysFg.textContent = running ? 'ON' : 'OFF'; sysFg.style.color = running ? 'var(--green)' : 'var(--text-dim)'; }
+}
+
+function updateWilo(pressure, flow, running, error) {
+  // Badge
+  const badge = document.getElementById('wilo-badge');
+  if(badge) {
+    badge.textContent = running ? 'EN MARCHE' : 'ARRÊTÉ';
+    badge.className = 'badge ' + (running ? 'badge-on' : 'badge-off');
+  }
+  // Pression
+  const pStr = pressure !== null && pressure !== undefined ? pressure.toFixed(1) + ' bar' : '—';
+  const wPres = document.getElementById('wilo-pressure') || document.getElementById('dash-wilo-pressure');
+  if(wPres) wPres.textContent = pStr;
+  const ctrlWPres = document.getElementById('ctrl-wilo-pressure');
+  if(ctrlWPres) ctrlWPres.textContent = pStr;
+  const sysWPres = document.getElementById('sys-wilo-pressure');
+  if(sysWPres) sysWPres.textContent = pressure !== null && pressure !== undefined ? pressure.toFixed(1) : '—';
+  // Statuts contrôle
+  const ctrlInd = document.getElementById('ctrl-wilo-ind');
+  if(ctrlInd) ctrlInd.className = 'pump-indicator ' + (running ? 'on' : 'off');
+  const ctrlState = document.getElementById('ctrl-wilo-state');
+  if(ctrlState) { ctrlState.textContent = running ? 'EN MARCHE' : 'ARRÊTÉ'; ctrlState.style.color = running ? 'var(--green)' : 'var(--text-dim)'; }
+  // Statut système
+  const sysWilo = document.getElementById('sys-wilo-status');
+  if(sysWilo) { sysWilo.textContent = running ? 'ON' : 'OFF'; sysWilo.style.color = running ? 'var(--green)' : 'var(--text-dim)'; }
+  // Erreur
+  if(error) addLog('⚠️ ' + error.desc, 'warn');
+}
 </script>
 
 </body>
