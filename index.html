@@ -6031,7 +6031,7 @@ function _ind(id, on) {
 }
 
 function updateINVT(dcV, freqHz, powerKw, currentA, voltageAc, solarPct, error, powerPct) {
-  const enMarche = currentA > 0.5 && freqHz > 0;
+  const enMarche = freqHz > 0;
   const stateLabel = enMarche ? 'EN MARCHE' : (dcV > 200 ? 'VEILLE' : 'ARRÊT');
   const stateCls   = enMarche ? 'on' : (dcV > 200 ? 'warn' : 'off');
   const freqStr    = freqHz > 0 ? freqHz.toFixed(1) + 'Hz' : '--';
