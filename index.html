@@ -4690,7 +4690,7 @@ function fetchRealData() {
         addLog(`Erreur lecture serveur: ${e.message}`, 'warn');
         lastStatusErrorAt = now;
       }
-      if(_fetchErrCount >= 5) {
+      if(_fetchErrCount >= 12) {
         _fetchErrCount = 0;
         connected = false;
         if(fetchInterval){ clearInterval(fetchInterval); fetchInterval = null; }
